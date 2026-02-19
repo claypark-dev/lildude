@@ -8,6 +8,7 @@
 
 import { Command } from 'commander';
 import { runDoctor } from './cli/doctor.js';
+import { runOnboardingWizard } from './onboarding/wizard.js';
 
 const program = new Command();
 
@@ -34,8 +35,12 @@ program
 program
   .command('onboard')
   .description('Run the onboarding wizard')
-  .action(() => {
-    console.log('Onboarding wizard... (not yet implemented — coming in Sprint 1)');
+  .action(async () => {
+    try {
+      await runOnboardingWizard();
+    } catch {
+      process.exit(1);
+    }
   });
 
 program.parse();

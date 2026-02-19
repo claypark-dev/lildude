@@ -38,8 +38,9 @@ export class ProviderError extends LilDudeError {
   constructor(
     message: string,
     public readonly provider: string,
+    retryable: boolean = true,
   ) {
-    super(message, 'PROVIDER_ERROR', true, true);
+    super(message, 'PROVIDER_ERROR', true, retryable);
     this.name = 'ProviderError';
   }
 }
