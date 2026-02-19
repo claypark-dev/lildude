@@ -109,7 +109,7 @@ npm run start
 | Node.js | 20.0.0 | 22+ |
 | RAM | 4 GB | 16 GB (for local models + voice) |
 | Disk | 500 MB | 2 GB (with Ollama models) |
-| OS | macOS, Linux | macOS (Apple Silicon) |
+| OS | macOS, Linux, Windows 10+ | macOS (Apple Silicon) |
 
 ---
 
@@ -204,6 +204,7 @@ Lil Dude uses a **5-level security system** that controls what the AI can do on 
 - **Prompt Injection Detection** — External content is wrapped with `wrapUntrustedContent()` and scanned.
 - **Approval Queue** — Medium/high-risk actions pause and ask for your confirmation via the channel.
 - **Security Logging** — Every security-relevant action is written to `security_log` in the database.
+- **Cross-Platform** — Platform-aware dangerous patterns cover both Unix (`rm -rf`, `mkfs`) and Windows (`del /f /s`, `format`, `diskpart`, PowerShell destructive cmdlets). Directory rules protect system paths on all platforms.
 - **Override Lists** — Customize with `shellAllowlistOverride`, `shellBlocklistOverride`, `dirAllowlistOverride`, `dirBlocklistOverride`, `domainAllowlistOverride`, `domainBlocklistOverride`.
 
 ```json
@@ -551,6 +552,13 @@ Or use the uninstall script:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/claypark-dev/lildude/main/scripts/uninstall.sh | bash
+```
+
+**Windows:**
+
+```powershell
+npm uninstall -g lil-dude
+Remove-Item -Recurse -Force "$env:USERPROFILE\.lil-dude"
 ```
 
 ---

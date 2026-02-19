@@ -25,6 +25,7 @@ const VOICE_RAM_GB = 16;
  * Detect GPU availability on the current platform.
  * On macOS, queries system_profiler for display data.
  * On Linux, checks for NVIDIA driver presence.
+ * On Windows, queries wmic for video controller names.
  * Returns false on unsupported platforms or detection failure.
  */
 export function detectGpu(): boolean {
@@ -36,10 +37,8 @@ export function detectGpu(): boolean {
         encoding: 'utf-8',
         timeout: 5000,
       });
-      // A dedicated GPU is present if output contains a chipset/vendor beyond integrated
       const hasDiscreteGpu = /Vendor:\s+(?!Apple)/i.test(output)
         || /Chipset Model:\s+.*(Radeon|NVIDIA|GeForce)/i.test(output);
-      // Apple Silicon GPUs also count
       const hasAppleSiliconGpu = /Chipset Model:\s+Apple/i.test(output);
       return hasDiscreteGpu || hasAppleSiliconGpu;
     }
@@ -48,6 +47,14 @@ export function detectGpu(): boolean {
       const nvidiaPath = '/proc/driver/nvidia/version';
       execSync(`test -f ${nvidiaPath}`, { timeout: 2000 });
       return true;
+    }
+
+    if (platform === 'win32') {
+      const output = execSync(
+        'wmic path win32_VideoController get Name /value',
+        { encoding: 'utf-8', timeout: 5000 },
+      );
+      return /Name=.*(NVIDIA|GeForce|RTX|GTX|Radeon|AMD|Intel\s+(?:Arc|Iris|UHD|HD))/i.test(output);
     }
   } catch {
     log.debug({ platform }, 'GPU detection failed or no GPU found');
@@ -58,14 +65,14 @@ export function detectGpu(): boolean {
 
 /**
  * Get free disk space in gigabytes for the root filesystem.
- * Uses the `df` command on macOS and Linux.
+ * Uses `df` on macOS/Linux and `wmic` on Windows.
  * Returns 0 if detection fails.
  */
 export function getDiskFreeGb(): number {
   try {
     const platform = os.platform();
+
     if (platform === 'darwin' || platform === 'linux') {
-      // -k outputs 1K blocks; awk grabs available column from the root mount
       const output = execSync("df -k / | tail -1 | awk '{print $4}'", {
         encoding: 'utf-8',
         timeout: 5000,
@@ -76,6 +83,23 @@ export function getDiskFreeGb(): number {
       }
       return Math.round((freeKb / (1024 * 1024)) * 100) / 100;
     }
+
+    if (platform === 'win32') {
+      // Query free space on the system drive (usually C:)
+      const output = execSync(
+        'wmic logicaldisk where "DeviceID=\'C:\'" get FreeSpace /value',
+        { encoding: 'utf-8', timeout: 5000 },
+      );
+      const match = output.match(/FreeSpace=(\d+)/);
+      if (match) {
+        const freeBytes = parseInt(match[1], 10);
+        if (Number.isFinite(freeBytes) && freeBytes >= 0) {
+          return Math.round((freeBytes / (1024 ** 3)) * 100) / 100;
+        }
+      }
+      return 0;
+    }
+
     log.warn({ platform }, 'Disk space detection not supported on this platform');
     return 0;
   } catch (error: unknown) {

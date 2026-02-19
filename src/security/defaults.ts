@@ -114,6 +114,117 @@ export const DANGEROUS_PATTERNS: readonly DangerousPattern[] = [
     description: 'Package manager install or uninstall operation',
     severity: 'needs_approval',
   },
+
+  // ─── Windows-specific dangerous patterns ───
+
+  // del /f /s /q on root or system directories
+  {
+    pattern: /\bdel\b.*\/[fF].*\/[sS].*(?:[A-Za-z]:\\$|[A-Za-z]:\\\s|\\\\)/,
+    description: 'Recursive force delete on root or UNC path (del /f /s)',
+    severity: 'always_block',
+  },
+  // rd /s /q (rmdir) on system-critical paths
+  {
+    pattern: /\b(?:rd|rmdir)\b.*\/[sS].*\/[qQ].*(?:[A-Za-z]:\\$|[A-Za-z]:\\\s|\\Windows|\\System32)/,
+    description: 'Recursive directory removal on system path (rd /s /q)',
+    severity: 'always_block',
+  },
+  // format command (Windows disk format)
+  {
+    pattern: /\bformat\b.*[A-Za-z]:/,
+    description: 'Format disk drive (format)',
+    severity: 'always_block',
+  },
+  // diskpart (dangerous disk operations)
+  {
+    pattern: /\bdiskpart\b/,
+    description: 'Disk partition utility (diskpart)',
+    severity: 'always_block',
+  },
+  // bcdedit (boot configuration)
+  {
+    pattern: /\bbcdedit\b/,
+    description: 'Boot configuration editor (bcdedit)',
+    severity: 'always_block',
+  },
+  // reg delete on HKLM (system registry)
+  {
+    pattern: /\breg\b.*\bdelete\b.*\bHKLM\b/i,
+    description: 'Delete system registry keys (reg delete HKLM)',
+    severity: 'always_block',
+  },
+  // icacls/cacls modifying system directory permissions
+  {
+    pattern: /\b(?:icacls|cacls)\b.*(?:\\Windows|\\System32)/i,
+    description: 'Modify system directory permissions (icacls/cacls)',
+    severity: 'always_block',
+  },
+  // takeown on system directories
+  {
+    pattern: /\btakeown\b.*(?:\\Windows|\\System32)/i,
+    description: 'Take ownership of system files (takeown)',
+    severity: 'always_block',
+  },
+  // Windows shutdown command
+  {
+    pattern: /\bshutdown\b.*\/[sStrR]/,
+    description: 'Windows shutdown or restart command',
+    severity: 'always_block',
+  },
+  // sfc /scannow and system file checker
+  {
+    pattern: /\bsfc\b.*\/scannow/i,
+    description: 'System file checker (sfc /scannow)',
+    severity: 'needs_approval',
+  },
+  // PowerShell Remove-Item -Recurse -Force on system paths
+  {
+    pattern: /\bRemove-Item\b.*-Recurse.*(?:[A-Za-z]:\\$|\\Windows|\\System32)/i,
+    description: 'PowerShell recursive delete on system path (Remove-Item -Recurse)',
+    severity: 'always_block',
+  },
+  // PowerShell Set-ExecutionPolicy
+  {
+    pattern: /\bSet-ExecutionPolicy\b/i,
+    description: 'Change PowerShell execution policy',
+    severity: 'needs_approval',
+  },
+  // PowerShell Invoke-Expression / iex (remote code execution risk)
+  {
+    pattern: /\b(?:Invoke-Expression|iex)\b/i,
+    description: 'PowerShell Invoke-Expression (potential remote code execution)',
+    severity: 'always_block',
+  },
+  // PowerShell Invoke-WebRequest piped to Invoke-Expression
+  {
+    pattern: /\b(?:Invoke-WebRequest|iwr|curl)\b.*\|\s*(?:Invoke-Expression|iex)\b/i,
+    description: 'Remote code execution via web request piped to Invoke-Expression',
+    severity: 'always_block',
+  },
+  // runas (Windows privilege escalation)
+  {
+    pattern: /\brunas\b/,
+    description: 'Elevated privilege command (runas)',
+    severity: 'needs_approval',
+  },
+  // Windows device paths (\\.\PhysicalDrive, \\.\C:)
+  {
+    pattern: /\\\\\.\\(?:PhysicalDrive|[A-Za-z]:)/,
+    description: 'Direct access to Windows device path',
+    severity: 'always_block',
+  },
+  // net user / net localgroup (account manipulation)
+  {
+    pattern: /\bnet\b\s+(?:user|localgroup)\b/i,
+    description: 'Windows account or group manipulation (net user/localgroup)',
+    severity: 'needs_approval',
+  },
+  // Windows package managers
+  {
+    pattern: /\b(?:choco|winget|scoop)\s+(?:install|uninstall|remove)\b/i,
+    description: 'Windows package manager install or uninstall operation',
+    severity: 'needs_approval',
+  },
 ] as const;
 
 /**
@@ -121,6 +232,7 @@ export const DANGEROUS_PATTERNS: readonly DangerousPattern[] = [
  * Only these binaries can be executed without special approval.
  */
 export const BINARY_ALLOWLIST_DEFAULT: readonly string[] = [
+  // ─── Unix/macOS ───
   'ls',
   'cat',
   'head',
@@ -158,6 +270,36 @@ export const BINARY_ALLOWLIST_DEFAULT: readonly string[] = [
   'basename',
   'dirname',
   'realpath',
+
+  // ─── Windows equivalents & common binaries ───
+  'dir',
+  'type',            // Windows equivalent of cat
+  'findstr',         // Windows equivalent of grep
+  'where',           // Windows equivalent of which
+  'whoami.exe',
+  'more',
+  'sort.exe',
+  'cmd.exe',
+  'cmd',
+  'powershell.exe',
+  'powershell',
+  'pwsh.exe',
+  'pwsh',
+  'node.exe',
+  'npx.cmd',
+  'git.exe',
+  'curl.exe',
+  'python.exe',
+  'python3.exe',
+  'wmic',
+  'systeminfo',
+  'hostname',
+  'set',
+  'ver',
+  'tree',
+  'attrib',
+  'robocopy',
+  'xcopy',
 ] as const;
 
 /**
@@ -168,6 +310,7 @@ export const BINARY_ALLOWLIST_DEFAULT: readonly string[] = [
 export const DIRECTORY_RULES = {
   /** Directories that are NEVER writable, regardless of user config */
   ALWAYS_BLOCKED: [
+    // ─── Unix/macOS ───
     /^\/$/,
     /^\/etc\b/,
     /^\/usr\b/,
@@ -180,14 +323,30 @@ export const DIRECTORY_RULES = {
     /^\/root\b/,
     /^\/proc\b/,
     /^\/sys\b/,
+
+    // ─── Windows ───
+    /^[A-Za-z]:\\$/,                        // Drive root (C:\)
+    /^[A-Za-z]:\\Windows\b/i,               // Windows directory
+    /^[A-Za-z]:\\Program Files\b/i,         // Program Files
+    /^[A-Za-z]:\\Program Files \(x86\)\b/i, // Program Files (x86)
+    /^[A-Za-z]:\\ProgramData\b/i,           // ProgramData
+    /^[A-Za-z]:\\Recovery\b/i,              // Recovery partition
+    /^[A-Za-z]:\\System Volume Information\b/i,
   ] as readonly RegExp[],
 
   /** Directories allowed by default (user can modify) */
   DEFAULT_ALLOWED: [
+    // ─── Unix/macOS ───
     /^~\/\.lil-dude\b/,
     /^~\/Documents\b/,
     /^~\/Desktop\b/,
     /^~\/Downloads\b/,
+
+    // ─── Windows (USERPROFILE-relative) ───
+    /^[A-Za-z]:\\Users\\[^\\]+\\\.lil-dude\b/i,
+    /^[A-Za-z]:\\Users\\[^\\]+\\Documents\b/i,
+    /^[A-Za-z]:\\Users\\[^\\]+\\Desktop\b/i,
+    /^[A-Za-z]:\\Users\\[^\\]+\\Downloads\b/i,
   ] as readonly RegExp[],
 } as const;
 

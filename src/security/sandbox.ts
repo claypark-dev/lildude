@@ -8,6 +8,7 @@
  * See HLD Section 11 (Process Sandbox).
  */
 
+import os from 'node:os';
 import { execFile, type ExecFileException } from 'node:child_process';
 import { securityLogger } from '../utils/logger.js';
 
@@ -73,8 +74,19 @@ export function createSanitizedEnv(additionalEnv?: Record<string, string>): Reco
     }
   }
 
-  // Restrict PATH to safe directories
-  sanitized['PATH'] = '/usr/local/bin:/usr/bin:/bin';
+  // Restrict PATH to safe directories (platform-aware)
+  if (os.platform() === 'win32') {
+    const systemRoot = process.env['SystemRoot'] ?? 'C:\\Windows';
+    sanitized['PATH'] = `${systemRoot}\\System32;${systemRoot};${systemRoot}\\System32\\Wbem`;
+    // Preserve essential Windows env vars for child processes
+    const comSpec = process.env['ComSpec'];
+    if (comSpec) {
+      sanitized['ComSpec'] = comSpec;
+    }
+    sanitized['SystemRoot'] = systemRoot;
+  } else {
+    sanitized['PATH'] = '/usr/local/bin:/usr/bin:/bin';
+  }
 
   // Merge additional env (user-provided values override)
   if (additionalEnv) {
