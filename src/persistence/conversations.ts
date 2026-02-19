@@ -27,6 +27,8 @@ export interface ConversationRow {
 
 /** Input for creating a new conversation. */
 export interface CreateConversationInput {
+  /** Explicit id for the conversation. If omitted, a nanoid is generated. */
+  id?: string;
   channelType: string;
   channelId: string;
   taskId?: string;
@@ -99,7 +101,7 @@ export function createConversation(
   input: CreateConversationInput,
 ): ConversationRow {
   try {
-    const id = nanoid();
+    const id = input.id ?? nanoid();
     db.prepare(
       `INSERT INTO conversations (id, task_id, channel_type, channel_id)
        VALUES (?, ?, ?, ?)`,

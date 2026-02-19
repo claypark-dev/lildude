@@ -1,3 +1,204 @@
-// Lil Dude — Main entry point
-// This file will wire all modules together in Sprint 1 (S1.L.2)
+/**
+ * Lil Dude — Main entry point.
+ * Wires all modules together: config, database, hardware, security,
+ * cost engine, providers, channels, agent loop, and gateway.
+ * Registers shutdown handlers for graceful termination.
+ * See HLD Section 5 for startup flow.
+ */
+
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { loadConfig, homeDir } from './config/loader.js';
+import type { Config } from './config/schema.js';
+import { createDatabase, type DatabaseManager } from './persistence/db.js';
+import { detectHardware } from './utils/hardware.js';
+import { createShutdownHandler, type ShutdownHandler } from './utils/shutdown.js';
+import { createModuleLogger } from './utils/logger.js';
+import { createProviderManager, type ProviderManager } from './providers/index.js';
+import { createChannelManager, type ChannelManager } from './channels/index.js';
+import { createAgentLoop, type AgentLoop } from './orchestrator/agent-loop.js';
+import { createGatewayServer, type GatewayServer } from './gateway/index.js';
+import type { LLMProvider } from './types/index.js';
+import type { SecurityLevel } from './security/permissions.js';
+import {
+  initializeChannels,
+  wireChannelsToAgentLoop,
+  resolvePrimaryProvider,
+  logStartupBanner,
+} from './startup.js';
+
 export const VERSION = '0.1.0';
+
+const log = createModuleLogger('main');
+
+/** Dependencies exposed by the startup for testing and shutdown. */
+export interface AppContext {
+  config: Config;
+  dbManager: DatabaseManager;
+  providerManager: ProviderManager;
+  channelManager: ChannelManager;
+  agentLoop: AgentLoop;
+  gateway: GatewayServer;
+  shutdownHandler: ShutdownHandler;
+}
+
+/** Options for starting the app, allowing dependency injection for tests. */
+export interface StartOptions {
+  /** Override config instead of loading from disk. */
+  config?: Config;
+  /** Override the database path (e.g. ':memory:' for tests). */
+  dbPath?: string;
+  /** Override the migrations directory. */
+  migrationsDir?: string;
+  /** Inject a provider instead of using the config to create one. */
+  provider?: LLMProvider;
+  /** Skip hardware detection (useful in tests). */
+  skipHardwareDetection?: boolean;
+  /** Skip starting the gateway listener (useful in tests). */
+  skipGatewayListen?: boolean;
+  /** Skip registering process signal handlers (useful in tests). */
+  skipSignalHandlers?: boolean;
+}
+
+/**
+ * Check whether onboarding has been completed (config file exists).
+ *
+ * @returns True if config.json exists in the Lil Dude home directory.
+ */
+export function isOnboarded(): boolean {
+  const configPath = join(homeDir(), 'config.json');
+  return existsSync(configPath);
+}
+
+/**
+ * Start the Lil Dude application.
+ * Loads config, initializes all subsystems, wires channels to the agent loop,
+ * and starts the gateway server.
+ *
+ * @param options - Optional overrides for testing and flexibility.
+ * @returns The full AppContext with references to all subsystems.
+ */
+export async function startApp(options: StartOptions = {}): Promise<AppContext> {
+  // Step 1: Load config
+  const config = options.config ?? await loadConfig();
+  log.info('Configuration loaded');
+
+  // Step 2: Initialize database and run migrations
+  const dbPath = options.dbPath ?? join(homeDir(), 'lil-dude.db');
+  const dbManager = createDatabase(dbPath, options.migrationsDir);
+  dbManager.runMigrations();
+  log.info({ dbPath }, 'Database initialized and migrations applied');
+
+  // Step 3: Detect hardware
+  if (!options.skipHardwareDetection) {
+    const hardware = detectHardware();
+    log.info(
+      {
+        os: hardware.os,
+        arch: hardware.arch,
+        ramGb: hardware.ramGb,
+        cpuCores: hardware.cpuCores,
+        hasGpu: hardware.hasGpu,
+        features: hardware.features,
+      },
+      'Hardware profile detected',
+    );
+  }
+
+  // Step 4: Resolve security level
+  const securityLevel = config.security.level as SecurityLevel;
+  log.info({ securityLevel }, 'Security module initialized');
+
+  // Step 5: Cost engine is stateless — budget config is passed to agent loop
+  log.info(
+    {
+      monthlyLimitUsd: config.budget.monthlyLimitUsd,
+      perTaskDefaultLimitUsd: config.budget.perTaskDefaultLimitUsd,
+    },
+    'Cost engine configured',
+  );
+
+  // Step 6: Initialize providers
+  const providerManager = createProviderManager(config);
+  const configuredProviders = providerManager.getEnabledProviders();
+
+  // Resolve the primary provider for the agent loop
+  const primaryProvider = resolvePrimaryProvider(
+    options.provider,
+    providerManager,
+    configuredProviders,
+  );
+
+  // When an external provider is injected and no providers are configured,
+  // include the injected provider's name so the router can find it.
+  const enabledProviders = configuredProviders.length > 0
+    ? configuredProviders
+    : [primaryProvider.name];
+  log.info({ enabledProviders }, 'Providers initialized');
+
+  // Step 7: Initialize channel adapters
+  const channelManager = createChannelManager();
+  await initializeChannels(channelManager, config);
+
+  // Step 8: Create the agent loop
+  const agentLoop = createAgentLoop(
+    {
+      db: dbManager.db,
+      provider: primaryProvider,
+      securityLevel,
+      userName: config.user.name,
+      monthlyBudgetUsd: config.budget.monthlyLimitUsd,
+    },
+    {
+      taskBudgetUsd: config.budget.perTaskDefaultLimitUsd,
+      enabledProviders,
+    },
+  );
+  log.info('Agent loop created');
+
+  // Step 9: Wire channel messages to the agent loop
+  wireChannelsToAgentLoop(channelManager, agentLoop);
+
+  // Step 10: Create and start the gateway server
+  const gateway = createGatewayServer(dbManager, config);
+
+  if (!options.skipGatewayListen) {
+    await gateway.start(config.gateway.httpPort, config.gateway.host);
+    log.info(
+      { port: config.gateway.httpPort, host: config.gateway.host },
+      'Gateway server started',
+    );
+  } else {
+    await gateway.app.ready();
+  }
+
+  // Step 11: Register shutdown handlers
+  const shutdownHandler = createShutdownHandler();
+
+  if (!options.skipSignalHandlers) {
+    shutdownHandler.register('gateway', async () => {
+      await gateway.stop();
+    });
+    shutdownHandler.register('channels', async () => {
+      await channelManager.disconnectAll();
+    });
+    shutdownHandler.register('database', () => {
+      dbManager.close();
+    });
+  }
+
+  // Step 12: Log startup banner
+  logStartupBanner(config);
+
+  const appContext: AppContext = {
+    config,
+    dbManager,
+    providerManager,
+    channelManager,
+    agentLoop,
+    gateway,
+    shutdownHandler,
+  };
+
+  return appContext;
+}

@@ -106,7 +106,7 @@ export function createAgentLoop(
 
         // Step 3: Ensure conversation exists
         if (!getConversation(deps.db, conversationId)) {
-          createConversation(deps.db, { channelType, channelId: conversationId, taskId });
+          createConversation(deps.db, { id: conversationId, channelType, channelId: conversationId, taskId });
         }
 
         // Step 4: Monthly budget check
