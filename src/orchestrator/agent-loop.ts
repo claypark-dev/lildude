@@ -24,6 +24,8 @@ import {
 import { appendConversationLog } from '../persistence/conversation-logs.js';
 import { createTask, updateTaskStatus, updateTaskSpend } from '../persistence/tasks.js';
 import { orchestratorLogger } from '../utils/logger.js';
+import { matchSkill } from '../skills/registry.js';
+import { executeSkill } from '../skills/executor.js';
 import {
   DEFAULT_MAX_ROUND_TRIPS,
   DEFAULT_MAX_TOKENS_PER_TASK,
@@ -45,6 +47,9 @@ import type {
 
 // Re-export types so existing consumers aren't broken
 export type { AgentLoopDeps, AgentLoopConfig, AgentLoopResult, AgentLoop };
+
+/** Minimum match score for a skill to be routed to. */
+const SKILL_MATCH_THRESHOLD = 0.1;
 
 /**
  * Create an agent loop configured with the given dependencies.
@@ -131,6 +136,27 @@ export function createAgentLoop(
             'No suitable model is available for this request. Please check your provider configuration.',
             totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips,
           );
+        }
+
+        // Step 5b: Skill routing — check if a registered skill matches
+        const skillMatch = matchSkill(userMessage);
+        if (skillMatch && skillMatch.score > SKILL_MATCH_THRESHOLD) {
+          orchestratorLogger.info(
+            { skillName: skillMatch.skill.manifest.name, score: skillMatch.score },
+            'Skill matched, routing to skill executor',
+          );
+          const skillResult = await executeSkill(skillMatch.skill, userMessage, {
+            db: deps.db, provider: deps.provider,
+            taskBudgetUsd, taskSpentUsd: totalCostUsd, enabledProviders,
+          });
+          totalInputTokens += skillResult.tokensUsed.input;
+          totalOutputTokens += skillResult.tokensUsed.output;
+          totalCostUsd += skillResult.costUsd;
+          updateTaskSpend(deps.db, taskId, totalCostUsd);
+          updateTaskStatus(deps.db, taskId, skillResult.success ? 'completed' : 'failed',
+            skillResult.success ? undefined : skillResult.output);
+          return buildResult(skillResult.output, totalInputTokens, totalOutputTokens,
+            totalCostUsd, toolCallCount, skillResult.llmCallCount);
         }
 
         // Step 6: Build context
