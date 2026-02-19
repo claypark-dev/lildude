@@ -12,7 +12,9 @@ import type {
 } from '../types/index.js';
 import type { SecurityLevel } from '../security/permissions.js';
 import type { ToolExecutor } from '../tools/executor.js';
-import { needsSummarization, summarizeConversation } from '../context/summarizer.js';
+import { needsSummarization, summarizeConversation, extractKeyFacts } from '../context/summarizer.js';
+import { getConversationLogs } from '../persistence/conversation-logs.js';
+import { upsertKnowledge } from '../persistence/knowledge.js';
 import { orchestratorLogger } from '../utils/logger.js';
 
 /** Default kill condition limits. */
@@ -165,6 +167,60 @@ export function triggerSummarizationIfNeeded(
     orchestratorLogger.warn(
       { conversationId, error: errorMessage },
       'Failed to check summarization need',
+    );
+  }
+}
+
+/**
+ * Extract key facts from recent conversation logs on task completion
+ * and persist them to the knowledge table. This is a deterministic,
+ * lightweight extraction that scans the final assistant response for
+ * fact-like patterns without making an LLM call.
+ *
+ * Errors are logged but never propagate to the caller.
+ *
+ * @param db - The database connection.
+ * @param conversationId - The conversation to extract facts from.
+ */
+export function extractKeyFactsOnTaskCompletion(
+  db: BetterSqlite3.Database,
+  conversationId: string,
+): void {
+  try {
+    const logs = getConversationLogs(db, conversationId);
+    if (logs.length === 0) {
+      return;
+    }
+
+    // Build a text block from the most recent messages (last 10) to scan for facts
+    const recentLogs = logs.slice(-10);
+    const textBlock = recentLogs
+      .map((log) => `[${log.role.toUpperCase()}]: ${log.content}`)
+      .join('\n');
+
+    const facts = extractKeyFacts(textBlock);
+
+    for (const fact of facts) {
+      upsertKnowledge(db, {
+        category: 'task_completion_fact',
+        key: fact.key,
+        value: fact.value,
+        sourceConversationId: conversationId,
+        confidence: fact.confidence,
+      });
+    }
+
+    if (facts.length > 0) {
+      orchestratorLogger.debug(
+        { conversationId, factCount: facts.length },
+        'Key facts extracted on task completion',
+      );
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    orchestratorLogger.warn(
+      { conversationId, error: errorMessage },
+      'Failed to extract key facts on task completion',
     );
   }
 }

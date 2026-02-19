@@ -62,3 +62,4 @@ export type { WebChatAdapter } from './webchat.js';
 export { createTelegramAdapter } from './telegram.js';
 export { createDiscordAdapter } from './discord.js';
 export type { DiscordAdapter } from './discord.js';
+export { createIMessageAdapter } from './imessage.js';

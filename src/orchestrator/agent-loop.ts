@@ -34,6 +34,7 @@ import {
   executeTools,
   buildResult,
   triggerSummarizationIfNeeded,
+  extractKeyFactsOnTaskCompletion,
 } from './agent-loop-helpers.js';
 import type {
   AgentLoopDeps,
@@ -224,6 +225,7 @@ export function createAgentLoop(
             updateTaskSpend(deps.db, taskId, totalCostUsd);
             updateTaskStatus(deps.db, taskId, 'completed');
             triggerSummarizationIfNeeded(deps.db, conversationId, deps.provider, totalCostUsd, taskBudgetUsd);
+            extractKeyFactsOnTaskCompletion(deps.db, conversationId);
             return buildResult(responseText, totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
           }
 
@@ -239,6 +241,7 @@ export function createAgentLoop(
           const responseText = extractResponseText(response);
           updateTaskSpend(deps.db, taskId, totalCostUsd);
           updateTaskStatus(deps.db, taskId, 'completed');
+          extractKeyFactsOnTaskCompletion(deps.db, conversationId);
           return buildResult(responseText || 'I completed your request.',
             totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
         }

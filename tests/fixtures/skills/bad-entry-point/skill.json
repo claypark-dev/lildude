@@ -1,0 +1,18 @@
+{
+  "name": "bad-entry",
+  "version": "1.0.0",
+  "description": "Skill with a missing entry point file",
+  "author": "test",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["bad"],
+  "deterministic": false,
+  "tools": [],
+  "minTier": "basic",
+  "entryPoint": "does-not-exist.js"
+}

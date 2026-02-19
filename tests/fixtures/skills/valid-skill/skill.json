@@ -1,0 +1,26 @@
+{
+  "name": "stock-checker",
+  "version": "1.0.0",
+  "description": "Check current stock prices",
+  "author": "lil-dude-team",
+  "permissions": {
+    "domains": ["api.stockdata.example.com"],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["stock", "stocks", "share price", "ticker"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "fetch_stock_price",
+      "description": "Fetch current stock price by ticker symbol",
+      "parameters": {
+        "ticker": { "type": "string", "required": true }
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js"
+}
