@@ -10,7 +10,7 @@
 
 <p align="center">
   <strong>Your personal AI executive assistant</strong><br/>
-  Self-hosted. Multi-channel. Privacy-first. Absurdly affordable.
+  Self-hosted. Multi-channel. Privacy-first. Ruthlessly token-efficient.
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 ---
 
-Lil Dude is a self-hosted AI executive assistant that runs on **your machine**, connects to **your messaging apps**, automates **your daily tasks**, and gives you a daily briefing — all while keeping costs under $20/month, your data private, and your system safe behind a 5-level security sandbox.
+Lil Dude is a **free, open-source** AI executive assistant that runs on **your machine**, connects to **your messaging apps**, automates **your daily tasks**, and gives you a daily briefing — all while minimizing token usage, keeping your data private, and keeping your system safe behind a 5-level security sandbox.
 
 <p align="center">
   <a href="#highlights">Highlights</a> |
@@ -43,7 +43,7 @@ Lil Dude is a self-hosted AI executive assistant that runs on **your machine**, 
 
 ## Highlights
 
-- **5 LLM Providers** — Anthropic, OpenAI, Google Gemini, DeepSeek, and Ollama (local). Smart routing picks the cheapest model that can handle the task.
+- **5 LLM Providers** — Anthropic, OpenAI, Google Gemini, DeepSeek, and Ollama (local). Smart routing picks the most efficient model that can handle the task.
 - **8 Messaging Channels** — Discord, Telegram, iMessage, Slack, WhatsApp, Signal, WebChat, and CLI. Talk to your assistant from wherever you already are.
 - **5-Level Security Sandbox** — Every shell command, network request, and file access is checked against a tiered permission system. Default: Level 3 (balanced).
 - **Quality-Aware Model Routing** — Routes simple messages to cheap/fast models, complex ones to powerful models. Learns from quality feedback to improve over time.
@@ -51,7 +51,7 @@ Lil Dude is a self-hosted AI executive assistant that runs on **your machine**, 
 - **Skill System** — Install community skills from GitHub with `lil-dude skill install github:user/repo`. Sandboxed execution with permission checks.
 - **Daily Briefings & Cron** — Scheduled tasks and morning briefings delivered to your preferred channel.
 - **Web Control Panel** — React-based dashboard for monitoring tasks, costs, conversations, and routing history.
-- **Cost Control** — Monthly budget ($20 default), per-task budget ($0.50 default), warning thresholds, hard stops. Never get a surprise bill.
+- **Token Efficiency** — Smart model routing, per-task token limits, configurable budget guardrails, and Ollama as a free local fallback. Your API spend stays lean.
 - **Startup Resume** — Rebooted your machine? Lil Dude detects stale tasks and missed cron jobs, then offers to catch up.
 - **Concurrent Task Pool** — Run multiple tasks simultaneously with FIFO queuing and per-task abort via `AbortController`.
 - **Local-First** — All data stays in a local SQLite database. No cloud telemetry. No account required.
@@ -71,7 +71,7 @@ lil-dude onboard
 lil-dude start
 ```
 
-The onboarding wizard walks you through provider API keys, channel setup, security level, and budget — no config files to edit manually.
+The onboarding wizard walks you through provider API keys, channel setup, security level, and token budget — no config files to edit manually.
 
 ---
 
@@ -140,11 +140,11 @@ Every message flows through the same pipeline:
 
 1. **Input Sanitization** — Prompt injection detection strips malicious content
 2. **Security Gate** — Parsed command checking against the 5-level permission system
-3. **Cost Gate** — Pre-flight budget check before any LLM call
-4. **Model Routing** — Deterministic complexity classification routes to the cheapest capable model
+3. **Token Budget Gate** — Pre-flight budget check before any LLM call
+4. **Model Routing** — Deterministic complexity classification routes to the most efficient capable model
 5. **Context Building** — Conversation history, key facts, and knowledge injection
 6. **LLM Call + Tool Loop** — Multi-round tool use with kill conditions (max rounds, max tokens, max duration, max cost)
-7. **Cost Tracking** — Every token is logged; per-task and monthly budgets enforced
+7. **Token Tracking** — Every token is logged; per-task and monthly budgets enforced
 
 ---
 
@@ -165,7 +165,9 @@ Every message flows through the same pipeline:
 | **Ollama** | `llama3.2` | Small | 8K | Free (local) |
 | | `qwen2.5` | Small | 32K | Free (local) |
 
-The model router classifies each message by complexity (word count, keywords, multi-step detection) and picks the cheapest model in the appropriate tier. Quality-aware routing learns from feedback to boost high-performing models and penalize low-quality ones.
+Lil Dude is free and open-source. The costs above are third-party API pricing — what the LLM providers charge per token. Use Ollama for completely free local inference.
+
+The model router classifies each message by complexity (word count, keywords, multi-step detection) and picks the most efficient model in the appropriate tier. Quality-aware routing learns from feedback to boost high-performing models and penalize low-quality ones.
 
 ---
 
@@ -420,24 +422,36 @@ Audio attachments on any channel are automatically transcribed. If synthesis is 
 
 ---
 
-## Cost Control
+## Token Efficiency
 
-Lil Dude is designed to be absurdly affordable. The cost engine enforces budgets at multiple levels:
+Lil Dude is **free and open-source**. You only pay for LLM API tokens from third-party providers — and even that is optional with Ollama (local, $0). The token efficiency engine makes sure every token counts:
 
-| Control | Default | Description |
-|---------|---------|-------------|
-| **Monthly budget** | $20.00 | Hard cap on total spend per calendar month |
-| **Per-task budget** | $0.50 | Max spend for a single conversation/task |
-| **Warning threshold** | 80% | Alert when approaching the monthly limit |
-| **Hard stop** | Enabled | Refuse requests when budget is exhausted |
-
-The model router minimizes cost by default:
+**Smart Model Routing** — Messages are classified by complexity and routed to the smallest model that can handle the job:
 - Simple messages ("what time is it?") → Small tier (Haiku, GPT-4o-mini, Gemini Flash)
 - Medium tasks → Medium tier (Sonnet, GPT-4o, Gemini Pro)
 - Complex multi-step requests → Large tier (Opus)
-- Ollama models → Always free, used as last-resort fallback
+- Ollama models → Always free, used as local fallback
 
-Every token is tracked in the database. View spend in the web panel at `http://127.0.0.1:18421`.
+**Budget Guardrails** — Configurable safety nets to prevent runaway API spend:
+
+| Guardrail | Default | Description |
+|-----------|---------|-------------|
+| **Monthly limit** | $20.00 | Hard cap on total API spend per calendar month |
+| **Per-task limit** | $0.50 | Max API spend for a single conversation/task |
+| **Warning threshold** | 80% | Alert when approaching the monthly limit |
+| **Hard stop** | Enabled | Refuse requests when limit is exhausted |
+
+**Real-world API costs** (typical day with ~50 messages):
+
+| Routing tier | Share | Daily API cost |
+|--------------|-------|---------------|
+| Small tier (80% of messages) | ~40 msgs | ~$0.02 |
+| Medium tier (15% of messages) | ~8 msgs | ~$0.08 |
+| Large tier (5% of messages) | ~2 msgs | ~$0.15 |
+| **Total** | | **~$0.25/day (~$7.50/month)** |
+| **With Ollama (local)** | | **$0/month** |
+
+Every token is tracked in the database. View usage in the web panel at `http://127.0.0.1:18421`.
 
 ---
 
@@ -514,7 +528,7 @@ tests/
 ### Architecture Principles
 
 1. **Security first** — Every feature passes through the security layer
-2. **Cost-conscious** — Deterministic over AI; check `canAfford` before every LLM call
+2. **Token-efficient** — Deterministic over AI; check `canAfford` before every LLM call
 3. **Performance** — Fast, low memory, local SQLite
 4. **Approachable** — Non-developers can set up via the onboarding wizard
 5. **Modular** — Features scale with hardware; channels are hot-pluggable
