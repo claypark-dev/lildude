@@ -27,6 +27,7 @@ import { registerCronRoutes } from './api/cron.js';
 import { registerSecurityRoutes } from './api/security.js';
 import { registerApprovalRoutes } from './api/approvals.js';
 import { registerUsageRoutes } from './api/usage.js';
+import { registerBriefingRoutes } from './api/briefing.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const log = gatewayLogger;
@@ -113,6 +114,7 @@ export function createGatewayServer(
   registerSecurityRoutes(app, db);
   registerApprovalRoutes(app, db);
   registerUsageRoutes(app, db);
+  registerBriefingRoutes(app, db);
 
   return {
     get app(): FastifyInstance {

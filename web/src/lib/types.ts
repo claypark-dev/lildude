@@ -71,6 +71,37 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+/** A single item within a briefing section. */
+export interface BriefingItem {
+  label: string;
+  value: string;
+  status?: 'good' | 'warning' | 'info' | 'neutral';
+}
+
+/** A section in the daily briefing. */
+export interface BriefingSection {
+  title: string;
+  icon: string;
+  items: BriefingItem[];
+}
+
+/** Summary counts for the briefing header. */
+export interface BriefingSummary {
+  activeSkills: number;
+  scheduledJobs: number;
+  pendingTasks: number;
+  todayCostUsd: number;
+  monthlyCostUsd: number;
+}
+
+/** Complete daily briefing response. */
+export interface DailyBriefing {
+  generatedAt: string;
+  greeting: string;
+  sections: BriefingSection[];
+  summary: BriefingSummary;
+}
+
 /** WebSocket message types sent by the client */
 export type WsOutgoingMessage =
   | { type: 'subscribe'; channels: string[] }

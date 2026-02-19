@@ -9,6 +9,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/', icon: '\u2302' },
+  { label: 'Briefing', path: '/briefing', icon: '\u2600' },
   { label: 'Chat', path: '/chat', icon: '\u2709' },
   { label: 'Tasks', path: '/tasks', icon: '\u2611' },
   { label: 'Settings', path: '/settings', icon: '\u2699' },

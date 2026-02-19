@@ -5,6 +5,7 @@ import type {
   DailyUsageResponse,
   SecurityLogResponse,
   AppConfig,
+  DailyBriefing,
 } from './types.ts';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
@@ -62,4 +63,9 @@ export function updateConfig(config: Record<string, unknown>): Promise<AppConfig
     method: 'PUT',
     body: JSON.stringify(config),
   });
+}
+
+/** Fetch the daily briefing */
+export function fetchBriefing(): Promise<DailyBriefing> {
+  return request<DailyBriefing>('/api/v1/briefing');
 }

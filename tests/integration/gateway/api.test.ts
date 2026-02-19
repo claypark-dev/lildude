@@ -540,6 +540,45 @@ describe('Gateway REST API', () => {
     });
   });
 
+  // ── Briefing ─────────────────────────────────────────────────────
+
+  describe('GET /api/v1/briefing', () => {
+    it('returns a valid briefing with all sections', async () => {
+      const response = await gateway.app.inject({
+        method: 'GET',
+        url: '/api/v1/briefing',
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      expect(body).toHaveProperty('generatedAt');
+      expect(body).toHaveProperty('greeting');
+      expect(body).toHaveProperty('sections');
+      expect(body).toHaveProperty('summary');
+      expect(body.sections).toHaveLength(4);
+      expect(body.summary.activeSkills).toBe(0);
+      expect(body.summary.pendingTasks).toBe(0);
+    });
+
+    it('reflects tasks and cron jobs in the briefing', async () => {
+      createTask(dbManager.db, { type: 'chat', description: 'Test task' });
+      createCronJob(dbManager.db, { schedule: '0 9 * * *', taskDescription: 'Morning briefing' });
+
+      const response = await gateway.app.inject({
+        method: 'GET',
+        url: '/api/v1/briefing',
+      });
+
+      const body = response.json();
+      expect(body.summary.scheduledJobs).toBe(1);
+
+      const tasksSection = body.sections.find((s: { title: string }) => s.title === 'Recent Tasks');
+      expect(tasksSection.items).toHaveLength(1);
+      expect(tasksSection.items[0].label).toBe('Test task');
+    });
+  });
+
   // ── Usage ──────────────────────────────────────────────────────────
 
   describe('GET /api/v1/usage', () => {
