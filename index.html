@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lil Dude — Your Personal AI Executive Assistant</title>
+    <meta name="description" content="Self-hosted AI assistant that connects to your messaging apps, automates tasks, and keeps costs under $20/month. Privacy-first. Open source." />
+    <meta property="og:title" content="Lil Dude — Your Personal AI Executive Assistant" />
+    <meta property="og:description" content="Self-hosted. Multi-channel. Privacy-first. Absurdly affordable." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/lildude/favicon.svg" />
+    <script>
+      const theme = localStorage.getItem('lildude-site-theme')
+        || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.dataset.theme = theme;
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
