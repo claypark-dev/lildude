@@ -10,6 +10,7 @@ import {
   createWebChatAdapter,
   createDiscordAdapter,
   createTelegramAdapter,
+  createSlackAdapter,
 } from './channels/index.js';
 import type { AgentLoop } from './orchestrator/agent-loop.js';
 import type { ChannelMessage, LLMProvider } from './types/index.js';
@@ -82,6 +83,40 @@ export async function initializeChannels(
       const message = error instanceof Error ? error.message : String(error);
       log.error({ error: message }, 'Failed to connect Telegram adapter');
     }
+  }
+
+  // Slack (only if enabled and tokens provided)
+  if (config.channels.slack.enabled && config.channels.slack.token) {
+    try {
+      const slackAdapter = createSlackAdapter();
+      await slackAdapter.connect({
+        enabled: true,
+        token: config.channels.slack.token,
+        appToken: config.channels.slack.appToken,
+        allowFrom: config.channels.slack.allowFrom,
+      });
+      channelManager.registerAdapter(slackAdapter);
+      log.info('Slack adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error({ error: message }, 'Failed to connect Slack adapter');
+    }
+  }
+
+  // WhatsApp (requires external connection provider — log guidance if enabled)
+  if (config.channels.whatsapp.enabled) {
+    log.info(
+      'WhatsApp channel is enabled in config. ' +
+        'Provide a WhatsAppConnection via createWhatsAppAdapter() to activate.',
+    );
+  }
+
+  // Signal (requires signal-cli — log guidance if enabled)
+  if (config.channels.signal.enabled) {
+    log.info(
+      'Signal channel is enabled in config. ' +
+        'Provide a SignalConnection via createSignalAdapter() to activate.',
+    );
   }
 }
 

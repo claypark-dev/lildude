@@ -53,6 +53,21 @@ export const ConfigSchema = z.object({
     webchat: z.object({
       enabled: z.boolean().default(true),
     }).default({}),
+    slack: z.object({
+      enabled: z.boolean().default(false),
+      token: z.string().optional(),
+      appToken: z.string().optional(),
+      allowFrom: z.array(z.string()).default([]),
+    }).default({}),
+    whatsapp: z.object({
+      enabled: z.boolean().default(false),
+      allowFrom: z.array(z.string()).default([]),
+    }).default({}),
+    signal: z.object({
+      enabled: z.boolean().default(false),
+      phoneNumber: z.string().optional(),
+      allowFrom: z.array(z.string()).default([]),
+    }).default({}),
   }).default({}),
   security: z.object({
     level: z.number().min(1).max(5).default(3),
@@ -79,6 +94,21 @@ export const ConfigSchema = z.object({
     enableModelRouting: z.boolean().default(true),
     briefingTime: z.string().default('08:00'),
     powerUserMode: z.boolean().default(false),
+    enableQualityChecks: z.boolean().default(false),
+  }).default({}),
+  voice: z.object({
+    enabled: z.boolean().default(false),
+    transcription: z.object({
+      backend: z.enum(['groq', 'local']).default('groq'),
+      groqApiKey: z.string().optional(),
+      language: z.string().default('en'),
+    }).default({}),
+    synthesis: z.object({
+      enabled: z.boolean().default(false),
+      backend: z.enum(['elevenlabs', 'local']).default('elevenlabs'),
+      elevenLabsApiKey: z.string().optional(),
+      voiceId: z.string().default('pNInz6obpgDQGcFmaJgB'),
+    }).default({}),
   }).default({}),
 });
 

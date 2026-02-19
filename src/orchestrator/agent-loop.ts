@@ -27,6 +27,7 @@ import { recordRoutingDecision } from '../persistence/routing-history.js';
 import { orchestratorLogger } from '../utils/logger.js';
 import { matchSkill } from '../skills/registry.js';
 import { executeSkill } from '../skills/executor.js';
+import { runPostTaskQualityCheck } from './quality-checker.js';
 import {
   DEFAULT_MAX_ROUND_TRIPS,
   DEFAULT_MAX_TOKENS_PER_TASK,
@@ -266,6 +267,13 @@ export function createAgentLoop(
               tier: modelSelection.tier, taskType: 'chat',
               inputLength: userMessage.length, outputTokens: totalOutputTokens, costUsd: totalCostUsd,
             });
+            // Optional quality check for small-tier completions
+            if (modelSelection.tier === 'small' && config?.enableQualityChecks) {
+              const qualityResult = await runPostTaskQualityCheck(deps.db, taskId, userMessage, responseText, modelSelection, deps.provider, totalCostUsd, taskBudgetUsd);
+              if (qualityResult.rated) {
+                orchestratorLogger.info({ taskId, score: qualityResult.score, feedback: qualityResult.feedback }, 'Quality check completed');
+              }
+            }
             triggerSummarizationIfNeeded(deps.db, conversationId, deps.provider, totalCostUsd, taskBudgetUsd);
             extractKeyFactsOnTaskCompletion(deps.db, conversationId);
             return buildResult(responseText, totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
@@ -288,6 +296,13 @@ export function createAgentLoop(
             tier: modelSelection.tier, taskType: 'chat',
             inputLength: userMessage.length, outputTokens: totalOutputTokens, costUsd: totalCostUsd,
           });
+          // Optional quality check for small-tier completions
+          if (modelSelection.tier === 'small' && config?.enableQualityChecks) {
+            const qualityResult = await runPostTaskQualityCheck(deps.db, taskId, userMessage, responseText, modelSelection, deps.provider, totalCostUsd, taskBudgetUsd);
+            if (qualityResult.rated) {
+              orchestratorLogger.info({ taskId, score: qualityResult.score, feedback: qualityResult.feedback }, 'Quality check completed');
+            }
+          }
           extractKeyFactsOnTaskCompletion(deps.db, conversationId);
           return buildResult(responseText || 'I completed your request.',
             totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);

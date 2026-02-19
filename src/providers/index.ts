@@ -5,16 +5,19 @@
  * See HLD Section 3.3 for provider architecture.
  */
 
-import type { LLMProvider, ModelSelection } from '../types/index.js';
+import type { LLMProvider, ModelSelection, HardwareProfile } from '../types/index.js';
 import type { Config } from '../config/index.js';
 import { AnthropicProvider } from './anthropic.js';
 import { OpenAIProvider } from './openai.js';
 import { GeminiProvider } from './gemini.js';
+import { OllamaProvider } from './ollama.js';
 import { classifyComplexity, selectModel } from './router.js';
+import { providerLogger } from '../utils/logger.js';
 
 export { AnthropicProvider } from './anthropic.js';
 export { OpenAIProvider } from './openai.js';
 export { GeminiProvider } from './gemini.js';
+export { OllamaProvider } from './ollama.js';
 export { classifyComplexity, selectModel } from './router.js';
 
 /** Public interface for the provider manager. */
@@ -34,7 +37,7 @@ export interface ProviderManagerConfig {
     openai?: { apiKey?: string; enabled?: boolean };
     gemini?: { apiKey?: string; enabled?: boolean };
     deepseek?: { apiKey?: string; enabled?: boolean; apiBase?: string };
-    ollama?: { enabled?: boolean; baseUrl?: string };
+    ollama?: { enabled?: boolean; baseUrl?: string; model?: string };
   };
 }
 
@@ -43,9 +46,13 @@ export interface ProviderManagerConfig {
  * which API keys are present and enabled in the config.
  *
  * @param config - Application config (or the minimal ProviderManagerConfig subset)
+ * @param hardware - Optional hardware profile for capability checks
  * @returns A ProviderManager instance
  */
-export function createProviderManager(config: ProviderManagerConfig | Config): ProviderManager {
+export function createProviderManager(
+  config: ProviderManagerConfig | Config,
+  hardware?: HardwareProfile,
+): ProviderManager {
   const providerMap = new Map<string, LLMProvider>();
   const enabledNames: string[] = [];
 
@@ -88,6 +95,26 @@ export function createProviderManager(config: ProviderManagerConfig | Config): P
     });
     providerMap.set('deepseek', provider);
     enabledNames.push('deepseek');
+  }
+
+  // Ollama (local models — no API key required)
+  if (providersCfg.ollama?.enabled) {
+    const ollamaCfg = providersCfg.ollama;
+    const hasEnoughRam = hardware?.features.localModels ?? false;
+
+    if (!hasEnoughRam && hardware) {
+      providerLogger.warn(
+        { ramGb: hardware.ramGb, requiredGb: 16 },
+        'System has less than 16GB RAM for local models, but Ollama is explicitly enabled — proceeding anyway',
+      );
+    }
+
+    const provider = new OllamaProvider({
+      baseUrl: ollamaCfg.baseUrl,
+      model: ollamaCfg.model,
+    });
+    providerMap.set('ollama', provider);
+    enabledNames.push('ollama');
   }
 
   return {

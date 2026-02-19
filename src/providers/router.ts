@@ -40,6 +40,8 @@ const TIER_PREFERENCES: Record<ModelTier, Array<{ model: string; provider: strin
     { model: 'gpt-4o-mini', provider: 'openai' },
     { model: 'gemini-2.0-flash', provider: 'gemini' },
     { model: 'deepseek-chat', provider: 'deepseek' },
+    { model: 'ollama/llama3.2', provider: 'ollama' },
+    { model: 'ollama/qwen2.5', provider: 'ollama' },
   ],
   medium: [
     { model: 'claude-sonnet-4-5-20250929', provider: 'anthropic' },

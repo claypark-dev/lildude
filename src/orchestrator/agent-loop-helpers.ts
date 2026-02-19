@@ -41,6 +41,7 @@ export interface AgentLoopConfig {
   maxConsecutiveErrors?: number;
   taskBudgetUsd?: number;
   enabledProviders?: string[];
+  enableQualityChecks?: boolean;
 }
 
 /** Result returned from processing a single message. */
