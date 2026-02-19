@@ -1,11 +1,17 @@
 /**
- * Model router with deterministic complexity classification.
- * Routes user messages to the appropriate model tier without using LLM calls.
- * See HLD Section 3.3 for routing architecture.
+ * Model router: deterministic complexity classification and quality-aware routing.
+ * See HLD Section 3.3 and S3.R.2 for architecture.
  */
 
+import type BetterSqlite3 from 'better-sqlite3';
 import type { ModelTier, ModelSelection } from '../types/index.js';
 import { MODEL_PRICING, type ModelPricingEntry } from '../cost/pricing.js';
+import { getModelQualityStats } from '../persistence/routing-history.js';
+
+/** Min ratings before adjusting priority; boost threshold; penalize threshold. */
+const MIN_QUALITY_RATINGS = 5;
+const BOOST_THRESHOLD = 0.8;
+const PENALIZE_THRESHOLD = 0.4;
 
 /** Keywords that indicate a complex, multi-step, or thorough request. */
 const LARGE_TIER_KEYWORDS = [
@@ -32,11 +38,13 @@ const TIER_PREFERENCES: Record<ModelTier, Array<{ model: string; provider: strin
   small: [
     { model: 'claude-haiku-4-5-20251001', provider: 'anthropic' },
     { model: 'gpt-4o-mini', provider: 'openai' },
+    { model: 'gemini-2.0-flash', provider: 'gemini' },
     { model: 'deepseek-chat', provider: 'deepseek' },
   ],
   medium: [
     { model: 'claude-sonnet-4-5-20250929', provider: 'anthropic' },
     { model: 'gpt-4o', provider: 'openai' },
+    { model: 'gemini-2.0-pro', provider: 'gemini' },
     { model: 'gpt-4.1', provider: 'openai' },
   ],
   large: [
@@ -97,16 +105,7 @@ function isMultiStep(text: string): boolean {
 
 /**
  * Classify the complexity of a user message into a model tier.
- * Uses deterministic heuristics — no LLM call needed.
- *
- * Heuristics:
- * - Simple (small): < 20 words, no question marks, no multi-step keywords
- * - Medium: 20-100 words, single question, moderate complexity
- * - Complex (large): > 100 words, or contains analysis/comparison keywords,
- *   or multi-step structure detected
- * - If hasActiveSkill is true and message would otherwise be simple, keep it small
- *   because skills manage their own complexity
- *
+ * Uses deterministic heuristics: small (< 20 words), medium (20-100), large (100+ or keywords).
  * @param messageText - The raw text of the user message
  * @param hasActiveSkill - Whether a skill is currently active
  * @returns The recommended ModelTier
@@ -202,6 +201,79 @@ export function selectModel(
 }
 
 /**
+ * Select the best model for a tier using quality-aware routing from history.
+ * Boosts models with avgScore >= 0.8, penalizes those < 0.4 (min 5 ratings).
+ * Falls back to heuristic ordering if no quality data exists.
+ * @param tier - The model tier to select for
+ * @param enabledProviders - Provider names with valid API keys
+ * @param db - The better-sqlite3 Database instance
+ * @param taskType - Optional task type to scope quality stats
+ * @returns A ModelSelection with provider, model, tier, estimated cost, and reasoning
+ * @throws Error if no model is available for the requested tier
+ */
+export function selectModelWithHistory(
+  tier: ModelTier,
+  enabledProviders: string[],
+  db: BetterSqlite3.Database,
+  taskType?: string,
+): ModelSelection {
+  const preferences = TIER_PREFERENCES[tier];
+
+  // Filter to only models whose provider is enabled
+  const availableModels = preferences.filter(
+    (pref) => enabledProviders.includes(pref.provider),
+  );
+
+  if (availableModels.length === 0) {
+    // Delegate to original selectModel for fallback logic
+    return selectModel(tier, enabledProviders);
+  }
+
+  // Score each available model based on quality history
+  const scoredModels = availableModels.map((pref, originalIndex) => {
+    const stats = getModelQualityStats(db, pref.model, taskType);
+    let priorityAdjustment = 0;
+
+    if (stats.ratingCount >= MIN_QUALITY_RATINGS) {
+      if (stats.avgScore >= BOOST_THRESHOLD) {
+        priorityAdjustment = -100; // Boost: lower number = higher priority
+      } else if (stats.avgScore < PENALIZE_THRESHOLD) {
+        priorityAdjustment = 100; // Penalize: higher number = lower priority
+      }
+    }
+
+    return {
+      ...pref,
+      originalIndex,
+      avgScore: stats.avgScore,
+      ratingCount: stats.ratingCount,
+      priority: originalIndex + priorityAdjustment,
+    };
+  });
+
+  // Sort by adjusted priority (lower = better)
+  scoredModels.sort((modelA, modelB) => modelA.priority - modelB.priority);
+
+  const bestModel = scoredModels[0];
+  const pricing = MODEL_PRICING[bestModel.model] as ModelPricingEntry | undefined;
+  const estimatedCostUsd = pricing
+    ? (pricing.inputPer1k + pricing.outputPer1k)
+    : 0;
+
+  const qualityNote = bestModel.ratingCount >= MIN_QUALITY_RATINGS
+    ? ` (quality avg: ${bestModel.avgScore.toFixed(2)}, ${bestModel.ratingCount} ratings)`
+    : ' (no sufficient quality data, using heuristic)';
+
+  return {
+    provider: bestModel.provider,
+    model: bestModel.model,
+    tier,
+    estimatedCostUsd,
+    reasoning: `Selected ${bestModel.model} for ${tier} tier from ${bestModel.provider}${qualityNote}`,
+  };
+}
+
+/**
  * Derive the provider name from a model identifier string.
  * @param modelId - The model identifier
  * @returns The provider name, or undefined if unknown
@@ -212,6 +284,9 @@ function deriveProviderFromModel(modelId: string): string | undefined {
   }
   if (modelId.startsWith('gpt-')) {
     return 'openai';
+  }
+  if (modelId.startsWith('gemini-')) {
+    return 'gemini';
   }
   if (modelId.startsWith('deepseek-')) {
     return 'deepseek';

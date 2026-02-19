@@ -74,6 +74,32 @@ export const MODEL_PRICING: Record<string, ModelPricingEntry> = {
     supportsTools: true,
   },
 
+  // Gemini
+  'gemini-2.0-flash': {
+    inputPer1k: 0.0001,
+    outputPer1k: 0.0004,
+    cachedInputPer1k: 0.000025,
+    tier: 'small',
+    contextWindow: 1_000_000,
+    supportsTools: true,
+  },
+  'gemini-2.0-pro': {
+    inputPer1k: 0.00125,
+    outputPer1k: 0.005,
+    cachedInputPer1k: 0.000315,
+    tier: 'medium',
+    contextWindow: 1_000_000,
+    supportsTools: true,
+  },
+  'gemini-1.5-pro': {
+    inputPer1k: 0.00125,
+    outputPer1k: 0.005,
+    cachedInputPer1k: 0.000315,
+    tier: 'medium',
+    contextWindow: 2_000_000,
+    supportsTools: true,
+  },
+
   // DeepSeek
   'deepseek-chat': {
     inputPer1k: 0.00014,

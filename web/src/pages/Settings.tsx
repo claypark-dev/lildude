@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useApi } from '../hooks/useApi.ts';
 import { fetchConfig, updateConfig } from '../lib/api.ts';
+import { PowerUserPanel } from './PowerUserPanel.tsx';
 
 const SECURITY_LEVELS: Record<number, string> = {
   1: 'Minimal -- Basic input validation only',
@@ -32,7 +33,7 @@ const DEFAULT_FORM: SettingsFormState = {
   dailyLimitUsd: 2,
 };
 
-/** Settings page with API key inputs, channel toggles, security controls */
+/** Settings page with API key inputs, channel toggles, security and budget controls */
 export function Settings() {
   const config = useApi(useCallback(() => fetchConfig(), []));
   const [form, setForm] = useState<SettingsFormState>(DEFAULT_FORM);
@@ -70,12 +71,10 @@ export function Settings() {
     }
   }
 
-  /** Mask an API key, showing only the last 4 characters */
   function maskKey(key: string): string {
     if (key.length <= 4) return key;
     return '\u2022'.repeat(key.length - 4) + key.slice(-4);
   }
-
   return (
     <div className="space-y-8 max-w-2xl">
       <h2 className="text-2xl font-bold text-white">Settings</h2>
@@ -197,6 +196,9 @@ export function Settings() {
           </p>
         )}
       </div>
+
+      {/* Power User Mode */}
+      {config.data?.config?.powerUserMode === true && <PowerUserPanel />}
     </div>
   );
 }

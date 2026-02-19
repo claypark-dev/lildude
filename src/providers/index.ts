@@ -9,10 +9,12 @@ import type { LLMProvider, ModelSelection } from '../types/index.js';
 import type { Config } from '../config/index.js';
 import { AnthropicProvider } from './anthropic.js';
 import { OpenAIProvider } from './openai.js';
+import { GeminiProvider } from './gemini.js';
 import { classifyComplexity, selectModel } from './router.js';
 
 export { AnthropicProvider } from './anthropic.js';
 export { OpenAIProvider } from './openai.js';
+export { GeminiProvider } from './gemini.js';
 export { classifyComplexity, selectModel } from './router.js';
 
 /** Public interface for the provider manager. */
@@ -30,6 +32,7 @@ export interface ProviderManagerConfig {
   providers: {
     anthropic?: { apiKey?: string; enabled?: boolean };
     openai?: { apiKey?: string; enabled?: boolean };
+    gemini?: { apiKey?: string; enabled?: boolean };
     deepseek?: { apiKey?: string; enabled?: boolean; apiBase?: string };
     ollama?: { enabled?: boolean; baseUrl?: string };
   };
@@ -64,6 +67,15 @@ export function createProviderManager(config: ProviderManagerConfig | Config): P
     });
     providerMap.set('openai', provider);
     enabledNames.push('openai');
+  }
+
+  // Gemini
+  if (providersCfg.gemini?.enabled && providersCfg.gemini.apiKey) {
+    const provider = new GeminiProvider({
+      apiKey: providersCfg.gemini.apiKey,
+    });
+    providerMap.set('gemini', provider);
+    enabledNames.push('gemini');
   }
 
   // DeepSeek (uses OpenAI-compatible API)

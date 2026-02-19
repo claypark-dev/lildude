@@ -52,6 +52,12 @@ export interface AgentLoopResult {
   roundTrips: number;
 }
 
+/** Options for processMessage, including optional abort support. */
+export interface ProcessMessageOptions {
+  /** Signal to request early cancellation of the task. */
+  abortSignal?: AbortSignal;
+}
+
 /** The agent loop interface with a single processMessage method. */
 export interface AgentLoop {
   /** Process a user message and return the agent's response. */
@@ -59,6 +65,7 @@ export interface AgentLoop {
     conversationId: string,
     userMessage: string,
     channelType: ChannelType,
+    options?: ProcessMessageOptions,
   ): Promise<AgentLoopResult>;
 }
 

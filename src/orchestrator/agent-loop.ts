@@ -23,6 +23,7 @@ import {
 } from '../persistence/conversations.js';
 import { appendConversationLog } from '../persistence/conversation-logs.js';
 import { createTask, updateTaskStatus, updateTaskSpend } from '../persistence/tasks.js';
+import { recordRoutingDecision } from '../persistence/routing-history.js';
 import { orchestratorLogger } from '../utils/logger.js';
 import { matchSkill } from '../skills/registry.js';
 import { executeSkill } from '../skills/executor.js';
@@ -43,10 +44,11 @@ import type {
   AgentLoopConfig,
   AgentLoopResult,
   AgentLoop,
+  ProcessMessageOptions,
 } from './agent-loop-helpers.js';
 
 // Re-export types so existing consumers aren't broken
-export type { AgentLoopDeps, AgentLoopConfig, AgentLoopResult, AgentLoop };
+export type { AgentLoopDeps, AgentLoopConfig, AgentLoopResult, AgentLoop, ProcessMessageOptions };
 
 /** Minimum match score for a skill to be routed to. */
 const SKILL_MATCH_THRESHOLD = 0.1;
@@ -77,7 +79,9 @@ export function createAgentLoop(
       conversationId: string,
       userMessage: string,
       channelType: ChannelType,
+      options?: ProcessMessageOptions,
     ): Promise<AgentLoopResult> {
+      const abortSignal = options?.abortSignal;
       const startTime = Date.now();
       let totalInputTokens = 0;
       let totalOutputTokens = 0;
@@ -188,6 +192,13 @@ export function createAgentLoop(
         let consecutiveErrors = 0;
 
         while (roundTrips < maxRoundTrips) {
+          if (abortSignal?.aborted) {
+            orchestratorLogger.info({ taskId, roundTrips }, 'Task aborted via signal');
+            updateTaskStatus(deps.db, taskId, 'killed', 'Aborted');
+            return buildResult('Task was cancelled.',
+              totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
+          }
+
           if (Date.now() - startTime > maxDurationMs) {
             orchestratorLogger.warn({ taskId, roundTrips }, 'Max duration exceeded');
             updateTaskStatus(deps.db, taskId, 'killed', 'Max duration exceeded');
@@ -250,6 +261,11 @@ export function createAgentLoop(
             incrementMessageCount(deps.db, conversationId, response.usage.inputTokens + response.usage.outputTokens);
             updateTaskSpend(deps.db, taskId, totalCostUsd);
             updateTaskStatus(deps.db, taskId, 'completed');
+            recordRoutingDecision(deps.db, {
+              taskId, model: modelSelection.model, provider: modelSelection.provider,
+              tier: modelSelection.tier, taskType: 'chat',
+              inputLength: userMessage.length, outputTokens: totalOutputTokens, costUsd: totalCostUsd,
+            });
             triggerSummarizationIfNeeded(deps.db, conversationId, deps.provider, totalCostUsd, taskBudgetUsd);
             extractKeyFactsOnTaskCompletion(deps.db, conversationId);
             return buildResult(responseText, totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
@@ -267,6 +283,11 @@ export function createAgentLoop(
           const responseText = extractResponseText(response);
           updateTaskSpend(deps.db, taskId, totalCostUsd);
           updateTaskStatus(deps.db, taskId, 'completed');
+          recordRoutingDecision(deps.db, {
+            taskId, model: modelSelection.model, provider: modelSelection.provider,
+            tier: modelSelection.tier, taskType: 'chat',
+            inputLength: userMessage.length, outputTokens: totalOutputTokens, costUsd: totalCostUsd,
+          });
           extractKeyFactsOnTaskCompletion(deps.db, conversationId);
           return buildResult(responseText || 'I completed your request.',
             totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);

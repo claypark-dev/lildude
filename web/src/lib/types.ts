@@ -102,6 +102,32 @@ export interface DailyBriefing {
   summary: BriefingSummary;
 }
 
+/** A single routing history entry. */
+export interface RoutingHistoryEntry {
+  id: number;
+  taskId: string;
+  model: string;
+  provider: string;
+  tier: string;
+  taskType: string;
+  qualityScore: number | null;
+  feedback: string | null;
+  inputLength: number;
+  outputTokens: number;
+  costUsd: number;
+  createdAt: string;
+}
+
+/** Response shape for the routing history endpoint. */
+export interface RoutingHistoryResponse {
+  entries: RoutingHistoryEntry[];
+}
+
+/** Response shape for the quality feedback endpoint. */
+export interface QualityFeedbackResponse {
+  updated: boolean;
+}
+
 /** WebSocket message types sent by the client */
 export type WsOutgoingMessage =
   | { type: 'subscribe'; channels: string[] }

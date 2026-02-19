@@ -6,6 +6,8 @@ import type {
   SecurityLogResponse,
   AppConfig,
   DailyBriefing,
+  RoutingHistoryResponse,
+  QualityFeedbackResponse,
 } from './types.ts';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
@@ -68,4 +70,21 @@ export function updateConfig(config: Record<string, unknown>): Promise<AppConfig
 /** Fetch the daily briefing */
 export function fetchBriefing(): Promise<DailyBriefing> {
   return request<DailyBriefing>('/api/v1/briefing');
+}
+
+/** Fetch recent routing history entries */
+export function fetchRoutingHistory(limit = 50): Promise<RoutingHistoryResponse> {
+  return request<RoutingHistoryResponse>(`/api/v1/routing-history?limit=${limit}`);
+}
+
+/** Submit quality feedback for a routing decision */
+export function submitQualityFeedback(
+  taskId: string,
+  score: number,
+  feedback?: string,
+): Promise<QualityFeedbackResponse> {
+  return request<QualityFeedbackResponse>('/api/v1/routing-history/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ taskId, score, feedback }),
+  });
 }

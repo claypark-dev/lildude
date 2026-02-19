@@ -26,6 +26,10 @@ import {
   resolvePrimaryProvider,
   logStartupBanner,
 } from './startup.js';
+import {
+  runStartupResume,
+  updateLastActiveTimestamp,
+} from './orchestrator/startup.js';
 
 export const VERSION = '0.1.0';
 
@@ -159,6 +163,35 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
   // Step 9: Wire channel messages to the agent loop
   wireChannelsToAgentLoop(channelManager, agentLoop);
 
+  // Step 9.5: Run startup resume check
+  const resumeResult = await runStartupResume(dbManager.db);
+  log.info(
+    {
+      hasPendingWork: resumeResult.hasPendingWork,
+      pendingTasks: resumeResult.pendingTasks.length,
+      missedCronJobs: resumeResult.missedCronJobs.length,
+      offlineDurationMs: resumeResult.offlineDurationMs,
+    },
+    'Startup resume check completed',
+  );
+
+  if (resumeResult.hasPendingWork) {
+    const connectedAdapters = channelManager.getConnectedAdapters();
+    if (connectedAdapters.length > 0) {
+      const firstAdapter = connectedAdapters[0];
+      try {
+        await firstAdapter.send('system', resumeResult.message);
+        log.info({ channel: firstAdapter.type }, 'Resume message sent to channel');
+      } catch (sendError: unknown) {
+        const sendMsg = sendError instanceof Error ? sendError.message : String(sendError);
+        log.warn({ error: sendMsg }, 'Could not send resume message to channel — logged instead');
+        log.info({ resumeMessage: resumeResult.message }, 'Startup resume message');
+      }
+    } else {
+      log.info({ resumeMessage: resumeResult.message }, 'Startup resume message (no channels connected)');
+    }
+  }
+
   // Step 10: Create and start the gateway server
   const gateway = createGatewayServer(dbManager, config);
 
@@ -175,7 +208,15 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
   // Step 11: Register shutdown handlers
   const shutdownHandler = createShutdownHandler();
 
+  // Start periodic heartbeat for last_active_at tracking (every 60 seconds)
+  const heartbeatInterval = setInterval(() => {
+    updateLastActiveTimestamp(dbManager.db);
+  }, 60_000);
+
   if (!options.skipSignalHandlers) {
+    shutdownHandler.register('heartbeat', () => {
+      clearInterval(heartbeatInterval);
+    });
     shutdownHandler.register('gateway', async () => {
       await gateway.stop();
     });
