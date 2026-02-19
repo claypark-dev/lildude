@@ -7,7 +7,7 @@ export interface Feature {
 export const features: Feature[] = [
   {
     title: 'Smart Routing',
-    description: 'Routes every message to the cheapest model that can handle it. Simple questions go to fast/cheap models, complex tasks get the big guns.',
+    description: 'Routes every message to the most efficient model that can handle it. Simple questions go to small/fast models, complex tasks get the big guns.',
     icon: '⚡',
   },
   {

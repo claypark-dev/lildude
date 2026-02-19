@@ -6,7 +6,7 @@ import { Architecture } from './components/Architecture'
 import { Channels } from './components/Channels'
 import { Providers } from './components/Providers'
 import { Security } from './components/Security'
-import { CostControl } from './components/CostControl'
+import { TokenEfficiency } from './components/TokenEfficiency'
 import { QuickStart } from './components/QuickStart'
 import { CallToAction } from './components/CallToAction'
 import { Footer } from './components/Footer'
@@ -24,7 +24,7 @@ export function App() {
         <Channels />
         <Providers />
         <Security />
-        <CostControl />
+        <TokenEfficiency />
         <QuickStart />
         <CallToAction />
       </main>
