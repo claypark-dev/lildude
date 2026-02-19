@@ -1,0 +1,27 @@
+{
+  "name": "reminders",
+  "version": "1.0.0",
+  "description": "Create and manage reminders with cron scheduling",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["remind", "reminder", "alert", "notify"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "create_reminder",
+      "description": "Create a new reminder",
+      "parameters": {
+        "text": "string",
+        "schedule": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js"
+}

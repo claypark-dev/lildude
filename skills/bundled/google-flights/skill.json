@@ -1,0 +1,28 @@
+{
+  "name": "google-flights",
+  "version": "1.0.0",
+  "description": "Search for flights using Google Flights",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": ["www.google.com"],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": true,
+    "requiresOAuth": []
+  },
+  "triggers": ["flight", "flights", "fly", "airline", "travel"],
+  "deterministic": false,
+  "tools": [
+    {
+      "name": "search_flights",
+      "description": "Search Google Flights for flight options",
+      "parameters": {
+        "from": "string",
+        "to": "string",
+        "date": "string"
+      }
+    }
+  ],
+  "minTier": "standard",
+  "entryPoint": "index.js"
+}

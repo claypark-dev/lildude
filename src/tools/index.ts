@@ -16,6 +16,8 @@ export { knowledgeStore, knowledgeRecall } from './knowledge.js';
 export type { KnowledgeStoreOptions, KnowledgeRecallOptions } from './knowledge.js';
 export { scheduleTask, validateCronExpression } from './scheduler.js';
 export type { ScheduleTaskOptions } from './scheduler.js';
+export { executeBrowserAction, BrowserToolOptionsSchema } from './browser.js';
+export type { BrowserToolOptions, BrowserResult, PlaywrightProvider } from './browser.js';
 export { CORE_TOOLS } from './definitions.js';
 export { createToolExecutor } from './executor.js';
 export type { ToolExecutor } from './executor.js';

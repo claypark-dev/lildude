@@ -1,0 +1,35 @@
+{
+  "name": "stock-monitor",
+  "version": "1.0.0",
+  "description": "Check stock prices and set price alerts using Yahoo Finance",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": ["query1.finance.yahoo.com", "query2.finance.yahoo.com"],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["stock", "stocks", "share price", "ticker", "market"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "check_stock",
+      "description": "Check current stock price",
+      "parameters": {
+        "symbol": "string"
+      }
+    },
+    {
+      "name": "set_alert",
+      "description": "Set price alert for a stock",
+      "parameters": {
+        "symbol": "string",
+        "condition": "string",
+        "price": "number"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js"
+}

@@ -1,0 +1,26 @@
+{
+  "name": "web-search",
+  "version": "1.0.0",
+  "description": "Search the web using DuckDuckGo and summarize results",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": ["api.duckduckgo.com"],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["search", "look up", "find", "what is", "who is"],
+  "deterministic": false,
+  "tools": [
+    {
+      "name": "web_search",
+      "description": "Search the web for information",
+      "parameters": {
+        "query": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js"
+}

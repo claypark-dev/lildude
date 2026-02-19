@@ -1,0 +1,48 @@
+{
+  "name": "google-calendar",
+  "version": "1.0.0",
+  "description": "Manage Google Calendar events",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [
+      "www.googleapis.com",
+      "accounts.google.com",
+      "oauth2.googleapis.com"
+    ],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": ["google"]
+  },
+  "triggers": ["calendar", "meeting", "schedule", "event", "appointment"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "list_events",
+      "description": "List calendar events",
+      "parameters": {
+        "startDate": "string",
+        "endDate": "string"
+      }
+    },
+    {
+      "name": "create_event",
+      "description": "Create a calendar event",
+      "parameters": {
+        "title": "string",
+        "date": "string",
+        "time": "string",
+        "duration": "number"
+      }
+    },
+    {
+      "name": "delete_event",
+      "description": "Delete a calendar event",
+      "parameters": {
+        "eventId": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js"
+}
