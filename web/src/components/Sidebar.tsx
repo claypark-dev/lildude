@@ -84,7 +84,15 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[#222]">
+        <div className="p-4 border-t border-[#222] space-y-2">
+          <NavLink
+            to="/onboarding"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#666] hover:bg-[#1a1a1a] hover:text-blue-400 transition-colors"
+          >
+            <span className="text-sm">{'\uD83D\uDEE0'}</span>
+            Setup Wizard
+          </NavLink>
           <p className="text-xs text-slate-500 text-center">v0.1.0</p>
         </div>
       </aside>

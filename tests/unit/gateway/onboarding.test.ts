@@ -40,6 +40,7 @@ vi.mock('../../../src/onboarding/verify-provider.js', () => ({
 
 vi.mock('../../../src/config/loader.js', () => ({
   saveConfig: vi.fn(async () => {}),
+  deleteConfig: vi.fn(async () => {}),
   homeDir: vi.fn(() => '/tmp/test-lil-dude'),
 }));
 
@@ -169,6 +170,20 @@ describe('Onboarding API', () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('POST /api/v1/onboarding/reset', () => {
+    it('deletes config and returns success', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/onboarding/reset',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body) as { ok: boolean; message: string };
+      expect(body.ok).toBe(true);
+      expect(body.message).toContain('cleared');
     });
   });
 });

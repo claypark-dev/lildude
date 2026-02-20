@@ -12,7 +12,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import type { DatabaseManager } from '../persistence/db.js';
 import type { Config } from '../config/schema.js';
 import { gatewayLogger } from '../utils/logger.js';
@@ -127,6 +127,29 @@ export function createGatewayServer(
   registerOnboardingRoutes(app);
   registerOllamaRoutes(app, wsManager);
   registerVoiceRoutes(app, config);
+
+  // ── SPA fallback ──────────────────────────────────────────────────
+  // React Router uses client-side routing (e.g. /chat, /onboarding).
+  // When the browser navigates directly to these paths (or refreshes),
+  // Fastify must serve index.html so React can bootstrap and route.
+  const indexHtmlPath = join(webDistDir, 'index.html');
+  if (existsSync(indexHtmlPath)) {
+    const indexHtml = readFileSync(indexHtmlPath, 'utf-8');
+
+    app.setNotFoundHandler((request, reply) => {
+      // Only serve index.html for GET requests that aren't API or asset paths
+      if (
+        request.method === 'GET' &&
+        !request.url.startsWith('/api/') &&
+        !request.url.startsWith('/ws') &&
+        !request.url.startsWith('/assets/')
+      ) {
+        reply.type('text/html').send(indexHtml);
+        return;
+      }
+      reply.status(404).send({ error: 'Not found' });
+    });
+  }
 
   return {
     get app(): FastifyInstance {

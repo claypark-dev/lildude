@@ -3,6 +3,7 @@ import {
   fetchOnboardingStatus,
   verifyProviderKey,
   completeOnboarding,
+  resetOnboarding,
   fetchOllamaStatus,
   fetchOllamaModels,
   pullOllamaModel,
@@ -55,6 +56,7 @@ export function Onboarding() {
   const [ollamaModels, setOllamaModels] = useState<OllamaModelInfo[]>([]);
   const [ollamaChecking, setOllamaChecking] = useState(false);
   const [pullingModel, setPullingModel] = useState<string | null>(null);
+  const [waitingForInstall, setWaitingForInstall] = useState(false);
 
   // ── Basics ──────────────────────────────────────────────────────
   const [userName, setUserName] = useState('Friend');
@@ -66,10 +68,19 @@ export function Onboarding() {
   const [completed, setCompleted] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
 
+  // ── Reset (re-onboard) ────────────────────────────────────────
+  const [alreadyOnboarded, setAlreadyOnboarded] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
   // ── Initial Load ────────────────────────────────────────────────
   useEffect(() => {
     fetchOnboardingStatus()
-      .then((status) => setHardware(status.hardware))
+      .then((status) => {
+        setHardware(status.hardware);
+        setAlreadyOnboarded(status.onboarded);
+      })
       .catch(() => { /* ignore */ })
       .finally(() => setLoadingHw(false));
 
@@ -92,6 +103,50 @@ export function Onboarding() {
     } finally {
       setOllamaChecking(false);
     }
+  }
+
+  // Auto-poll for Ollama after user clicks "Download Ollama"
+  useEffect(() => {
+    if (!waitingForInstall || ollamaStatus.running) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const status = await fetchOllamaStatus();
+        if (status.running) {
+          setOllamaStatus(status);
+          setWaitingForInstall(false);
+          const modelsResp = await fetchOllamaModels();
+          setOllamaModels(modelsResp.models);
+        }
+      } catch {
+        // keep polling
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [waitingForInstall, ollamaStatus.running]);
+
+  /** Get the right Ollama download URL for the user's OS */
+  function getOllamaDownloadUrl(): { url: string; label: string } {
+    const os = hardware?.os ?? 'unknown';
+    if (os === 'darwin') return { url: 'https://ollama.com/download/Ollama-darwin.zip', label: 'Download Ollama for macOS' };
+    if (os === 'win32') return { url: 'https://ollama.com/download/OllamaSetup.exe', label: 'Download Ollama for Windows' };
+    return { url: 'https://ollama.com/download/ollama-linux-amd64.tgz', label: 'Download Ollama for Linux' };
+  }
+
+  /** Pick the best model for this user's hardware */
+  function getRecommendedModel(): ModelEntry | null {
+    if (!hardware) return MODEL_CATALOG[0];
+    const ramGb = hardware.ramGb;
+    // Find the largest model that fits, preferring quality
+    const candidates = MODEL_CATALOG.filter(
+      (m) => ramGb >= m.minRamGb && hardware.diskFreeGb >= m.minDiskGb,
+    );
+    if (candidates.length === 0) return null;
+    // For 8GB systems: recommend the small fast model
+    // For 16GB+: recommend Qwen 2.5 (best all-rounder with tool use)
+    if (ramGb < 16) return candidates[0]; // Llama 3.2 3B
+    return candidates.find((m) => m.ollamaTag === 'qwen2.5') ?? candidates[candidates.length - 1];
   }
 
   async function handlePullModel(model: ModelEntry) {
@@ -200,6 +255,24 @@ export function Onboarding() {
     }
   }
 
+  // ── Reset ──────────────────────────────────────────────────────
+
+  async function handleReset() {
+    setResetting(true);
+    setResetError(null);
+
+    try {
+      await resetOnboarding();
+      setAlreadyOnboarded(false);
+      setConfirmingReset(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setResetError(message);
+    } finally {
+      setResetting(false);
+    }
+  }
+
   // ── Helpers ─────────────────────────────────────────────────────
 
   function isModelInstalled(tag: string): boolean {
@@ -216,6 +289,17 @@ export function Onboarding() {
     ollamaStatus.running;
 
   // ── Render ──────────────────────────────────────────────────────
+
+  if (loadingHw) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-8">
+        <div className="flex items-center gap-3 text-[#a0a0a0]">
+          <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <span>Loading system info...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (completed) {
     return (
@@ -237,10 +321,62 @@ export function Onboarding() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-2">Welcome to Lil Dude</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">
+          {alreadyOnboarded ? 'Setup Wizard' : 'Welcome to Lil Dude'}
+        </h1>
         <p className="text-[#a0a0a0] mb-8">
-          Let&apos;s set up your personal AI assistant. Pick at least one model provider.
+          {alreadyOnboarded
+            ? 'You already have a configuration. You can reconfigure below, or start fresh.'
+            : 'Let\u0027s set up your personal AI assistant. Pick at least one model provider.'}
         </p>
+
+        {/* ── Existing config banner ───────────────────────────── */}
+        {alreadyOnboarded && (
+          <section className="mb-8 bg-[#111] border border-amber-500/30 rounded-xl p-6">
+            <h2 className="text-base font-semibold text-amber-400 mb-1">
+              Existing configuration detected
+            </h2>
+            <p className="text-sm text-[#a0a0a0] mb-4">
+              Want to start over? This will delete your current config.json
+              and let you re-enter API keys and preferences from scratch.
+            </p>
+            {resetError && (
+              <p className="text-red-400 text-sm mb-3">{resetError}</p>
+            )}
+            {!confirmingReset ? (
+              <button
+                type="button"
+                onClick={() => setConfirmingReset(true)}
+                className="px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400
+                           text-sm font-medium rounded-lg hover:bg-amber-500/20 transition-colors"
+              >
+                Start Fresh
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-[#a0a0a0]">Are you sure?</span>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={resetting}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-[#1a1a1a]
+                             text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  {resetting ? 'Clearing...' : 'Yes, clear config'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingReset(false)}
+                  disabled={resetting}
+                  className="px-4 py-2 bg-[#1a1a1a] text-[#a0a0a0] text-sm font-medium rounded-lg
+                             hover:bg-[#222] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── Block 1: Cloud Models ─────────────────────────────── */}
         <section className="mb-8 bg-[#111] border border-[#222] rounded-xl p-6">
@@ -319,149 +455,190 @@ export function Onboarding() {
           )}
         </section>
 
-        {/* ── Block 2: Local Models (Ollama) ────────────────────── */}
+        {/* ── Block 2: Local Models (unified) ──────────────────── */}
         <section className="mb-8 bg-[#111] border border-[#222] rounded-xl p-6">
           <h2 className="text-xl font-semibold text-white mb-1">🖥️ Local Models</h2>
           <p className="text-sm text-[#a0a0a0] mb-4">
-            Run models on your machine via Ollama. Free and private.
+            Run AI on your machine — free, private, no API key needed.
           </p>
 
-          <div className="flex items-center gap-3 mb-4">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                ollamaStatus.running ? 'bg-green-500' : 'bg-red-500'
-              }`}
-            />
-            <span className="text-white text-sm">
-              {ollamaStatus.running
-                ? `Ollama running (v${ollamaStatus.version ?? '?'})`
-                : 'Ollama not detected'}
-            </span>
-            <button
-              type="button"
-              onClick={checkOllama}
-              disabled={ollamaChecking}
-              className="text-blue-400 text-xs hover:underline disabled:text-slate-500"
-            >
-              {ollamaChecking ? 'Checking...' : 'Re-check'}
-            </button>
-          </div>
-
+          {/* ── Step 1: Install Ollama ─────────────────────────── */}
           {!ollamaStatus.running && (
-            <div className="bg-[#0a0a0a] border border-[#222] rounded-lg p-4 text-sm text-[#a0a0a0]">
-              <p className="mb-2">Install Ollama to run models locally:</p>
-              <code className="block bg-[#111] text-green-400 px-3 py-2 rounded text-xs font-mono">
-                curl -fsSL https://ollama.com/install.sh | sh
-              </code>
-              <p className="mt-2 text-xs">
-                Or visit{' '}
-                <a
-                  href="https://ollama.com/download"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:underline"
-                >
-                  ollama.com/download
-                </a>
-              </p>
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 text-sm font-bold">
+                  1
+                </div>
+                <span className="text-white text-sm font-medium">Install Ollama</span>
+              </div>
+
+              <div className="ml-10">
+                {!waitingForInstall ? (
+                  <>
+                    <a
+                      href={getOllamaDownloadUrl().url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setWaitingForInstall(true)}
+                      className="inline-flex items-center gap-2 px-5 py-3 bg-blue-500 hover:bg-blue-600
+                                 text-slate-900 font-semibold rounded-xl transition-colors text-sm"
+                    >
+                      {getOllamaDownloadUrl().label}
+                      <span className="text-lg">{'\u2193'}</span>
+                    </a>
+                    <p className="text-xs text-[#666] mt-2">
+                      One-click installer. Open the downloaded file and follow the prompts.
+                    </p>
+                  </>
+                ) : (
+                  <div className="bg-[#0a0a0a] border border-blue-500/20 rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-blue-400 text-sm font-medium">
+                        Waiting for Ollama to start...
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#a0a0a0]">
+                      Install and open the downloaded file. This page will detect it automatically.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setWaitingForInstall(false)}
+                      className="mt-2 text-xs text-[#666] hover:text-[#a0a0a0] transition-colors"
+                    >
+                      Cancel waiting
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {ollamaStatus.running && ollamaModels.length > 0 && (
-            <div className="mt-2">
-              <p className="text-sm text-[#a0a0a0] mb-2">Installed models:</p>
-              <ul className="space-y-1">
-                {ollamaModels.map((m) => (
-                  <li
-                    key={m.digest}
-                    className="text-sm text-green-400 flex items-center gap-2"
-                  >
-                    <span>✓</span>
-                    <span>{m.name}</span>
-                    <span className="text-[#666]">
-                      ({(m.size / 1e9).toFixed(1)} GB)
-                    </span>
-                  </li>
-                ))}
-              </ul>
+          {/* ── Ollama detected ────────────────────────────────── */}
+          {ollamaStatus.running && (
+            <>
+              <div className="flex items-center gap-3 mb-4 bg-green-500/5 border border-green-500/20 rounded-lg px-4 py-3">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-green-400 text-sm font-medium">
+                  Ollama is running (v{ollamaStatus.version ?? '?'})
+                </span>
+              </div>
+
+              {/* Installed models */}
+              {ollamaModels.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs text-[#666] mb-2 uppercase tracking-wider">Installed</p>
+                  {ollamaModels.map((m) => (
+                    <div
+                      key={m.digest}
+                      className="flex items-center gap-2 py-1.5 text-sm text-green-400"
+                    >
+                      <span>✓</span>
+                      <span>{m.name}</span>
+                      <span className="text-[#666]">({(m.size / 1e9).toFixed(1)} GB)</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Model catalog ──────────────────────────────── */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-[#666] uppercase tracking-wider">Available models</p>
+                  {hardware && (
+                    <p className="text-xs text-[#666]">
+                      Your system: {hardware.ramGb} GB RAM, {hardware.diskFreeGb} GB free disk
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {MODEL_CATALOG.map((model) => {
+                    const installed = isModelInstalled(model.ollamaTag);
+                    const runnable = canRunModel(model);
+                    const isPulling = pullingModel === model.ollamaTag;
+                    const recommended = getRecommendedModel();
+                    const isRecommended = recommended?.ollamaTag === model.ollamaTag;
+
+                    return (
+                      <div
+                        key={model.ollamaTag}
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                          installed
+                            ? 'border-green-500/20 bg-green-500/5'
+                            : isRecommended && runnable
+                              ? 'border-blue-500/30 bg-blue-500/5'
+                              : runnable
+                                ? 'border-[#222] bg-[#0a0a0a]'
+                                : 'border-[#1a1a1a] bg-[#0a0a0a] opacity-40'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-white text-sm font-medium">{model.name}</span>
+                            <span className="text-xs text-[#666]">{model.sizeGb} GB</span>
+                            {installed && (
+                              <span className="text-green-400 text-xs font-medium">✓ Installed</span>
+                            )}
+                            {isRecommended && runnable && !installed && (
+                              <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded font-medium">
+                                Recommended
+                              </span>
+                            )}
+                            {!runnable && (
+                              <span className="px-1.5 py-0.5 bg-red-500/10 text-red-400 text-xs rounded">
+                                Needs {model.minRamGb}GB RAM
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#a0a0a0] mt-0.5">{model.description}</p>
+                        </div>
+
+                        {!installed && runnable && (
+                          <button
+                            type="button"
+                            onClick={() => handlePullModel(model)}
+                            disabled={isPulling || pullingModel !== null}
+                            className={`ml-3 px-4 py-2 text-xs font-medium rounded-lg transition-colors flex-shrink-0 ${
+                              isRecommended
+                                ? 'bg-blue-500 hover:bg-blue-600 disabled:bg-[#1a1a1a] disabled:text-slate-500 text-slate-900'
+                                : 'bg-[#1a1a1a] hover:bg-[#222] disabled:text-slate-600 text-[#ccc] border border-[#333]'
+                            }`}
+                          >
+                            {isPulling ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                Downloading...
+                              </span>
+                            ) : isRecommended ? (
+                              'Install'
+                            ) : (
+                              'Install'
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Not running and not waiting ────────────────────── */}
+          {!ollamaStatus.running && !waitingForInstall && (
+            <div className="mt-4 pt-4 border-t border-[#222]">
+              <button
+                type="button"
+                onClick={checkOllama}
+                disabled={ollamaChecking}
+                className="text-blue-400 text-xs hover:underline disabled:text-slate-500"
+              >
+                {ollamaChecking ? 'Checking...' : 'Already have Ollama? Click to detect'}
+              </button>
             </div>
           )}
         </section>
-
-        {/* ── Block 3: Download a Model ─────────────────────────── */}
-        {ollamaStatus.running && (
-          <section className="mb-8 bg-[#111] border border-[#222] rounded-xl p-6">
-            <h2 className="text-xl font-semibold text-white mb-1">
-              🧱 Build Your Own Agent
-            </h2>
-            <p className="text-sm text-[#a0a0a0] mb-4">
-              Pick a model to download. Grayed-out models exceed your hardware.
-            </p>
-
-            {loadingHw ? (
-              <p className="text-sm text-[#666]">Detecting hardware...</p>
-            ) : (
-              hardware && (
-                <p className="text-xs text-[#666] mb-4">
-                  System: {hardware.ramGb} GB RAM, {hardware.diskFreeGb} GB disk free,{' '}
-                  {hardware.cpuCores} cores
-                </p>
-              )
-            )}
-
-            <div className="space-y-3">
-              {MODEL_CATALOG.map((model) => {
-                const installed = isModelInstalled(model.ollamaTag);
-                const runnable = canRunModel(model);
-                const isPulling = pullingModel === model.ollamaTag;
-
-                return (
-                  <div
-                    key={model.ollamaTag}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
-                      runnable
-                        ? 'border-[#222] bg-[#0a0a0a]'
-                        : 'border-[#1a1a1a] bg-[#0a0a0a] opacity-50'
-                    }`}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white text-sm font-medium">
-                          {model.name}
-                        </span>
-                        <span className="text-xs text-[#666]">{model.sizeGb} GB</span>
-                        {installed && (
-                          <span className="text-green-400 text-xs">✓ Installed</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-[#a0a0a0] mt-0.5">
-                        {model.description}
-                      </p>
-                      {!runnable && (
-                        <p className="text-xs text-red-400 mt-0.5">
-                          Requires {model.minRamGb} GB RAM, {model.minDiskGb} GB disk
-                        </p>
-                      )}
-                    </div>
-
-                    {!installed && runnable && (
-                      <button
-                        type="button"
-                        onClick={() => handlePullModel(model)}
-                        disabled={isPulling || pullingModel !== null}
-                        className="ml-3 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:bg-[#1a1a1a]
-                                   disabled:text-slate-500 text-slate-900 text-xs font-medium rounded-lg
-                                   transition-colors"
-                      >
-                        {isPulling ? 'Downloading...' : 'Download'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
 
         {/* ── Basics ────────────────────────────────────────────── */}
         <section className="mb-8 bg-[#111] border border-[#222] rounded-xl p-6">

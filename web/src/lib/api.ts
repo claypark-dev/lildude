@@ -122,6 +122,14 @@ export function completeOnboarding(
   });
 }
 
+/** Reset onboarding by deleting the existing config */
+export function resetOnboarding(): Promise<{ ok: boolean; message: string }> {
+  return request('/api/v1/onboarding/reset', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 // ── Ollama APIs ────────────────────────────────────────────────────
 
 /** Fetch Ollama connection status */

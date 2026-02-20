@@ -7,7 +7,7 @@
  * See HLD Section 4.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { ZodError } from 'zod';
@@ -226,5 +226,25 @@ export async function saveConfig(config: Config): Promise<void> {
       throw error;
     }
     throw new ConfigError(`Failed to save config: ${String(error)}`);
+  }
+}
+
+/**
+ * Deletes the config.json file, resetting onboarding state.
+ * No-op if the file does not exist.
+ *
+ * @throws {ConfigError} When deletion fails for reasons other than file-not-found
+ */
+export async function deleteConfig(): Promise<void> {
+  const filePath = configFilePath();
+  try {
+    await unlink(filePath);
+    log.info({ path: filePath }, 'Configuration deleted (reset for re-onboarding)');
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      log.info('No config file to delete — already in fresh state');
+      return;
+    }
+    throw new ConfigError(`Failed to delete config: ${String(error)}`);
   }
 }
