@@ -1,4 +1,14 @@
 import { type FC, useState } from 'react'
+import { Zap, MessageSquare, Shield, Puzzle, Mic, Sunrise } from 'lucide-react'
+
+const lucideIconMap: Record<string, FC<{ size?: number; strokeWidth?: number; color?: string }>> = {
+  Zap,
+  MessageSquare,
+  Shield,
+  Puzzle,
+  Mic,
+  Sunrise,
+}
 
 interface FeatureCardProps {
   icon: string
@@ -8,6 +18,7 @@ interface FeatureCardProps {
 
 export const FeatureCard: FC<FeatureCardProps> = ({ icon, title, description }) => {
   const [isHovered, setIsHovered] = useState(false)
+  const IconComponent = lucideIconMap[icon]
 
   return (
     <div
@@ -19,7 +30,13 @@ export const FeatureCard: FC<FeatureCardProps> = ({ icon, title, description }) 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="text-3xl mb-4">{icon}</div>
+      <div className="mb-4">
+        {IconComponent ? (
+          <IconComponent size={28} strokeWidth={1.5} color="var(--accent)" />
+        ) : (
+          <span className="text-3xl">{icon}</span>
+        )}
+      </div>
       <h3
         className="text-lg font-semibold mb-2"
         style={{ color: 'var(--text-primary)' }}

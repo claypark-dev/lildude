@@ -1,7 +1,28 @@
 import type { FC } from 'react'
+import { Sparkles, Cpu } from 'lucide-react'
 import { SectionHeading } from './SectionHeading'
 import { providers } from '../data/providers'
 import { useInView } from '../hooks/useInView'
+import { brandIconMap } from './BrandIcons'
+
+const lucideProviderIconMap: Record<string, FC<{ size?: number; strokeWidth?: number; color?: string }>> = {
+  Sparkles,
+  Cpu,
+}
+
+const ProviderIcon: FC<{ iconType: 'brand' | 'lucide'; iconName: string }> = ({ iconType, iconName }) => {
+  if (iconType === 'brand') {
+    const BrandIcon = brandIconMap[iconName]
+    if (BrandIcon) {
+      return <BrandIcon size={18} color="var(--text-secondary)" />
+    }
+  }
+  const LucideIcon = lucideProviderIconMap[iconName]
+  if (LucideIcon) {
+    return <LucideIcon size={18} strokeWidth={1.5} color="var(--text-secondary)" />
+  }
+  return null
+}
 
 export const Providers: FC = () => {
   const { ref, isInView } = useInView(0.1)
@@ -35,6 +56,7 @@ export const Providers: FC = () => {
                   border: '1px solid var(--border)',
                 }}
               >
+                <ProviderIcon iconType={provider.iconType} iconName={provider.iconName} />
                 <span
                   className="font-bold"
                   style={{ color: 'var(--text-primary)' }}
