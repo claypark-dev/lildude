@@ -87,10 +87,9 @@ export function createProviderManager(
 
   // DeepSeek (uses OpenAI-compatible API)
   if (providersCfg.deepseek?.enabled && providersCfg.deepseek.apiKey) {
-    const deepseekCfg = providersCfg.deepseek;
     const provider = new OpenAIProvider({
-      apiKey: deepseekCfg.apiKey,
-      baseUrl: deepseekCfg.apiBase ?? 'https://api.deepseek.com',
+      apiKey: providersCfg.deepseek.apiKey,
+      baseUrl: providersCfg.deepseek.apiBase ?? 'https://api.deepseek.com',
       providerName: 'deepseek',
     });
     providerMap.set('deepseek', provider);

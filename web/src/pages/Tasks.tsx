@@ -16,7 +16,7 @@ export function Tasks() {
         <h2 className="text-2xl font-bold text-white">Tasks</h2>
         <button
           type="button"
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors"
+          className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#333] text-white text-sm rounded-lg transition-colors"
           onClick={tasks.refetch}
         >
           Refresh
@@ -25,21 +25,21 @@ export function Tasks() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Total Tasks</p>
+        <div className="bg-[#111] rounded-xl p-4 border border-[#222]">
+          <p className="text-xs text-[#a0a0a0] uppercase tracking-wide">Total Tasks</p>
           <p className="text-2xl font-semibold text-white mt-1">{taskCount}</p>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Total Cost</p>
-          <p className="text-2xl font-semibold text-amber-400 mt-1">
+        <div className="bg-[#111] rounded-xl p-4 border border-[#222]">
+          <p className="text-xs text-[#a0a0a0] uppercase tracking-wide">Total Cost</p>
+          <p className="text-2xl font-semibold text-blue-400 mt-1">
             ${totalCost.toFixed(4)}
           </p>
         </div>
       </div>
 
       {/* Task list */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        {tasks.loading && <p className="text-slate-400 text-sm">Loading tasks...</p>}
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222]">
+        {tasks.loading && <p className="text-[#a0a0a0] text-sm">Loading tasks...</p>}
         {tasks.error && <p className="text-red-400 text-sm">{tasks.error}</p>}
         {tasks.data && <TaskList tasks={tasks.data.tasks} />}
       </section>

@@ -7,7 +7,7 @@ import type { RoutingHistoryEntry } from '../lib/types.ts';
 export function PowerUserPanel() {
   return (
     <div className="space-y-8">
-      <h3 className="text-xl font-bold text-amber-400">Power User Mode</h3>
+      <h3 className="text-xl font-bold text-blue-400">Power User Mode</h3>
       <RoutingHistoryViewer />
       <ModelOverride />
       <JsonConfigEditor />
@@ -20,10 +20,10 @@ function RoutingHistoryViewer() {
   const history = useApi(useCallback(() => fetchRoutingHistory(30), []));
 
   return (
-    <section className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+    <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
       <h4 className="text-lg font-semibold text-white">Routing History</h4>
 
-      {history.loading && <p className="text-slate-400">Loading history...</p>}
+      {history.loading && <p className="text-[#a0a0a0]">Loading history...</p>}
       {history.error && <p className="text-red-400">{history.error}</p>}
 
       {history.data && history.data.entries.length === 0 && (
@@ -33,7 +33,7 @@ function RoutingHistoryViewer() {
       {history.data && history.data.entries.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-400 uppercase border-b border-slate-600">
+            <thead className="text-xs text-[#a0a0a0] uppercase border-b border-[#333]">
               <tr>
                 <th className="py-2 pr-3">Model</th>
                 <th className="py-2 pr-3">Tier</th>
@@ -59,7 +59,7 @@ function RoutingHistoryViewer() {
       {history.data && (
         <button
           type="button"
-          className="text-sm text-amber-400 hover:text-amber-300"
+          className="text-sm text-blue-400 hover:text-blue-300"
           onClick={history.refetch}
         >
           Refresh
@@ -96,7 +96,7 @@ function RoutingHistoryRow({
     : '--';
 
   return (
-    <tr className="border-b border-slate-700/50 text-slate-300">
+    <tr className="border-b border-[#222]/50 text-[#ccc]">
       <td className="py-2 pr-3 font-mono text-xs">{entry.model}</td>
       <td className="py-2 pr-3">
         <span className={`px-2 py-0.5 rounded text-xs font-medium ${tierColor(entry.tier)}`}>
@@ -168,14 +168,14 @@ function ModelOverride() {
   }
 
   return (
-    <section className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+    <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
       <h4 className="text-lg font-semibold text-white">Model Override</h4>
-      <p className="text-sm text-slate-400">Force a specific model for the next request.</p>
+      <p className="text-sm text-[#a0a0a0]">Force a specific model for the next request.</p>
 
       <div className="flex gap-3 items-center">
         <select
-          className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
-                     focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+          className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
+                     focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           value={selectedModel}
           onChange={(e) => setSelectedModel(e.target.value)}
         >
@@ -188,7 +188,7 @@ function ModelOverride() {
 
         <button
           type="button"
-          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-[#1a1a1a]
                      text-slate-900 font-semibold rounded-lg text-sm transition-colors"
           onClick={handleSave}
           disabled={saving}
@@ -197,7 +197,7 @@ function ModelOverride() {
         </button>
       </div>
 
-      {message && <p className="text-sm text-amber-400">{message}</p>}
+      {message && <p className="text-sm text-blue-400">{message}</p>}
     </section>
   );
 }
@@ -235,16 +235,16 @@ function JsonConfigEditor() {
   }
 
   return (
-    <section className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+    <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
       <h4 className="text-lg font-semibold text-white">JSON Config Editor</h4>
-      <p className="text-sm text-slate-400">Edit the raw configuration JSON directly.</p>
+      <p className="text-sm text-[#a0a0a0]">Edit the raw configuration JSON directly.</p>
 
-      {config.loading && <p className="text-slate-400">Loading config...</p>}
+      {config.loading && <p className="text-[#a0a0a0]">Loading config...</p>}
 
       <textarea
-        className="w-full h-64 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2
+        className="w-full h-64 bg-black border border-[#333] rounded-lg px-3 py-2
                    text-white text-sm font-mono focus:outline-none focus:ring-2
-                   focus:ring-amber-500/50 resize-y"
+                   focus:ring-blue-500/50 resize-y"
         value={jsonText}
         onChange={(e) => setJsonText(e.target.value)}
         spellCheck={false}
@@ -253,7 +253,7 @@ function JsonConfigEditor() {
       <div className="flex items-center gap-4">
         <button
           type="button"
-          className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-[#1a1a1a]
                      text-slate-900 font-semibold rounded-lg text-sm transition-colors"
           onClick={handleSave}
           disabled={saving}
@@ -277,6 +277,6 @@ function tierColor(tier: string): string {
     case 'small': return 'bg-green-900/50 text-green-400';
     case 'medium': return 'bg-blue-900/50 text-blue-400';
     case 'large': return 'bg-purple-900/50 text-purple-400';
-    default: return 'bg-slate-700 text-slate-400';
+    default: return 'bg-[#1a1a1a] text-[#a0a0a0]';
   }
 }

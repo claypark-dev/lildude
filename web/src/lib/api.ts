@@ -10,7 +10,7 @@ import type {
   QualityFeedbackResponse,
 } from './types.ts';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:18421';
 
 /** Generic fetch wrapper with error handling */
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

@@ -85,7 +85,11 @@ export function createGatewayServer(
   });
 
   // Static file serving for the web panel
-  const webDistDir = join(MODULE_DIR, '..', '..', 'web', 'dist');
+  // After tsup bundles, MODULE_DIR is dist/ (flat output), so go up one level.
+  // In dev (tsx), MODULE_DIR is src/gateway/, so go up two levels.
+  const webDistDir = existsSync(join(MODULE_DIR, '..', 'web', 'dist'))
+    ? join(MODULE_DIR, '..', 'web', 'dist')
+    : join(MODULE_DIR, '..', '..', 'web', 'dist');
   if (existsSync(webDistDir)) {
     app.register(fastifyStatic, {
       root: webDistDir,

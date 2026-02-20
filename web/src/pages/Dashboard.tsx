@@ -47,14 +47,14 @@ export function Dashboard() {
           value={tasks.loading ? '--' : String(activeTasks.length)}
           loading={tasks.loading}
           error={tasks.error}
-          valueColor="text-amber-400"
+          valueColor="text-blue-400"
         />
       </div>
 
       {/* Budget */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222]">
         <h3 className="text-lg font-semibold text-white mb-4">Monthly Budget</h3>
-        {budget.loading && <p className="text-slate-400 text-sm">Loading...</p>}
+        {budget.loading && <p className="text-[#a0a0a0] text-sm">Loading...</p>}
         {budget.error && <p className="text-red-400 text-sm">{budget.error}</p>}
         {budget.data && (
           <BudgetBar
@@ -66,9 +66,9 @@ export function Dashboard() {
       </section>
 
       {/* Usage Chart */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222]">
         <h3 className="text-lg font-semibold text-white mb-4">Token Usage (Last 7 Days)</h3>
-        {usage.loading && <p className="text-slate-400 text-sm">Loading...</p>}
+        {usage.loading && <p className="text-[#a0a0a0] text-sm">Loading...</p>}
         {usage.error && <p className="text-red-400 text-sm">{usage.error}</p>}
         {usageDays.length > 0 && (
           <div className="flex items-end gap-2 h-40">
@@ -79,12 +79,12 @@ export function Dashboard() {
                   key={day.date}
                   className="flex-1 flex flex-col items-center gap-1"
                 >
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-[#a0a0a0]">
                     {day.totalTokens.toLocaleString()}
                   </span>
                   <div className="w-full flex-1 flex items-end">
                     <div
-                      className="w-full bg-amber-500 rounded-t-md transition-all duration-300 min-h-[4px]"
+                      className="w-full bg-blue-500 rounded-t-md transition-all duration-300 min-h-[4px]"
                       style={{ height: `${heightPercent}%` }}
                     />
                   </div>
@@ -102,7 +102,7 @@ export function Dashboard() {
       </section>
 
       {/* System Health */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222]">
         <h3 className="text-lg font-semibold text-white mb-4">System Health</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <HealthIndicator
@@ -134,8 +134,8 @@ function StatCard({
   valueColor?: string;
 }) {
   return (
-    <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-      <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
+    <div className="bg-[#111] rounded-xl p-4 border border-[#222]">
+      <p className="text-xs text-[#a0a0a0] uppercase tracking-wide">{label}</p>
       {loading && <p className="text-lg font-semibold text-slate-500 mt-1">...</p>}
       {error && <p className="text-sm text-red-400 mt-1">Error</p>}
       {!loading && !error && (
@@ -149,7 +149,7 @@ function StatCard({
 function HealthIndicator({ label, status }: { label: string; status: string }) {
   const isHealthy = status === 'ok' || status === 'healthy' || status === 'connected';
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
+    <div className="flex items-center gap-3 p-3 bg-[#1a1a1a]/50 rounded-lg">
       <div
         className={`w-3 h-3 rounded-full ${
           isHealthy ? 'bg-green-500' : 'bg-red-500'

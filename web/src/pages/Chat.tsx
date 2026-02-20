@@ -109,14 +109,14 @@ export function Chat() {
               connected ? 'bg-green-500' : 'bg-red-500'
             }`}
           />
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-[#a0a0a0]">
             {connected ? 'Connected' : 'Disconnected'}
           </span>
         </div>
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto bg-slate-800 rounded-xl border border-slate-700 p-4 mb-4">
+      <div className="flex-1 overflow-y-auto bg-[#111] rounded-xl border border-[#222] p-4 mb-4">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-500 text-sm">
@@ -129,8 +129,8 @@ export function Chat() {
         ))}
         {streaming && (
           <div className="flex justify-start mb-3">
-            <div className="px-4 py-2 bg-slate-700 rounded-2xl rounded-bl-md">
-              <span className="text-amber-400 text-sm animate-pulse">
+            <div className="px-4 py-2 bg-[#1a1a1a] rounded-2xl rounded-bl-md">
+              <span className="text-blue-400 text-sm animate-pulse">
                 ...
               </span>
             </div>
@@ -142,9 +142,9 @@ export function Chat() {
       {/* Input area */}
       <div className="flex gap-3">
         <textarea
-          className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm
-                     placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/50
-                     focus:border-amber-500"
+          className="flex-1 bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white text-sm
+                     placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50
+                     focus:border-blue-500"
           placeholder={connected ? 'Type a message...' : 'Connecting...'}
           rows={2}
           value={inputText}
@@ -154,7 +154,7 @@ export function Chat() {
         />
         <button
           type="button"
-          className="px-6 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 disabled:text-slate-500
+          className="px-6 bg-blue-500 hover:bg-blue-600 disabled:bg-[#1a1a1a] disabled:text-slate-500
                      text-slate-900 font-semibold rounded-xl transition-colors self-end py-3"
           onClick={handleSend}
           disabled={!connected || !inputText.trim()}

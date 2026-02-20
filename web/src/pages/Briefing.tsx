@@ -14,14 +14,14 @@ export function Briefing() {
         <button
           type="button"
           onClick={briefing.refetch}
-          className="text-sm px-3 py-1.5 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-colors"
+          className="text-sm px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors"
         >
           Refresh
         </button>
       </div>
 
       {briefing.loading && (
-        <p className="text-slate-400 text-sm">Generating briefing...</p>
+        <p className="text-[#a0a0a0] text-sm">Generating briefing...</p>
       )}
       {briefing.error && (
         <p className="text-red-400 text-sm">{briefing.error}</p>
@@ -30,9 +30,9 @@ export function Briefing() {
       {briefing.data && (
         <>
           {/* Greeting */}
-          <div className="bg-gradient-to-r from-amber-500/10 to-slate-800 rounded-xl p-6 border border-amber-500/20">
-            <p className="text-lg text-amber-300">{briefing.data.greeting}</p>
-            <p className="text-xs text-slate-400 mt-2">
+          <div className="bg-gradient-to-r from-blue-500/10 to-[#111] rounded-xl p-6 border border-blue-500/20">
+            <p className="text-lg text-blue-300">{briefing.data.greeting}</p>
+            <p className="text-xs text-[#a0a0a0] mt-2">
               Generated {formatTimestamp(briefing.data.generatedAt)}
             </p>
           </div>
@@ -54,7 +54,7 @@ export function Briefing() {
 function SummaryCards({ summary }: { summary: BriefingSummary }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <SummaryCard label="Skills" value={String(summary.activeSkills)} color="text-amber-400" />
+      <SummaryCard label="Skills" value={String(summary.activeSkills)} color="text-blue-400" />
       <SummaryCard label="Scheduled" value={String(summary.scheduledJobs)} color="text-blue-400" />
       <SummaryCard label="Pending" value={String(summary.pendingTasks)} color="text-purple-400" />
       <SummaryCard
@@ -74,8 +74,8 @@ function SummaryCards({ summary }: { summary: BriefingSummary }) {
 /** Individual summary stat card */
 function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 text-center">
-      <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
+    <div className="bg-[#111] rounded-xl p-4 border border-[#222] text-center">
+      <p className="text-xs text-[#a0a0a0] uppercase tracking-wide">{label}</p>
       <p className={`text-lg font-semibold mt-1 ${color}`}>{value}</p>
     </div>
   );
@@ -84,7 +84,7 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
 /** Briefing section card with items */
 function SectionCard({ section }: { section: BriefingSection }) {
   return (
-    <section className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+    <section className="bg-[#111] rounded-xl p-6 border border-[#222]">
       <h3 className="text-lg font-semibold text-white mb-4">
         <span className="mr-2">{section.icon}</span>
         {section.title}
@@ -110,11 +110,11 @@ function ItemRow({ item }: { item: BriefingItem }) {
   const dotColor = statusColors[item.status ?? 'neutral'];
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-slate-700/50 rounded-lg">
+    <div className="flex items-start gap-3 p-3 bg-[#1a1a1a]/50 rounded-lg">
       <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${dotColor}`} />
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white font-medium truncate">{item.label}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{item.value}</p>
+        <p className="text-xs text-[#a0a0a0] mt-0.5">{item.value}</p>
       </div>
     </div>
   );

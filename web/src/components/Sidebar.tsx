@@ -24,7 +24,7 @@ export function Sidebar() {
       {/* Mobile hamburger */}
       <button
         type="button"
-        className="fixed top-4 left-4 z-50 md:hidden bg-slate-800 text-amber-400 p-2 rounded-lg"
+        className="fixed top-4 left-4 z-50 md:hidden bg-[#111] text-blue-400 p-2 rounded-lg"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle navigation"
       >
@@ -48,18 +48,18 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full w-64 bg-slate-800 border-r border-slate-700
+          fixed top-0 left-0 h-full w-64 bg-[#111] border-r border-[#222]
           flex flex-col z-40 transition-transform duration-200
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
           md:translate-x-0 md:static md:z-auto
         `}
       >
         {/* Brand */}
-        <div className="p-6 border-b border-slate-700">
-          <h1 className="text-xl font-bold text-amber-400 tracking-tight">
+        <div className="p-6 border-b border-[#222]">
+          <h1 className="text-xl font-bold text-blue-400 tracking-tight">
             Lil Dude
           </h1>
-          <p className="text-xs text-slate-400 mt-1">AI Executive Assistant</p>
+          <p className="text-xs text-[#a0a0a0] mt-1">AI Executive Assistant</p>
         </div>
 
         {/* Navigation */}
@@ -72,8 +72,8 @@ export function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-amber-500/10 text-amber-400'
-                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                    ? 'bg-blue-500/10 text-blue-400'
+                    : 'text-[#ccc] hover:bg-[#1a1a1a] hover:text-white'
                 }`
               }
             >
@@ -84,7 +84,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-[#222]">
           <p className="text-xs text-slate-500 text-center">v0.1.0</p>
         </div>
       </aside>

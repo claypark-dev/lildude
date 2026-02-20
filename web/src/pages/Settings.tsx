@@ -79,11 +79,11 @@ export function Settings() {
     <div className="space-y-8 max-w-2xl">
       <h2 className="text-2xl font-bold text-white">Settings</h2>
 
-      {config.loading && <p className="text-slate-400">Loading configuration...</p>}
+      {config.loading && <p className="text-[#a0a0a0]">Loading configuration...</p>}
       {config.error && <p className="text-red-400">{config.error}</p>}
 
       {/* API Keys */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
         <h3 className="text-lg font-semibold text-white">API Keys</h3>
 
         <ApiKeyInput
@@ -102,7 +102,7 @@ export function Settings() {
       </section>
 
       {/* Channels */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
         <h3 className="text-lg font-semibold text-white">Channels</h3>
 
         <ToggleSwitch
@@ -123,7 +123,7 @@ export function Settings() {
       </section>
 
       {/* Security */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
         <h3 className="text-lg font-semibold text-white">Security Level</h3>
 
         <div className="space-y-2">
@@ -139,7 +139,7 @@ export function Settings() {
                 securityLevel: Number(e.target.value),
               }))
             }
-            className="w-full accent-amber-500"
+            className="w-full accent-blue-500"
           />
           <div className="flex justify-between text-xs text-slate-500">
             <span>1</span>
@@ -148,14 +148,14 @@ export function Settings() {
             <span>4</span>
             <span>5</span>
           </div>
-          <p className="text-sm text-amber-400">
+          <p className="text-sm text-blue-400">
             Level {form.securityLevel}: {SECURITY_LEVELS[form.securityLevel]}
           </p>
         </div>
       </section>
 
       {/* Budget Controls */}
-      <section className="bg-slate-800 rounded-xl p-6 border border-slate-700 space-y-4">
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
         <h3 className="text-lg font-semibold text-white">Budget Controls</h3>
 
         <NumberInput
@@ -179,7 +179,7 @@ export function Settings() {
       <div className="flex items-center gap-4">
         <button
           type="button"
-          className="px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700
+          className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-[#1a1a1a]
                      text-slate-900 font-semibold rounded-xl transition-colors"
           onClick={handleSave}
           disabled={saving}
@@ -219,12 +219,12 @@ function ApiKeyInput({
 
   return (
     <div>
-      <label className="block text-sm text-slate-300 mb-1">{label}</label>
+      <label className="block text-sm text-[#ccc] mb-1">{label}</label>
       <div className="flex gap-2">
         <input
           type={revealed ? 'text' : 'password'}
-          className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
-                     placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
+                     placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           placeholder="sk-..."
           value={revealed ? value : maskedValue}
           onChange={(e) => onChange(e.target.value)}
@@ -248,11 +248,11 @@ function ToggleSwitch({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-slate-300">{label}</span>
+      <span className="text-sm text-[#ccc]">{label}</span>
       <button
         type="button"
         className={`relative w-11 h-6 rounded-full transition-colors ${
-          enabled ? 'bg-amber-500' : 'bg-slate-600'
+          enabled ? 'bg-blue-500' : 'bg-[#333]'
         }`}
         onClick={() => onChange(!enabled)}
         role="switch"
@@ -285,11 +285,11 @@ function NumberInput({
 }) {
   return (
     <div>
-      <label className="block text-sm text-slate-300 mb-1">{label}</label>
+      <label className="block text-sm text-[#ccc] mb-1">{label}</label>
       <input
         type="number"
-        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
-                   focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
+                   focus:outline-none focus:ring-2 focus:ring-blue-500/50"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         min={min}
