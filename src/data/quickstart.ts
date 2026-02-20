@@ -11,11 +11,10 @@ export const quickstartTabs: QuickStartTab[] = [
     code: `# Install
 curl -fsSL https://raw.githubusercontent.com/claypark-dev/lildude/main/scripts/install.sh | bash
 
-# Set up your assistant
-lil-dude onboard
+# Launch — opens web wizard on first run
+lil-dude start
 
-# Launch
-lil-dude start`,
+# Open http://localhost:18421 to set up`,
   },
   {
     id: 'windows',
@@ -23,11 +22,10 @@ lil-dude start`,
     code: `# Install (PowerShell)
 irm https://raw.githubusercontent.com/claypark-dev/lildude/main/scripts/install.ps1 | iex
 
-# Set up your assistant
-lil-dude onboard
+# Launch — opens web wizard on first run
+lil-dude start
 
-# Launch
-lil-dude start`,
+# Open http://localhost:18421 to set up`,
   },
   {
     id: 'source',
@@ -36,7 +34,8 @@ lil-dude start`,
 cd lildude
 npm install
 npm run build
-npm run onboard
-npm run start`,
+npm start
+
+# Open http://localhost:18421 to set up`,
   },
 ]

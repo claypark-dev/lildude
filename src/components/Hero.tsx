@@ -39,7 +39,7 @@ export const Hero: FC = () => {
           className="text-lg md:text-xl mb-10 max-w-2xl mx-auto"
           style={{ color: 'var(--text-secondary)' }}
         >
-          Self-hosted. Multi-channel. Privacy-first. Ruthlessly token-efficient.
+          Self-hosted. Multi-channel. Privacy-first. Set up in your browser, no terminal needed.
         </p>
 
         {/* CTA buttons */}
