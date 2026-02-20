@@ -1,21 +1,22 @@
 import { useCallback } from 'react';
 import { useApi } from '../hooks/useApi.ts';
 import { BudgetBar } from '../components/BudgetBar.tsx';
-import { fetchHealth, fetchBudget, fetchTasks, fetchDailyUsage } from '../lib/api.ts';
+import { fetchHealth, fetchBudget, fetchTasks, fetchUsage } from '../lib/api.ts';
 
 /** Dashboard page showing system overview, budget, usage, and active tasks */
 export function Dashboard() {
   const health = useApi(useCallback(() => fetchHealth(), []));
   const budget = useApi(useCallback(() => fetchBudget(), []));
   const tasks = useApi(useCallback(() => fetchTasks(10), []));
-  const usage = useApi(useCallback(() => fetchDailyUsage(), []));
+  const usage = useApi(useCallback(() => fetchUsage(), []));
 
   const activeTasks = tasks.data?.tasks.filter(
     (t) => t.status === 'running' || t.status === 'pending'
   ) ?? [];
 
-  const usageDays = usage.data?.usage.slice(-7) ?? [];
-  const maxTokens = usageDays.reduce((max, d) => Math.max(max, d.totalTokens), 1);
+  const percentUsed = budget.data
+    ? (budget.data.monthlySpentUsd / budget.data.monthlyLimitUsd) * 100
+    : 0;
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -25,10 +26,10 @@ export function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Status"
-          value={health.data?.status ?? '--'}
+          value={health.data ? 'ok' : '--'}
           loading={health.loading}
           error={health.error}
-          valueColor={health.data?.status === 'ok' ? 'text-green-400' : 'text-red-400'}
+          valueColor={health.data ? 'text-green-400' : 'text-red-400'}
         />
         <StatCard
           label="Uptime"
@@ -38,7 +39,7 @@ export function Dashboard() {
         />
         <StatCard
           label="Memory"
-          value={health.data ? `${health.data.memoryMb.toFixed(1)} MB` : '--'}
+          value={health.data ? `${health.data.memoryUsageMb.toFixed(1)} MB` : '--'}
           loading={health.loading}
           error={health.error}
         />
@@ -58,46 +59,35 @@ export function Dashboard() {
         {budget.error && <p className="text-red-400 text-sm">{budget.error}</p>}
         {budget.data && (
           <BudgetBar
-            percentUsed={budget.data.percentUsed}
-            spentUsd={budget.data.spentUsd}
-            monthlyBudgetUsd={budget.data.monthlyBudgetUsd}
+            percentUsed={percentUsed}
+            spentUsd={budget.data.monthlySpentUsd}
+            monthlyBudgetUsd={budget.data.monthlyLimitUsd}
           />
         )}
       </section>
 
-      {/* Usage Chart */}
+      {/* Cost Overview */}
       <section className="bg-[#111] rounded-xl p-6 border border-[#222]">
-        <h3 className="text-lg font-semibold text-white mb-4">Token Usage (Last 7 Days)</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">Cost Overview</h3>
         {usage.loading && <p className="text-[#a0a0a0] text-sm">Loading...</p>}
         {usage.error && <p className="text-red-400 text-sm">{usage.error}</p>}
-        {usageDays.length > 0 && (
-          <div className="flex items-end gap-2 h-40">
-            {usageDays.map((day) => {
-              const heightPercent = (day.totalTokens / maxTokens) * 100;
-              return (
-                <div
-                  key={day.date}
-                  className="flex-1 flex flex-col items-center gap-1"
-                >
-                  <span className="text-xs text-[#a0a0a0]">
-                    {day.totalTokens.toLocaleString()}
-                  </span>
-                  <div className="w-full flex-1 flex items-end">
-                    <div
-                      className="w-full bg-blue-500 rounded-t-md transition-all duration-300 min-h-[4px]"
-                      style={{ height: `${heightPercent}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-slate-500">
-                    {formatDateShort(day.date)}
-                  </span>
-                </div>
-              );
-            })}
+        {usage.data && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-[#1a1a1a]/50 rounded-lg p-4">
+              <p className="text-xs text-[#a0a0a0] uppercase tracking-wide">Today</p>
+              <p className="text-lg font-semibold text-white mt-1">
+                ${usage.data.dailyCostUsd.toFixed(4)}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">{usage.data.date}</p>
+            </div>
+            <div className="bg-[#1a1a1a]/50 rounded-lg p-4">
+              <p className="text-xs text-[#a0a0a0] uppercase tracking-wide">This Month</p>
+              <p className="text-lg font-semibold text-white mt-1">
+                ${usage.data.monthlyCostUsd.toFixed(4)}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">{usage.data.month}</p>
+            </div>
           </div>
-        )}
-        {!usage.loading && usageDays.length === 0 && (
-          <p className="text-slate-500 text-sm">No usage data available</p>
         )}
       </section>
 
@@ -107,11 +97,11 @@ export function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <HealthIndicator
             label="Database"
-            status={health.data?.dbStatus ?? 'unknown'}
+            status={health.data?.dbSizeBytes != null ? 'ok' : 'unknown'}
           />
           <HealthIndicator
             label="API Server"
-            status={health.data?.status ?? 'unknown'}
+            status={health.data ? 'ok' : 'unknown'}
           />
         </div>
       </section>
@@ -171,10 +161,4 @@ function formatUptime(seconds: number): string {
   const minutes = Math.floor((seconds % 3600) / 60);
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
-}
-
-/** Format ISO date to short form (e.g., "Mon") */
-function formatDateShort(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { weekday: 'short' });
 }

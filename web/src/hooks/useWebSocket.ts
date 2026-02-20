@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { WsIncomingMessage, WsOutgoingMessage } from '../lib/types.ts';
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:18420/ws';
+const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:18421/ws';
 const RECONNECT_DELAY_MS = 3000;
 
 interface UseWebSocketResult {
@@ -27,13 +27,21 @@ export function useWebSocket(): UseWebSocketResult {
 
       ws.onopen = () => {
         setConnected(true);
-        ws.send(JSON.stringify({ type: 'subscribe', channels: ['tasks', 'messages'] }));
+        ws.send(JSON.stringify({ type: 'subscribe', payload: { topics: ['tasks', 'messages', '*'] } }));
       };
 
       ws.onmessage = (event: MessageEvent) => {
         try {
-          const parsed = JSON.parse(String(event.data)) as WsIncomingMessage;
-          setLastMessage(parsed);
+          const envelope = JSON.parse(String(event.data)) as {
+            type: string;
+            payload: Record<string, unknown>;
+            timestamp: string;
+          };
+          // Map server envelope format to the flat WsIncomingMessage format
+          const mapped = mapServerMessage(envelope);
+          if (mapped) {
+            setLastMessage(mapped);
+          }
         } catch {
           // Ignore malformed messages
         }
@@ -69,9 +77,55 @@ export function useWebSocket(): UseWebSocketResult {
 
   const send = useCallback((message: WsOutgoingMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
+      // Wrap outgoing messages in the server's expected envelope format
+      const envelope = mapOutgoingMessage(message);
+      wsRef.current.send(JSON.stringify(envelope));
     }
   }, []);
 
   return { connected, lastMessage, send };
+}
+
+/** Map a server envelope to the flat WsIncomingMessage format used by the UI */
+function mapServerMessage(
+  envelope: { type: string; payload: Record<string, unknown> },
+): WsIncomingMessage | null {
+  switch (envelope.type) {
+    case 'chat.message':
+      return {
+        type: 'message',
+        text: String(envelope.payload.text ?? ''),
+        role: 'assistant',
+      };
+    case 'chat.stream':
+      return { type: 'stream_chunk', text: String(envelope.payload.text ?? '') };
+    case 'stream_end':
+      return { type: 'stream_end' };
+    case 'task.update':
+      return {
+        type: 'task_update',
+        task: envelope.payload.task as WsIncomingMessage extends { type: 'task_update'; task: infer T } ? T : never,
+      };
+    default:
+      return null;
+  }
+}
+
+/** Map an outgoing UI message to the server's expected envelope format */
+function mapOutgoingMessage(message: WsOutgoingMessage): Record<string, unknown> {
+  if (message.type === 'chat') {
+    return {
+      type: 'chat.send',
+      payload: { text: message.text },
+      timestamp: new Date().toISOString(),
+    };
+  }
+  if (message.type === 'subscribe') {
+    return {
+      type: 'subscribe',
+      payload: { topics: message.channels },
+      timestamp: new Date().toISOString(),
+    };
+  }
+  return message;
 }
