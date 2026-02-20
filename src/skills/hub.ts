@@ -146,7 +146,7 @@ export async function installSkill(
  * @returns An array of listed skills with name, version, source, and status.
  */
 export function listSkills(
-  db: BetterSqlite3.Database,
+  _db: BetterSqlite3.Database,
   bundledDir?: string,
   installedDir?: string,
 ): ListedSkill[] {

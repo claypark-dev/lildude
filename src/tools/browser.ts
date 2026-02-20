@@ -64,6 +64,7 @@ function isDomainAllowed(hostname: string, allowedDomains: string[]): boolean {
  */
 async function loadPlaywright(): Promise<PlaywrightProvider | undefined> {
   try {
+    // @ts-expect-error -- playwright is an optional peer dependency loaded at runtime
     const pw = await import('playwright') as unknown as PlaywrightProvider;
     return pw?.chromium ? pw : undefined;
   } catch {

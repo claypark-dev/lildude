@@ -80,7 +80,7 @@ export function splitMessage(text: string, limit: number = SIGNAL_MSG_LIMIT): st
 export function createSignalAdapter(connection?: SignalConnection): ChannelAdapter {
   const log = channelLogger.child({ adapter: 'signal' });
 
-  let conn: SignalConnection | undefined = connection;
+  const conn: SignalConnection | undefined = connection;
   let connected = false;
   let messageHandler: ((msg: ChannelMessage) => Promise<void>) | undefined;
   let allowFromList: string[] = [];

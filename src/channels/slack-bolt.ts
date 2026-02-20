@@ -18,6 +18,7 @@ export async function createBoltClient(config: {
   token: string;
   appToken: string;
 }): Promise<SlackClient> {
+  // @ts-expect-error -- @slack/bolt is an optional peer dependency loaded at runtime
   const bolt = await import('@slack/bolt');
   const app = new bolt.App({
     token: config.token,
@@ -27,7 +28,7 @@ export async function createBoltClient(config: {
 
   let messageCallback: ((event: SlackMessageEvent) => Promise<void>) | undefined;
 
-  app.message(async ({ message }) => {
+  app.message(async ({ message }: { message: Record<string, unknown> }) => {
     if (messageCallback && message && 'text' in message) {
       const msg = message as Record<string, unknown>;
       const slackEvent: SlackMessageEvent = {
