@@ -97,7 +97,7 @@ const RATE_LIMIT_DELAY_MS = 500;
 export function createWhatsAppAdapter(connection?: WhatsAppConnection): ChannelAdapter {
   const log = channelLogger.child({ adapter: 'whatsapp' });
 
-  let conn: WhatsAppConnection | undefined = connection;
+  const conn: WhatsAppConnection | undefined = connection;
   let connected = false;
   let messageHandler: ((msg: ChannelMessage) => Promise<void>) | undefined;
   let allowFromList: string[] = [];

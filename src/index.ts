@@ -18,8 +18,9 @@ import { createProviderManager, type ProviderManager } from './providers/index.j
 import { createChannelManager, type ChannelManager } from './channels/index.js';
 import { createAgentLoop, type AgentLoop } from './orchestrator/agent-loop.js';
 import { createGatewayServer, type GatewayServer } from './gateway/index.js';
-import type { LLMProvider } from './types/index.js';
+import type { LLMProvider, WSMessage } from './types/index.js';
 import type { SecurityLevel } from './security/permissions.js';
+import type { WebChatAdapter } from './channels/webchat.js';
 import {
   initializeChannels,
   wireChannelsToAgentLoop,
@@ -203,6 +204,35 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
     );
   } else {
     await gateway.app.ready();
+  }
+
+  // Step 10.5: Wire WebSocket gateway to WebChat adapter
+  const webChatAdapter = channelManager.getAdapter('webchat') as WebChatAdapter | undefined;
+  if (webChatAdapter) {
+    gateway.ws.onMessage((clientId, messageType, payload) => {
+      if (messageType === 'chat.send') {
+        const wsMessage: WSMessage = {
+          type: 'chat.send',
+          payload: payload as Record<string, unknown>,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Register the client's send function so the adapter can reply
+        webChatAdapter.registerClient(clientId, (outbound: WSMessage) => {
+          gateway.ws.sendTo(clientId, {
+            type: outbound.type,
+            payload: outbound.payload as Record<string, unknown>,
+            timestamp: outbound.timestamp,
+          });
+        });
+
+        webChatAdapter.handleWebSocketMessage(clientId, wsMessage).catch((err: unknown) => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          log.error({ clientId, error: errMsg }, 'WebChat message handling failed');
+        });
+      }
+    });
+    log.info('WebSocket gateway wired to WebChat adapter');
   }
 
   // Step 11: Register shutdown handlers

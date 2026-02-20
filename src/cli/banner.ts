@@ -5,9 +5,6 @@
  * for use in CLI output, install scripts, and the start command.
  */
 
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 /** The current Lil Dude version */
 const VERSION = '0.1.0';

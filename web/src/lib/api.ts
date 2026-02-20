@@ -2,7 +2,7 @@ import type {
   HealthStatus,
   BudgetInfo,
   TasksResponse,
-  DailyUsageResponse,
+  UsageResponse,
   SecurityLogResponse,
   AppConfig,
   DailyBriefing,
@@ -44,9 +44,9 @@ export function fetchTasks(limit = 50): Promise<TasksResponse> {
   return request<TasksResponse>(`/api/v1/tasks?limit=${limit}`);
 }
 
-/** Fetch daily usage data */
-export function fetchDailyUsage(): Promise<DailyUsageResponse> {
-  return request<DailyUsageResponse>('/api/v1/usage/daily');
+/** Fetch usage data */
+export function fetchUsage(): Promise<UsageResponse> {
+  return request<UsageResponse>('/api/v1/usage');
 }
 
 /** Fetch security log entries */

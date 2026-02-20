@@ -1,17 +1,20 @@
 /** Shared type definitions for the Lil Dude web panel */
 
 export interface HealthStatus {
-  status: string;
   uptime: number;
-  memoryMb: number;
-  dbStatus: string;
+  memoryUsageMb: number;
+  dbSizeBytes: number;
+  activeTasks: number;
+  version: string;
 }
 
 export interface BudgetInfo {
-  monthlyBudgetUsd: number;
-  spentUsd: number;
-  remainingUsd: number;
-  percentUsed: number;
+  monthlyLimitUsd: number;
+  monthlySpentUsd: number;
+  monthlyRemainingUsd: number;
+  dailySpentUsd: number;
+  warningThresholdPct: number;
+  isApproachingLimit: boolean;
 }
 
 export interface Task {
@@ -42,14 +45,11 @@ export interface AppConfig {
   config: Record<string, unknown>;
 }
 
-export interface DailyUsage {
+export interface UsageResponse {
+  dailyCostUsd: number;
+  monthlyCostUsd: number;
   date: string;
-  totalTokens: number;
-  totalCostUsd: number;
-}
-
-export interface DailyUsageResponse {
-  usage: DailyUsage[];
+  month: string;
 }
 
 export interface SecurityLogEntry {
