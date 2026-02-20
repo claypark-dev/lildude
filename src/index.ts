@@ -31,6 +31,11 @@ import {
   runStartupResume,
   updateLastActiveTimestamp,
 } from './orchestrator/startup.js';
+import {
+  isOllamaManagedByUs,
+  stopOllamaProcess,
+} from './providers/ollama-lifecycle.js';
+import { ConfigSchema } from './config/schema.js';
 
 export const VERSION = '0.1.0';
 
@@ -73,6 +78,57 @@ export interface StartOptions {
 export function isOnboarded(): boolean {
   const configPath = join(homeDir(), 'config.json');
   return existsSync(configPath);
+}
+
+/** Minimal context returned from onboarding mode (no providers, channels, or agent loop). */
+export interface OnboardingContext {
+  gateway: GatewayServer;
+  dbManager: DatabaseManager;
+  shutdownHandler: ShutdownHandler;
+}
+
+/**
+ * Start the app in onboarding mode (no config.json yet).
+ * Boots a minimal gateway + web panel so the user can complete setup via browser.
+ * No providers, channels, or agent loop are initialized.
+ *
+ * @returns An OnboardingContext with gateway, database, and shutdown handler.
+ */
+export async function startOnboardingMode(): Promise<OnboardingContext> {
+  log.info('Starting in onboarding mode — no configuration found');
+
+  // Use Zod defaults for a minimal config (all providers/channels disabled)
+  const config = ConfigSchema.parse({});
+
+  // Initialize database
+  const dbPath = join(homeDir(), 'lil-dude.db');
+  const dbManager = createDatabase(dbPath);
+  dbManager.runMigrations();
+  log.info({ dbPath }, 'Database initialized for onboarding');
+
+  // Create gateway with default config (serves web panel + onboarding API)
+  const gateway = createGatewayServer(dbManager, config);
+  await gateway.start(config.gateway.httpPort, config.gateway.host);
+  log.info(
+    { port: config.gateway.httpPort, host: config.gateway.host },
+    'Onboarding gateway started',
+  );
+
+  // Register shutdown handlers
+  const shutdownHandler = createShutdownHandler();
+  shutdownHandler.register('gateway', async () => {
+    await gateway.stop();
+  });
+  shutdownHandler.register('database', () => {
+    dbManager.close();
+  });
+
+  console.log('');
+  console.log('  Lil Dude — Onboarding Mode');
+  console.log(`  Open http://${config.gateway.host}:${config.gateway.httpPort} to set up your assistant.`);
+  console.log('');
+
+  return { gateway, dbManager, shutdownHandler };
 }
 
 /**
@@ -256,6 +312,13 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
     shutdownHandler.register('database', () => {
       dbManager.close();
     });
+
+    // Stop Ollama on shutdown if we manage its lifecycle
+    if (config.providers.ollama?.enabled && isOllamaManagedByUs()) {
+      shutdownHandler.register('ollama', async () => {
+        await stopOllamaProcess();
+      });
+    }
   }
 
   // Step 12: Log startup banner

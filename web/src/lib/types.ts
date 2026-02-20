@@ -138,4 +138,68 @@ export type WsIncomingMessage =
   | { type: 'message'; text: string; role: 'assistant' }
   | { type: 'stream_chunk'; text: string }
   | { type: 'stream_end' }
-  | { type: 'task_update'; task: Task };
+  | { type: 'task_update'; task: Task }
+  | { type: 'ollama_pull_progress'; model: string; status: string; completed: number; total: number };
+
+// ── Onboarding Types ───────────────────────────────────────────────
+
+/** Hardware feature flags */
+export interface HardwareFeatures {
+  browserAutomation: boolean;
+  localModels: boolean;
+  voice: boolean;
+}
+
+/** Hardware profile returned by onboarding status */
+export interface HardwareProfile {
+  os: string;
+  arch: string;
+  ramGb: number;
+  cpuCores: number;
+  diskFreeGb: number;
+  hasGpu: boolean;
+  features: HardwareFeatures;
+}
+
+/** Onboarding status response */
+export interface OnboardingStatus {
+  onboarded: boolean;
+  hardware: HardwareProfile;
+}
+
+/** Provider key verification response */
+export interface VerifyKeyResponse {
+  provider: string;
+  valid: boolean;
+  error?: string;
+}
+
+// ── Ollama Types ───────────────────────────────────────────────────
+
+/** Ollama connection status */
+export interface OllamaStatus {
+  running: boolean;
+  version?: string;
+}
+
+/** Individual Ollama model info */
+export interface OllamaModelInfo {
+  name: string;
+  size: number;
+  digest: string;
+  modifiedAt: string;
+}
+
+/** Response from the Ollama models endpoint */
+export interface OllamaModelsResponse {
+  models: OllamaModelInfo[];
+}
+
+// ── Voice Types ────────────────────────────────────────────────────
+
+/** Voice synthesis status */
+export interface VoiceStatus {
+  enabled: boolean;
+  backend: string;
+  hasApiKey: boolean;
+}

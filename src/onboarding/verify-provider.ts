@@ -10,7 +10,7 @@ import { createModuleLogger } from '../utils/logger.js';
 const log = createModuleLogger('onboarding');
 
 /** Supported AI provider names for onboarding. */
-export type OnboardingProvider = 'anthropic' | 'openai' | 'deepseek';
+export type OnboardingProvider = 'anthropic' | 'openai' | 'deepseek' | 'gemini';
 
 /** Result of an API key verification attempt. */
 export interface VerifyResult {
@@ -124,6 +124,34 @@ async function verifyDeepSeekKey(
 }
 
 /**
+ * Verify a Gemini API key by making a minimal models list call.
+ *
+ * @param apiKey - The Gemini API key to verify
+ * @returns A VerifyResult indicating whether the key is valid
+ */
+async function verifyGeminiKey(apiKey: string): Promise<VerifyResult> {
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      { method: 'GET' },
+    );
+
+    if (response.ok) {
+      return { provider: 'gemini', valid: true };
+    }
+
+    if (response.status === 400 || response.status === 403) {
+      return { provider: 'gemini', valid: false, error: 'Invalid API key' };
+    }
+
+    return { provider: 'gemini', valid: false, error: `HTTP ${response.status}` };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { provider: 'gemini', valid: false, error: `Connection failed: ${message}` };
+  }
+}
+
+/**
  * Verify an API key for a given provider.
  * Makes a lightweight test call to validate the key works.
  *
@@ -145,6 +173,8 @@ export async function verifyApiKey(
       return verifyOpenAIKey(apiKey);
     case 'deepseek':
       return verifyDeepSeekKey(apiKey);
+    case 'gemini':
+      return verifyGeminiKey(apiKey);
     default: {
       const exhaustiveCheck: never = provider;
       throw new ProviderError(

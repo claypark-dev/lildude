@@ -29,6 +29,9 @@ import { registerApprovalRoutes } from './api/approvals.js';
 import { registerUsageRoutes } from './api/usage.js';
 import { registerBriefingRoutes } from './api/briefing.js';
 import { registerRoutingHistoryRoutes } from './api/routing-history.js';
+import { registerOnboardingRoutes } from './api/onboarding.js';
+import { registerOllamaRoutes } from './api/ollama.js';
+import { registerVoiceRoutes } from './api/voice.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const log = gatewayLogger;
@@ -121,6 +124,9 @@ export function createGatewayServer(
   registerUsageRoutes(app, db);
   registerBriefingRoutes(app, db);
   registerRoutingHistoryRoutes(app, db);
+  registerOnboardingRoutes(app);
+  registerOllamaRoutes(app, wsManager);
+  registerVoiceRoutes(app, config);
 
   return {
     get app(): FastifyInstance {

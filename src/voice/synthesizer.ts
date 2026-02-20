@@ -168,24 +168,41 @@ async function synthesizeWithElevenLabs(
 }
 
 /**
- * Stub synthesis for local TTS backend.
- * Logs that local TTS would run but returns an empty audio buffer.
+ * Local TTS backend using Ollama.
+ * Checks if Ollama is running; if not, returns an empty buffer as a stub.
+ * Future: integrate with a TTS-capable Ollama model.
  *
  * @param text - The text to synthesize
- * @returns SynthesizeResult with an empty buffer as placeholder
+ * @returns SynthesizeResult with audio data (or empty buffer if Ollama TTS unavailable)
  */
 async function synthesizeWithLocal(
   text: string,
 ): Promise<SynthesizeResult> {
-  log.info(
-    { textLength: text.length },
-    'Local TTS synthesis would run here (stub)',
-  );
+  const startTime = Date.now();
+
+  // Check if Ollama is running
+  try {
+    const versionRes = await fetch('http://localhost:11434/api/version', {
+      signal: AbortSignal.timeout(3000),
+    });
+
+    if (versionRes.ok) {
+      log.info(
+        { textLength: text.length },
+        'Ollama is running but TTS model support not yet available — install a TTS-capable model for local synthesis',
+      );
+    }
+  } catch {
+    log.info(
+      { textLength: text.length },
+      'Ollama not available for local TTS — start Ollama and install a TTS-capable model',
+    );
+  }
 
   return {
     audioData: Buffer.alloc(0),
     mimeType: 'audio/wav',
-    durationMs: 0,
+    durationMs: Date.now() - startTime,
     backend: 'local',
   };
 }

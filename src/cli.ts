@@ -10,7 +10,7 @@ import { Command } from 'commander';
 import { join } from 'node:path';
 import { runDoctor } from './cli/doctor.js';
 import { runOnboardingWizard } from './onboarding/wizard.js';
-import { startApp, isOnboarded } from './index.js';
+import { startApp, startOnboardingMode, isOnboarded } from './index.js';
 import { loadConfig, homeDir } from './config/loader.js';
 import { createDatabase } from './persistence/db.js';
 import { installSkill, listSkills, uninstallSkill, searchSkills } from './skills/hub.js';
@@ -36,10 +36,17 @@ program
   .description('Start the Lil Dude agent')
   .action(async () => {
     if (!isOnboarded()) {
-      console.error(
-        'No configuration found. Please run `lil-dude onboard` first to set up your assistant.',
-      );
-      process.exit(1);
+      // No config found — start in onboarding mode with web wizard
+      console.log('No configuration found — starting in onboarding mode.');
+      console.log('Open the web panel to set up your assistant.\n');
+      try {
+        await startOnboardingMode();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Failed to start onboarding mode: ${message}`);
+        process.exit(1);
+      }
+      return;
     }
 
     try {

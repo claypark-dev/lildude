@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket.ts';
 import { ChatMessage } from '../components/ChatMessage.tsx';
+import { useVoiceStatus } from '../hooks/useVoiceStatus.ts';
 import type { ChatMessage as ChatMessageType } from '../lib/types.ts';
 
 let messageIdCounter = 0;
@@ -13,6 +14,7 @@ function nextMessageId(): string {
 /** Chat page with WebSocket-based messaging and streaming responses */
 export function Chat() {
   const { connected, lastMessage, send } = useWebSocket();
+  const { enabled: voiceEnabled } = useVoiceStatus();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [inputText, setInputText] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -125,7 +127,7 @@ export function Chat() {
           </div>
         )}
         {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
+          <ChatMessage key={msg.id} message={msg} voiceEnabled={voiceEnabled} />
         ))}
         {streaming && (
           <div className="flex justify-start mb-3">
