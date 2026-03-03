@@ -17,6 +17,7 @@ type PlayState = 'idle' | 'loading' | 'playing';
 export function ChatMessage({ message, voiceEnabled = false, taskId }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const [playState, setPlayState] = useState<PlayState>('idle');
+  const [speechError, setSpeechError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
@@ -39,6 +40,7 @@ export function ChatMessage({ message, voiceEnabled = false, taskId }: ChatMessa
     }
 
     setPlayState('loading');
+    setSpeechError(false);
 
     try {
       const blob = await synthesizeSpeech(message.text);
@@ -60,6 +62,7 @@ export function ChatMessage({ message, voiceEnabled = false, taskId }: ChatMessa
       setPlayState('playing');
     } catch {
       setPlayState('idle');
+      setSpeechError(true);
     }
   }
 
@@ -98,7 +101,10 @@ export function ChatMessage({ message, voiceEnabled = false, taskId }: ChatMessa
                   <span className="inline-block w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
                 )}
                 {playState === 'playing' && '\u23F9'}
-                {playState === 'idle' && '\uD83D\uDD0A'}
+                {playState === 'idle' && !speechError && '\uD83D\uDD0A'}
+                {playState === 'idle' && speechError && (
+                  <span title="Speech synthesis failed">!</span>
+                )}
               </button>
             )}
           </span>

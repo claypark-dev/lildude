@@ -19,6 +19,7 @@ export function LocalModelsSettings() {
   const [ollamaModels, setOllamaModels] = useState<OllamaModelInfo[]>([]);
   const [checking, setChecking] = useState(true);
   const [pullingModel, setPullingModel] = useState<string | null>(null);
+  const [pullError, setPullError] = useState<string | null>(null);
 
   useEffect(() => {
     checkOllama();
@@ -44,6 +45,7 @@ export function LocalModelsSettings() {
   /** Pull a model from the Ollama registry */
   async function handlePullModel(model: ModelEntry) {
     setPullingModel(model.ollamaTag);
+    setPullError(null);
     try {
       await pullOllamaModel(model.ollamaTag);
       // Poll for completion
@@ -59,7 +61,7 @@ export function LocalModelsSettings() {
             setPullingModel(null);
           }
         } catch {
-          // keep polling
+          // keep polling — transient errors are expected during a pull
         }
       }, 5000);
 
@@ -69,6 +71,7 @@ export function LocalModelsSettings() {
       }, 600_000);
     } catch {
       setPullingModel(null);
+      setPullError(`Failed to pull ${model.ollamaTag}. Check that Ollama is running.`);
     }
   }
 
@@ -154,6 +157,10 @@ export function LocalModelsSettings() {
             <p className="text-sm text-[#a0a0a0]">
               No models installed. Install one below to enable local inference.
             </p>
+          )}
+
+          {pullError && (
+            <p className="text-red-400 text-sm">{pullError}</p>
           )}
 
           {/* Available models to install */}

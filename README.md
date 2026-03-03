@@ -15,10 +15,11 @@
 
 <p align="center">
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-blue?style=for-the-badge" alt="Quick Start"/></a>
+  <a href="https://github.com/claypark-dev/lildude/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/claypark-dev/lildude/ci.yml?style=for-the-badge&label=CI" alt="CI"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-1,569_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-1,898_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -161,13 +162,25 @@ Discord, Telegram, iMessage, Slack, WhatsApp, Signal, WebChat, CLI. Talk to your
 
 Typical cost with cloud providers: ~$0.25/day (~$7.50/month). With Ollama: $0/month.
 
+### Email & Calendar (OAuth2)
+
+Read and summarize emails, send messages, manage calendar events — all via Gmail/Google Calendar or Microsoft Graph APIs. OAuth2 with PKCE keeps credentials secure; AES-256-GCM encrypted token storage.
+
+### Wave Hub & Plugins
+
+Browse, install, rate, and manage community waves from a curated registry. Extend Lil Dude with custom LLM providers, messaging channels, and memory backends via the plugin architecture. Connect external MCP servers as additional tool providers.
+
+### Self-Improvement Loop
+
+Thumbs up/down feedback, failure pattern analysis, wave effectiveness tracking, and a daily learning journal. The agent gets better with every interaction — no extra LLM cost.
+
 ### Voice I/O
 
 Transcribe audio with Groq Whisper, generate speech with ElevenLabs TTS. Works as an augmentation layer on any channel.
 
 ### Daily Briefings & Cron
 
-Scheduled tasks and morning briefings delivered to your preferred channel. The briefing gets smarter over time as Lil Dude learns your routines.
+Scheduled tasks and morning briefings (email summary, calendar, weather, cost overview, learning insights) delivered to your preferred channel. Gets smarter over time as Lil Dude learns your routines.
 
 ---
 
@@ -196,7 +209,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 1,569 tests |
+| `npm test` | Run 1,898 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -205,21 +218,23 @@ cd lildude && npm install
 
 ```
 src/
-  orchestrator/     # Agent loop, task pool, tool guard, quality rater
-  waves/            # Wave loader, executor, safety tiers, hub
+  orchestrator/     # Agent loop, task pool, tool guard, quality rater, learning journal
+  waves/            # Wave loader, executor, safety tiers, hub, shorebreak, request classifier
   security/         # Permission engine, command parser, injection detection
-  providers/        # LLM adapters (Anthropic, OpenAI, Gemini, DeepSeek, Ollama)
-  channels/         # 8 channel adapters
+  providers/        # LLM adapters (Anthropic, OpenAI, Gemini, DeepSeek, Ollama) + plugins
+  channels/         # 8 channel adapters + plugin discovery
   cost/             # Pricing, budget enforcement, token counting
-  persistence/      # SQLite DAL with migrations
+  persistence/      # SQLite DAL with 7 migrations
   context/          # Knowledge management, summarization
+  memory/           # Hybrid search (vector + BM25), embeddings, temporal decay, MMR
+  integrations/     # OAuth2, Gmail, Google Calendar, MCP client
   tools/            # Tool executor with input validation
   voice/            # Transcription, synthesis
-  gateway/          # Fastify HTTP + WebSocket
+  gateway/          # Fastify HTTP + WebSocket + REST APIs
   types/            # All canonical interfaces
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
-tests/              # 1,569 tests across 78 files
+tests/              # 1,898 tests across 102 files
 ```
 
 ### Architecture Principles
