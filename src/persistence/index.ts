@@ -15,3 +15,5 @@ export { createCronJob, getCronJob, getEnabledCronJobs, updateCronJobLastRun, to
 export { appendSecurityLog, getRecentSecurityLogs, getSecurityLogsByAction, getSecurityLogsByAllowed, countSecurityLogs } from './security-log.js';
 export { createApproval, getApproval, getPendingApprovals, approveRequest, denyRequest, expireOldApprovals, getApprovalsByTask } from './approvals.js';
 export { createContact, getContact, getContactByPhone, getContactByEmail, getContactByChannelId, updateContact, deleteContact, listContacts, getContactsByTrustLevel, getFavoriteContacts, searchContacts, resolveContact, touchContact, countContacts } from './contacts.js';
+export { logExternalEvent, getExternalAuditByContact, getExternalAuditByType, countExternalEvents } from './external-audit.js';
+export type { ExternalAuditEventType, ExternalAuditEntry } from './external-audit.js';
