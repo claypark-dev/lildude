@@ -7,7 +7,10 @@ import { Tasks } from './pages/Tasks.tsx';
 import { Settings } from './pages/Settings.tsx';
 import { Briefing } from './pages/Briefing.tsx';
 import { ShorebreakApprovals } from './pages/ShorebreakApprovals.tsx';
-import { WaveHub } from './pages/WaveHub.tsx';
+import { WavesHub } from './pages/WavesHub.tsx';
+import { WavesHubHome } from './pages/waves/WavesHubHome.tsx';
+import { WavesCategoryPage } from './pages/waves/WavesCategoryPage.tsx';
+import { InstalledWaves } from './pages/waves/InstalledWaves.tsx';
 import { PartyWaves } from './pages/PartyWaves.tsx';
 import { Onboarding } from './pages/Onboarding.tsx';
 
@@ -27,7 +30,11 @@ export function App() {
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/briefing" element={<Briefing />} />
             <Route path="/shorebreak" element={<ShorebreakApprovals />} />
-            <Route path="/hub" element={<WaveHub />} />
+            <Route path="/hub" element={<WavesHub />}>
+              <Route index element={<WavesHubHome />} />
+              <Route path="category/:category" element={<WavesCategoryPage />} />
+              <Route path="installed" element={<InstalledWaves />} />
+            </Route>
             <Route path="/party-waves" element={<PartyWaves />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
