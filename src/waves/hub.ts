@@ -22,6 +22,7 @@ import { clearRegistry } from './registry.js';
 import { appendSecurityLog } from '../persistence/security-log.js';
 import { homeDir } from '../config/loader.js';
 import { createModuleLogger } from '../utils/logger.js';
+import { incrementInstallCount } from '../persistence/wave-install-counts.js';
 import {
   parseGitHubSource,
   checkWavePermissions,
@@ -108,6 +109,14 @@ export async function installWave(
     await cp(tempPath, waveDestDir, { recursive: true });
 
     upsertInstalledWave(db, manifest);
+
+    // Track install count for hub analytics
+    try {
+      incrementInstallCount(db, manifest.name);
+    } catch {
+      // Non-critical — don't fail install if count tracking fails
+      hubLogger.warn({ name: manifest.name }, 'Failed to increment install count');
+    }
 
     hubLogger.info(
       { name: manifest.name, version: manifest.version, dest: waveDestDir },

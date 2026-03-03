@@ -41,6 +41,8 @@ import { registerFeedbackRoutes } from './api/feedback.js';
 import { registerHubRoutes } from './api/hub.js';
 import { registerContactRoutes } from './api/contacts.js';
 import { registerActivityRoutes } from './api/activity.js';
+import { registerPartyWaveRoutes } from './api/party-waves.js';
+import { registerHubWavesRoutes } from './api/hub-waves.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const log = gatewayLogger;
@@ -159,6 +161,8 @@ export function createGatewayServer(
   registerHubRoutes(app, db);
   registerContactRoutes(app, db);
   registerActivityRoutes(app, db);
+  registerPartyWaveRoutes(app, db);
+  registerHubWavesRoutes(app, db);
   const oauthBaseUrl = `http://${config.gateway.host}:${config.gateway.httpPort}`;
   registerOAuthRoutes(app, db, oauthBaseUrl);
 
