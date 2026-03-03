@@ -1,0 +1,29 @@
+{
+  "name": "document-request",
+  "version": "1.0.0",
+  "description": "Request a document from the owner with pending approval",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["send me", "document", "file", "share the", "can I get"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "request_document",
+      "description": "Submit a document request for owner approval",
+      "parameters": {
+        "documentName": "string",
+        "reason": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "create",
+  "waveCategory": "party"
+}

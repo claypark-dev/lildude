@@ -1,0 +1,28 @@
+{
+  "name": "faq-responder",
+  "version": "1.0.0",
+  "description": "Answer common questions from owner's configured FAQ entries",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["question about", "faq", "who is", "how do I", "what is"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "search_faq",
+      "description": "Search FAQ entries for matching answers",
+      "parameters": {
+        "query": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe",
+  "waveCategory": "party"
+}

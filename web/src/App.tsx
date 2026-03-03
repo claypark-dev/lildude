@@ -8,6 +8,7 @@ import { Settings } from './pages/Settings.tsx';
 import { Briefing } from './pages/Briefing.tsx';
 import { ShorebreakApprovals } from './pages/ShorebreakApprovals.tsx';
 import { WaveHub } from './pages/WaveHub.tsx';
+import { PartyWaves } from './pages/PartyWaves.tsx';
 import { Onboarding } from './pages/Onboarding.tsx';
 
 /** Root application component with routing */
@@ -27,6 +28,7 @@ export function App() {
             <Route path="/briefing" element={<Briefing />} />
             <Route path="/shorebreak" element={<ShorebreakApprovals />} />
             <Route path="/hub" element={<WaveHub />} />
+            <Route path="/party-waves" element={<PartyWaves />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

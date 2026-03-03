@@ -1,0 +1,30 @@
+{
+  "name": "event-rsvp",
+  "version": "1.0.0",
+  "description": "External users RSVP to owner's shared events",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["rsvp", "attend", "event", "invitation", "going to"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "submit_rsvp",
+      "description": "Submit an RSVP for an event",
+      "parameters": {
+        "eventName": "string",
+        "rsvpStatus": "string",
+        "message": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "create",
+  "waveCategory": "party"
+}

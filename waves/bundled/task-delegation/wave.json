@@ -1,0 +1,30 @@
+{
+  "name": "task-delegation",
+  "version": "1.0.0",
+  "description": "Trusted contacts submit tasks for owner review and action",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["task for", "delegate", "todo", "action item", "assign"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "create_task",
+      "description": "Create a delegated task for owner review",
+      "parameters": {
+        "title": "string",
+        "description": "string",
+        "priority": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "create",
+  "waveCategory": "party"
+}

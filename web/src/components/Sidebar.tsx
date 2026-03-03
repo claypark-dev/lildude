@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Tasks', path: '/tasks', icon: '\u2611' },
   { label: 'Approvals', path: '/shorebreak', icon: '\u2714' },
   { label: 'Wave Hub', path: '/hub', icon: '\u2B50' },
+  { label: 'Party Waves', path: '/party-waves', icon: '\uD83C\uDF0A' },
   { label: 'Settings', path: '/settings', icon: '\u2699' },
 ];
 
