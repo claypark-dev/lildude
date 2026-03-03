@@ -28,7 +28,13 @@ const keyFeatures: KeyFeature[] = [
   { icon: '🛡️', title: 'Wave Safety Tiers', description: 'observe/create/modify/destroy/execute classification' },
   { icon: '🤖', title: 'Model-Aware', description: 'Small models auto-restricted to safe operations' },
   { icon: '✋', title: 'Approval Queue', description: 'Destructive actions always require confirmation' },
-  { icon: '🔍', title: 'Injection Detection', description: 'Content scanned before processing' },
+  { icon: '🔑', title: 'Bearer Token Auth', description: 'Every API endpoint authenticated. API key generate/revoke/list.' },
+  { icon: '⏱️', title: 'Rate Limiting', description: 'Token-bucket at 100 req/min. WebSocket auth with 5s timeout.' },
+  { icon: '🔍', title: '30+ Threat Patterns', description: 'Homoglyphs, invisible chars, HTML injection, jailbreaks blocked' },
+  { icon: '🚫', title: 'Output Filtering', description: 'LLM responses scanned for leaked keys, schemas, and config paths' },
+  { icon: '🪤', title: 'Canary Tokens', description: 'Detect context leakage with embedded canary markers' },
+  { icon: '🏷️', title: 'Nonce Spotlighting', description: 'Tagged delimiters prevent delimiter-matching attacks' },
+  { icon: '🧠', title: 'Intent Classifier', description: 'Deterministic stub for dual-LLM architecture' },
   { icon: '📈', title: 'Auto-Escalation', description: 'Failed tool calls escalate to better models' },
 ]
 
@@ -43,7 +49,7 @@ export const Security: FC = () => {
       <div className="max-w-4xl mx-auto">
         <SectionHeading
           title="Gnarly Security"
-          subtitle="Five levels. Five safety tiers. Every model stays safe."
+          subtitle="Five levels. Five safety tiers. Gateway hardened. Prompt injection blocked."
           id="security"
         />
         <div

@@ -54,7 +54,7 @@ export const Stats: FC = () => {
             <StatItem value={8} label="Channels" isInView={isInView} />
             <StatItem value={5} label="Safety Tiers" isInView={isInView} />
             <StatItem value={5} label="Security Levels" isInView={isInView} />
-            <StatItem value={1569} label="Tests" isInView={isInView} formatted />
+            <StatItem value={2027} label="Tests" isInView={isInView} formatted />
           </div>
         </div>
       </div>

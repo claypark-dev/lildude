@@ -36,8 +36,18 @@ export const features: Feature[] = [
     icon: 'MessageSquare',
   },
   {
+    title: 'Gateway Security',
+    description: 'Bearer token auth on every API endpoint. Token-bucket rate limiting. WebSocket auth with 5-second timeout. Message size limits. Full API key lifecycle management.',
+    icon: 'KeyRound',
+  },
+  {
+    title: 'Injection Hardening',
+    description: '30+ threat patterns blocked: Unicode homoglyphs, invisible chars, HTML injection, jailbreaks, and indirect injection. Output filtering catches leaked secrets. Canary tokens detect context leakage.',
+    icon: 'ShieldAlert',
+  },
+  {
     title: 'Security Sandbox',
-    description: '5-level permission system intersected with wave safety tiers and model capabilities. Commands are parsed, not string-matched. Prompt injection detected and blocked.',
+    description: '5-level permission system intersected with wave safety tiers and model capabilities. Commands are parsed, not string-matched. Nonce-tagged spotlighting prevents delimiter attacks.',
     icon: 'Lock',
   },
   {
