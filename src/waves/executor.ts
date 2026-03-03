@@ -23,6 +23,7 @@ import {
   assertCanAfford,
   buildFailureResult,
 } from './executor-helpers.js';
+import { executePartyWave } from './executor-party.js';
 
 const executorLogger = createModuleLogger('wave-executor');
 
@@ -45,6 +46,8 @@ export interface WaveExecutorDeps {
   enabledProviders: string[];
   /** OAuth access token getter — returns a valid token for a given provider, or null. */
   getAccessToken?: (provider: string) => Promise<string | null>;
+  /** External contact triggering the wave (set for party wave execution). */
+  externalContact?: import('../types/index.js').Contact;
 }
 
 /**
@@ -69,11 +72,17 @@ export async function executeWave(
 ): Promise<WaveExecutionResult> {
   const waveName = wave.manifest.name;
   const isDeterministic = wave.manifest.deterministic;
+  const isPartyWave = wave.manifest.waveCategory === 'party';
 
   executorLogger.info(
-    { waveName, isDeterministic },
+    { waveName, isDeterministic, isPartyWave },
     'Starting wave execution',
   );
+
+  // Route party waves through the restricted execution path
+  if (isPartyWave && deps.externalContact) {
+    return executePartyWave(wave, userMessage, deps);
+  }
 
   try {
     if (isDeterministic) {

@@ -108,3 +108,39 @@ function computeMatchScore(lowerMessage: string, matchingTriggers: string[]): nu
 
   return coverageRatio + countBonus;
 }
+
+/**
+ * Match a user message against only party wave triggers.
+ * Used when routing external user messages — only party-category waves
+ * should be considered for external contacts.
+ *
+ * @param userMessage - The raw user message to match against party wave triggers.
+ * @returns The best matching party wave and its score, or null if no match found.
+ */
+export function matchPartyWave(userMessage: string): WaveMatch | null {
+  const lowerMessage = userMessage.toLowerCase();
+  let bestMatch: WaveMatch | null = null;
+
+  for (const [, wave] of wavesMap) {
+    // Only consider party-category waves
+    if (wave.manifest.waveCategory !== 'party') {
+      continue;
+    }
+
+    const matchingTriggers = wave.manifest.triggers.filter(
+      (trigger) => lowerMessage.includes(trigger.toLowerCase()),
+    );
+
+    if (matchingTriggers.length === 0) {
+      continue;
+    }
+
+    const score = computeMatchScore(lowerMessage, matchingTriggers);
+
+    if (bestMatch === null || score > bestMatch.score) {
+      bestMatch = { wave, score };
+    }
+  }
+
+  return bestMatch;
+}

@@ -32,6 +32,7 @@ export const WaveManifestSchema = z.object({
   minTier: z.enum(['basic', 'standard', 'power']),
   entryPoint: z.string().min(1, 'Entry point is required'),
   safetyTier: z.enum(['observe', 'create', 'modify', 'destroy', 'execute']).optional(),
+  waveCategory: z.enum(['personal', 'party']).optional().default('personal'),
 });
 
 /** Result of manifest validation. */

@@ -26,5 +26,6 @@
   ],
   "minTier": "basic",
   "entryPoint": "index.js",
-  "safetyTier": "create"
+  "safetyTier": "create",
+  "waveCategory": "party"
 }

@@ -197,6 +197,7 @@ export interface WaveManifest {
   minTier: 'basic' | 'standard' | 'power';
   entryPoint: string;
   safetyTier?: WaveSafetyTier;
+  waveCategory?: WaveCategory;
 }
 
 export interface WavePlan {
@@ -215,6 +216,11 @@ export interface WaveStep {
 // === Wave Safety ===
 
 export type WaveSafetyTier = 'observe' | 'create' | 'modify' | 'destroy' | 'execute';
+
+// === Wave Categories ===
+
+/** Distinguishes personal waves (for owner) from party waves (for external users). */
+export type WaveCategory = 'personal' | 'party';
 
 // === User Profile ===
 

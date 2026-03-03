@@ -136,3 +136,97 @@ export function canChangeTrustLevel(
 
   return { allowed: true, reason: 'Trust level change permitted' };
 }
+
+/** Party wave default allowlist for unknown contacts (observe-only, safe waves). */
+const UNKNOWN_PARTY_WAVE_ALLOWLIST: ReadonlySet<string> = new Set([
+  'auto-responder',
+  'contact-share',
+  'faq-responder',
+]);
+
+/**
+ * Check if a contact can trigger a party wave.
+ * Party waves have relaxed rules compared to regular waves:
+ * - owner: always allowed
+ * - trusted: all party waves
+ * - known: observe-tier party waves only
+ * - unknown: only allowlisted observe-tier party waves (auto-responder, contact-share, faq-responder)
+ *
+ * @param contact - The contact attempting the action.
+ * @param waveName - The name of the party wave being triggered.
+ * @param safetyTier - The safety tier of the party wave.
+ * @returns A PermissionResult indicating whether the action is allowed.
+ */
+export function canTriggerPartyWave(
+  contact: Contact,
+  waveName: string,
+  safetyTier: WaveSafetyTier,
+): PermissionResult {
+  // Owner always has full access
+  if (contact.trustLevel === 'owner') {
+    return { allowed: true, reason: 'Owner has full access to party waves' };
+  }
+
+  // Trusted: all party waves allowed
+  if (contact.trustLevel === 'trusted') {
+    // Check per-contact allowlist if configured
+    if (contact.permittedWaves.length > 0 && !contact.permittedWaves.includes(waveName)) {
+      securityLogger.info(
+        { contactId: contact.id, waveName, permitted: contact.permittedWaves },
+        'Party wave not in contact permitted list',
+      );
+      return {
+        allowed: false,
+        reason: `Party wave "${waveName}" is not in this contact's permitted list`,
+      };
+    }
+    return { allowed: true, reason: 'Trusted contacts can use all party waves' };
+  }
+
+  // Known: observe-tier party waves only
+  if (contact.trustLevel === 'known') {
+    if (safetyTier !== 'observe') {
+      securityLogger.info(
+        { contactId: contact.id, safetyTier, waveName },
+        'Known contact blocked from non-observe party wave',
+      );
+      return {
+        allowed: false,
+        reason: `Known contacts can only use observe-tier party waves, not ${safetyTier}`,
+      };
+    }
+    // Check per-contact allowlist if configured
+    if (contact.permittedWaves.length > 0 && !contact.permittedWaves.includes(waveName)) {
+      return {
+        allowed: false,
+        reason: `Party wave "${waveName}" is not in this contact's permitted list`,
+      };
+    }
+    return { allowed: true, reason: 'Known contacts can use observe-tier party waves' };
+  }
+
+  // Unknown: only allowlisted observe-tier party waves
+  if (safetyTier !== 'observe') {
+    securityLogger.info(
+      { contactId: contact.id, safetyTier, waveName },
+      'Unknown contact blocked from non-observe party wave',
+    );
+    return {
+      allowed: false,
+      reason: 'Unknown contacts can only use observe-tier party waves',
+    };
+  }
+
+  if (!UNKNOWN_PARTY_WAVE_ALLOWLIST.has(waveName)) {
+    securityLogger.info(
+      { contactId: contact.id, waveName },
+      'Unknown contact blocked from non-allowlisted party wave',
+    );
+    return {
+      allowed: false,
+      reason: `Party wave "${waveName}" is not available to unknown contacts`,
+    };
+  }
+
+  return { allowed: true, reason: 'Unknown contact can use this allowlisted observe-tier party wave' };
+}

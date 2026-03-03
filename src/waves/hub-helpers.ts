@@ -8,7 +8,7 @@ import type BetterSqlite3 from 'better-sqlite3';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { nanoid } from 'nanoid';
-import type { WaveManifest } from '../types/index.js';
+import type { WaveManifest, WaveCategory } from '../types/index.js';
 import type { SecurityLevel } from '../security/permissions.js';
 import { SecurityError, PersistenceError } from '../errors.js';
 import { createModuleLogger } from '../utils/logger.js';
@@ -29,6 +29,19 @@ export interface WaveRegistryEntry {
   source: string;
   triggers: string[];
   version: string;
+  waveCategory?: WaveCategory;
+  /** Hub marketplace fields (all optional for backward compat with v1 registry). */
+  category?: string;
+  tags?: string[];
+  installCount?: number;
+  averageRating?: number;
+  ratingCount?: number;
+  featured?: boolean;
+  verified?: boolean;
+  safetyTier?: string;
+  deterministic?: boolean;
+  iconUrl?: string;
+  changelog?: string;
 }
 
 /** Source type for a listed wave. */
@@ -40,6 +53,7 @@ export interface ListedWave {
   version: string;
   source: ListedWaveSource;
   status: 'enabled' | 'disabled';
+  waveCategory: WaveCategory;
 }
 
 /**
@@ -174,11 +188,11 @@ export function checkWavePermissions(
  * In a real implementation, this would fetch from a remote URL.
  */
 const CURATED_WAVE_REGISTRY: readonly WaveRegistryEntry[] = [
-  { name: 'weather-checker', description: 'Check weather forecasts for any location', author: 'lil-dude-community', source: 'github:community/weather-checker', triggers: ['weather', 'forecast', 'temperature'], version: '1.2.0' },
-  { name: 'email-summarizer', description: 'Summarize unread emails from Gmail or Outlook', author: 'lil-dude-community', source: 'github:community/email-summarizer', triggers: ['email', 'inbox', 'unread', 'mail'], version: '0.9.0' },
-  { name: 'code-reviewer', description: 'Review code changes and provide feedback', author: 'lil-dude-community', source: 'github:community/code-reviewer', triggers: ['review', 'code review', 'PR', 'pull request'], version: '2.0.1' },
-  { name: 'note-taker', description: 'Take and organize notes from conversations', author: 'lil-dude-community', source: 'github:community/note-taker', triggers: ['note', 'notes', 'remember', 'save'], version: '1.0.0' },
-  { name: 'file-organizer', description: 'Organize files in directories by type and date', author: 'lil-dude-community', source: 'github:community/file-organizer', triggers: ['organize', 'files', 'cleanup', 'sort files'], version: '1.1.0' },
+  { name: 'weather-checker', description: 'Check weather forecasts for any location', author: 'lil-dude-community', source: 'github:community/weather-checker', triggers: ['weather', 'forecast', 'temperature'], version: '1.2.0', category: 'utilities', tags: ['weather', 'forecast'], waveCategory: 'personal', safetyTier: 'observe', deterministic: true, verified: true, installCount: 342, averageRating: 4.5, ratingCount: 28 },
+  { name: 'email-summarizer', description: 'Summarize unread emails from Gmail or Outlook', author: 'lil-dude-community', source: 'github:community/email-summarizer', triggers: ['email', 'inbox', 'unread', 'mail'], version: '0.9.0', category: 'communication', tags: ['email', 'inbox', 'summary'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 215, averageRating: 4.2, ratingCount: 18 },
+  { name: 'code-reviewer', description: 'Review code changes and provide feedback', author: 'lil-dude-community', source: 'github:community/code-reviewer', triggers: ['review', 'code review', 'PR', 'pull request'], version: '2.0.1', category: 'developer', tags: ['code', 'review', 'git'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 189, averageRating: 4.7, ratingCount: 42 },
+  { name: 'note-taker', description: 'Take and organize notes from conversations', author: 'lil-dude-community', source: 'github:community/note-taker', triggers: ['note', 'notes', 'remember', 'save'], version: '1.0.0', category: 'productivity', tags: ['notes', 'organize', 'save'], waveCategory: 'personal', safetyTier: 'create', deterministic: true, verified: false, installCount: 127, averageRating: 3.8, ratingCount: 12 },
+  { name: 'file-organizer', description: 'Organize files in directories by type and date', author: 'lil-dude-community', source: 'github:community/file-organizer', triggers: ['organize', 'files', 'cleanup', 'sort files'], version: '1.1.0', category: 'utilities', tags: ['files', 'organize', 'cleanup'], waveCategory: 'personal', safetyTier: 'modify', deterministic: true, verified: false, installCount: 96, averageRating: 4.0, ratingCount: 8 },
 ] as const;
 
 /**
@@ -200,6 +214,103 @@ export function searchCuratedWaveRegistry(query: string): WaveRegistryEntry[] {
 
     return nameMatch || descMatch || triggerMatch;
   });
+}
+
+/** Sort options for advanced registry search. */
+export type RegistrySortOption = 'popular' | 'recent' | 'rated' | 'name';
+
+/** Advanced search options for the registry. */
+export interface RegistrySearchOptions {
+  query?: string;
+  category?: string;
+  tags?: string[];
+  sort?: RegistrySortOption;
+  isPartyWave?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Advanced search through registry entries with filtering and sorting.
+ * Supports category, tag, party wave, and text query filters.
+ *
+ * @param waves - The full set of registry entries.
+ * @param options - Search/filter/sort options.
+ * @returns Filtered and sorted array of registry entries.
+ */
+export function searchRegistryAdvanced(
+  waves: WaveRegistryEntry[],
+  options: RegistrySearchOptions,
+): WaveRegistryEntry[] {
+  let filtered = [...waves];
+
+  // Text query filter
+  if (options.query) {
+    const lowerQuery = options.query.toLowerCase();
+    filtered = filtered.filter((entry) => {
+      const nameMatch = entry.name.toLowerCase().includes(lowerQuery);
+      const descMatch = entry.description.toLowerCase().includes(lowerQuery);
+      const triggerMatch = entry.triggers.some(
+        (trigger) => trigger.toLowerCase().includes(lowerQuery),
+      );
+      const tagMatch = entry.tags?.some(
+        (tag) => tag.toLowerCase().includes(lowerQuery),
+      ) ?? false;
+      return nameMatch || descMatch || triggerMatch || tagMatch;
+    });
+  }
+
+  // Category filter
+  if (options.category) {
+    const lowerCat = options.category.toLowerCase();
+    filtered = filtered.filter(
+      (entry) => entry.category?.toLowerCase() === lowerCat,
+    );
+  }
+
+  // Tags filter (any match)
+  if (options.tags && options.tags.length > 0) {
+    const lowerTags = options.tags.map((t) => t.toLowerCase());
+    filtered = filtered.filter(
+      (entry) => entry.tags?.some((t) => lowerTags.includes(t.toLowerCase())) ?? false,
+    );
+  }
+
+  // Party wave filter
+  if (options.isPartyWave !== undefined) {
+    if (options.isPartyWave) {
+      filtered = filtered.filter(
+        (entry) => entry.waveCategory === 'party',
+      );
+    } else {
+      filtered = filtered.filter(
+        (entry) => entry.waveCategory !== 'party',
+      );
+    }
+  }
+
+  // Sorting
+  const sort = options.sort ?? 'popular';
+  switch (sort) {
+    case 'popular':
+      filtered.sort((a, b) => (b.installCount ?? 0) - (a.installCount ?? 0));
+      break;
+    case 'rated':
+      filtered.sort((a, b) => (b.averageRating ?? 0) - (a.averageRating ?? 0));
+      break;
+    case 'name':
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case 'recent':
+      // Keep natural order (most recently added first)
+      filtered.reverse();
+      break;
+  }
+
+  // Pagination
+  const offset = options.offset ?? 0;
+  const limit = options.limit ?? 50;
+  return filtered.slice(offset, offset + limit);
 }
 
 /** Shape of a waves_registry DB row for internal use. */
@@ -245,10 +356,12 @@ export function scanWaveDirectory(dirPath: string, source: ListedWaveSource): Li
       const parsed = JSON.parse(rawJson) as Record<string, unknown>;
       const name = typeof parsed['name'] === 'string' ? parsed['name'] : entry;
       const version = typeof parsed['version'] === 'string' ? parsed['version'] : 'unknown';
+      const waveCategory: WaveCategory =
+        parsed['waveCategory'] === 'party' ? 'party' : 'personal';
 
-      waves.push({ name, version, source, status: 'enabled' });
+      waves.push({ name, version, source, status: 'enabled', waveCategory });
     } catch {
-      waves.push({ name: entry, version: 'unknown', source, status: 'disabled' });
+      waves.push({ name: entry, version: 'unknown', source, status: 'disabled', waveCategory: 'personal' });
     }
   }
 
