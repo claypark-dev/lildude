@@ -1,6 +1,6 @@
 /**
  * Main Fastify server setup for the Lil Dude gateway.
- * Registers CORS, static file serving, WebSocket, and REST API routes.
+ * Registers CORS, auth, rate limiting, static file serving, WebSocket, and REST API routes.
  * Provides start() and stop() lifecycle methods.
  *
  * See HLD Section 7 for gateway architecture.
@@ -16,6 +16,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { DatabaseManager } from '../persistence/db.js';
 import type { Config } from '../config/schema.js';
 import { gatewayLogger } from '../utils/logger.js';
+import { ensureDefaultApiKey } from '../persistence/api-keys.js';
+import { registerAuthMiddleware } from './middleware/auth.js';
+import { createRateLimiter, registerRateLimiterMiddleware } from './middleware/rate-limiter.js';
 import { createWSManager, type WSManager } from './ws.js';
 import { registerHealthRoutes } from './api/health.js';
 import { registerConfigRoutes } from './api/config.js';
@@ -80,7 +83,20 @@ export function createGatewayServer(
     forceCloseConnections: true,
   });
 
-  const wsManager = createWSManager();
+  // ── Generate default API key on first boot ─────────────────────────
+  const newApiKey = ensureDefaultApiKey(db);
+  if (newApiKey) {
+    log.info('==========================================================');
+    log.info('  Your API key (save this — it will not be shown again):');
+    log.info(`  ${newApiKey}`);
+    log.info('==========================================================');
+  }
+
+  // ── WebSocket manager with auth + message size limits ──────────────
+  const wsManager = createWSManager({
+    db,
+    maxMessageBytes: config.gateway.wsMaxMessageBytes,
+  });
 
   // ── Plugin registration ───────────────────────────────────────────
   // Fastify plugins are registered asynchronously and resolved when
@@ -90,6 +106,11 @@ export function createGatewayServer(
     origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
+
+  // ── Security middleware ─────────────────────────────────────────────
+  registerAuthMiddleware(app, db);
+  const rateLimiter = createRateLimiter({ maxPerMinute: config.gateway.rateLimitPerMinute });
+  registerRateLimiterMiddleware(app, rateLimiter);
 
   // Static file serving for the web panel
   // After tsup bundles, MODULE_DIR is dist/ (flat output), so go up one level.

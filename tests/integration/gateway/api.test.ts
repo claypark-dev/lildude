@@ -14,10 +14,15 @@ import { createCronJob } from '../../../src/persistence/cron-jobs.js';
 import { appendSecurityLog } from '../../../src/persistence/security-log.js';
 import { createApproval } from '../../../src/persistence/approvals.js';
 import { recordTokenUsage } from '../../../src/persistence/token-usage.js';
+import { storeApiKey } from '../../../src/persistence/api-keys.js';
 import { createGatewayServer, type GatewayServer } from '../../../src/gateway/server.js';
 import { ConfigSchema } from '../../../src/config/schema.js';
+import type { InjectOptions } from 'fastify';
 
 const MIGRATIONS_DIR = join(__dirname, '..', '..', '..', 'src', 'persistence', 'migrations');
+
+/** Known test API key — stored before gateway creation so auth middleware accepts it. */
+const TEST_API_KEY = 'ld_integration_test_key_000000000';
 
 function createTestDb(): DatabaseManager {
   const dbManager = createDatabase(':memory:', MIGRATIONS_DIR);
@@ -33,8 +38,22 @@ describe('Gateway REST API', () => {
   let dbManager: DatabaseManager;
   let gateway: GatewayServer;
 
+  /** Helper to inject requests with the test API key auth header. */
+  function authedInject(opts: InjectOptions) {
+    return gateway.app.inject({
+      ...opts,
+      headers: {
+        ...opts.headers,
+        authorization: `Bearer ${TEST_API_KEY}`,
+      },
+    });
+  }
+
   beforeEach(async () => {
     dbManager = createTestDb();
+    // Pre-insert a known API key before creating the gateway
+    // (gateway also creates a 'default' key, but we use our own for test clarity)
+    storeApiKey(dbManager.db, TEST_API_KEY, 'integration-test');
     const config = createTestConfig();
     gateway = createGatewayServer(dbManager, config);
     // Wait for setup to complete by calling ready
@@ -95,7 +114,7 @@ describe('Gateway REST API', () => {
 
   describe('GET /api/v1/budget', () => {
     it('returns spend data with defaults', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/budget',
       });
@@ -125,7 +144,7 @@ describe('Gateway REST API', () => {
         costUsd: 5.0,
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/budget',
       });
@@ -140,7 +159,7 @@ describe('Gateway REST API', () => {
 
   describe('GET /api/v1/tasks', () => {
     it('returns empty task list initially', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/tasks',
       });
@@ -157,7 +176,7 @@ describe('Gateway REST API', () => {
       createTask(dbManager.db, { type: 'chat', description: 'task 1' });
       createTask(dbManager.db, { type: 'automation', description: 'task 2' });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/tasks',
       });
@@ -172,7 +191,7 @@ describe('Gateway REST API', () => {
         createTask(dbManager.db, { type: 'chat', description: `task ${i}` });
       }
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/tasks?limit=2',
       });
@@ -186,7 +205,7 @@ describe('Gateway REST API', () => {
     it('returns a specific task', async () => {
       const task = createTask(dbManager.db, { type: 'chat', description: 'specific task' });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: `/api/v1/tasks/${task.id}`,
       });
@@ -199,7 +218,7 @@ describe('Gateway REST API', () => {
     });
 
     it('returns 404 for missing task', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/tasks/nonexistent-id',
       });
@@ -213,7 +232,7 @@ describe('Gateway REST API', () => {
       const task = createTask(dbManager.db, { type: 'chat' });
       updateTaskStatus(dbManager.db, task.id, 'running');
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: `/api/v1/tasks/${task.id}/kill`,
       });
@@ -228,7 +247,7 @@ describe('Gateway REST API', () => {
       const task = createTask(dbManager.db, { type: 'chat' });
       updateTaskStatus(dbManager.db, task.id, 'completed');
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: `/api/v1/tasks/${task.id}/kill`,
       });
@@ -237,7 +256,7 @@ describe('Gateway REST API', () => {
     });
 
     it('returns 404 for missing task', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: '/api/v1/tasks/nonexistent-id/kill',
       });
@@ -250,7 +269,7 @@ describe('Gateway REST API', () => {
 
   describe('Config endpoints', () => {
     it('GET /api/v1/config returns empty config initially', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/config',
       });
@@ -263,7 +282,7 @@ describe('Gateway REST API', () => {
     });
 
     it('PUT /api/v1/config upserts a key-value pair', async () => {
-      const putResponse = await gateway.app.inject({
+      const putResponse = await authedInject({
         method: 'PUT',
         url: '/api/v1/config',
         payload: { key: 'test.key', value: 'test-value' },
@@ -271,7 +290,7 @@ describe('Gateway REST API', () => {
 
       expect(putResponse.statusCode).toBe(200);
 
-      const getResponse = await gateway.app.inject({
+      const getResponse = await authedInject({
         method: 'GET',
         url: '/api/v1/config',
       });
@@ -283,7 +302,7 @@ describe('Gateway REST API', () => {
     });
 
     it('PUT /api/v1/config rejects invalid body', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'PUT',
         url: '/api/v1/config',
         payload: { key: '', value: 'test' },
@@ -302,7 +321,7 @@ describe('Gateway REST API', () => {
         channelId: 'default',
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/conversations?channelType=webchat&channelId=default',
       });
@@ -319,7 +338,7 @@ describe('Gateway REST API', () => {
         channelId: 'default',
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: `/api/v1/conversations/${conv.id}`,
       });
@@ -331,7 +350,7 @@ describe('Gateway REST API', () => {
     });
 
     it('GET /api/v1/conversations/:id returns 404 for missing', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/conversations/nonexistent',
       });
@@ -344,7 +363,7 @@ describe('Gateway REST API', () => {
 
   describe('Knowledge endpoints', () => {
     it('POST /api/v1/knowledge creates an entry', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: '/api/v1/knowledge',
         payload: { category: 'preferences', key: 'color', value: 'blue' },
@@ -362,7 +381,7 @@ describe('Gateway REST API', () => {
       upsertKnowledge(dbManager.db, { category: 'prefs', key: 'k1', value: 'v1' });
       upsertKnowledge(dbManager.db, { category: 'prefs', key: 'k2', value: 'v2' });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/knowledge?category=prefs',
       });
@@ -376,7 +395,7 @@ describe('Gateway REST API', () => {
     it('DELETE /api/v1/knowledge removes an entry', async () => {
       const entry = upsertKnowledge(dbManager.db, { category: 'temp', key: 'k', value: 'v' });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'DELETE',
         url: '/api/v1/knowledge',
         payload: { id: entry.id },
@@ -391,7 +410,7 @@ describe('Gateway REST API', () => {
 
   describe('Cron endpoints', () => {
     it('POST /api/v1/cron creates a cron job', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: '/api/v1/cron',
         payload: { schedule: '0 8 * * *', taskDescription: 'Morning briefing' },
@@ -407,7 +426,7 @@ describe('Gateway REST API', () => {
     it('GET /api/v1/cron returns enabled cron jobs', async () => {
       createCronJob(dbManager.db, { schedule: '* * * * *', taskDescription: 'test job' });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/cron',
       });
@@ -421,7 +440,7 @@ describe('Gateway REST API', () => {
     it('DELETE /api/v1/cron removes a job', async () => {
       const job = createCronJob(dbManager.db, { schedule: '* * * * *', taskDescription: 'to delete' });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'DELETE',
         url: '/api/v1/cron',
         payload: { id: job.id },
@@ -444,7 +463,7 @@ describe('Gateway REST API', () => {
         reason: 'Whitelisted command',
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/security-log',
       });
@@ -452,8 +471,11 @@ describe('Gateway REST API', () => {
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
-      expect(body.logs).toHaveLength(1);
-      expect(body.logs[0].actionType).toBe('shell_command');
+      // At least 1 entry (the one we appended — auth middleware may also log)
+      expect(body.logs.length).toBeGreaterThanOrEqual(1);
+      const shellLog = body.logs.find((l: { actionType: string }) => l.actionType === 'shell_command');
+      expect(shellLog).toBeDefined();
+      expect(shellLog.actionType).toBe('shell_command');
     });
   });
 
@@ -471,7 +493,7 @@ describe('Gateway REST API', () => {
         expiresAt: new Date(Date.now() + 60_000),
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/approvals',
       });
@@ -494,7 +516,7 @@ describe('Gateway REST API', () => {
         expiresAt: new Date(Date.now() + 60_000),
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: `/api/v1/approvals/${approval.id}/respond`,
         payload: { decision: 'approved' },
@@ -517,7 +539,7 @@ describe('Gateway REST API', () => {
         expiresAt: new Date(Date.now() + 60_000),
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: `/api/v1/approvals/${approval.id}/respond`,
         payload: { decision: 'denied' },
@@ -530,7 +552,7 @@ describe('Gateway REST API', () => {
     });
 
     it('POST /api/v1/approvals/:id/respond returns 404 for missing', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'POST',
         url: '/api/v1/approvals/nonexistent/respond',
         payload: { decision: 'approved' },
@@ -544,7 +566,7 @@ describe('Gateway REST API', () => {
 
   describe('GET /api/v1/briefing', () => {
     it('returns a valid briefing with all sections', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/briefing',
       });
@@ -565,7 +587,7 @@ describe('Gateway REST API', () => {
       createTask(dbManager.db, { type: 'chat', description: 'Test task' });
       createCronJob(dbManager.db, { schedule: '0 9 * * *', taskDescription: 'Morning briefing' });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/briefing',
       });
@@ -583,7 +605,7 @@ describe('Gateway REST API', () => {
 
   describe('GET /api/v1/usage', () => {
     it('returns usage data with zero costs initially', async () => {
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/usage',
       });
@@ -610,7 +632,7 @@ describe('Gateway REST API', () => {
         costUsd: 0.05,
       });
 
-      const response = await gateway.app.inject({
+      const response = await authedInject({
         method: 'GET',
         url: '/api/v1/usage',
       });

@@ -88,6 +88,8 @@ export const ConfigSchema = z.object({
     wsPort: z.number().default(18420),
     httpPort: z.number().default(18421),
     host: z.string().default('127.0.0.1'),
+    rateLimitPerMinute: z.number().min(1).default(100),
+    wsMaxMessageBytes: z.number().min(1024).default(65536),
   }).default({}),
   preferences: z.object({
     defaultModel: z.string().optional(),

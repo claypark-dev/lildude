@@ -2,20 +2,33 @@
  * WebSocket gateway handler.
  * Manages client connections, subscriptions, and bidirectional message dispatch.
  * Protocol:
- *   Client -> Server: subscribe, chat.send, approval.respond, task.kill
- *   Server -> Client: chat.message, chat.stream, task.update, cost.update, approval.request
+ *   Client -> Server: auth (first message), subscribe, chat.send, approval.respond, task.kill
+ *   Server -> Client: auth.ok, auth.failed, chat.message, chat.stream, task.update, cost.update, approval.request
  *
  * See HLD Section 7 for gateway architecture.
  */
 
 import type { WebSocket } from 'ws';
+import type BetterSqlite3 from 'better-sqlite3';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { gatewayLogger } from '../utils/logger.js';
+import { hashApiKey, findApiKeyByHash } from '../persistence/api-keys.js';
 
 const log = gatewayLogger;
 
+/** Default timeout (ms) to disconnect unauthenticated clients. */
+const AUTH_TIMEOUT_MS = 5_000;
+
+/** Default max message size in bytes (64 KB). */
+const DEFAULT_MAX_MESSAGE_BYTES = 65_536;
+
 // ── Schemas ──────────────────────────────────────────────────────────
+
+const AuthMessageSchema = z.object({
+  type: z.literal('auth'),
+  token: z.string().min(1),
+});
 
 const SubscribePayloadSchema = z.object({
   topics: z.array(z.string()).min(1),
@@ -49,6 +62,8 @@ export interface WSClient {
   readonly socket: WebSocket;
   readonly topics: Set<string>;
   readonly connectedAt: Date;
+  /** Whether the client has completed authentication. */
+  authenticated: boolean;
 }
 
 /** Outgoing server-to-client message envelope. */
@@ -64,6 +79,16 @@ export type WSMessageHandler = (
   messageType: string,
   payload: unknown,
 ) => void;
+
+/** Configuration options for the WebSocket manager. */
+export interface WSManagerOptions {
+  /** better-sqlite3 Database instance for API key validation. */
+  db?: BetterSqlite3.Database;
+  /** Maximum message size in bytes. Default: 65536 (64 KB). */
+  maxMessageBytes?: number;
+  /** Auth timeout in milliseconds. Default: 5000. */
+  authTimeoutMs?: number;
+}
 
 // ── WSManager ────────────────────────────────────────────────────────
 
@@ -97,11 +122,17 @@ export interface WSManager {
 /**
  * Create a new WebSocket manager.
  * Manages the lifecycle of connected clients and message routing.
+ * When a `db` option is provided, clients must authenticate with
+ * `{ type: 'auth', token: '<api-key>' }` as their first message.
+ *
+ * @param options - Optional configuration for auth and message limits.
  * @returns A {@link WSManager} instance.
  */
-export function createWSManager(): WSManager {
+export function createWSManager(options: WSManagerOptions = {}): WSManager {
   const clients = new Map<string, WSClient>();
   const messageHandlers: WSMessageHandler[] = [];
+  const { db, maxMessageBytes = DEFAULT_MAX_MESSAGE_BYTES, authTimeoutMs = AUTH_TIMEOUT_MS } = options;
+  const authRequired = db !== undefined;
 
   /**
    * Build a JSON envelope for sending to clients.
@@ -114,11 +145,24 @@ export function createWSManager(): WSManager {
    * Process a raw text frame from a client.
    */
   function handleRawMessage(client: WSClient, rawData: string): void {
+    // Enforce message size limit
+    const byteLength = Buffer.byteLength(rawData, 'utf-8');
+    if (byteLength > maxMessageBytes) {
+      sendError(client, 'MESSAGE_TOO_LARGE', `Message exceeds ${maxMessageBytes} byte limit (got ${byteLength})`);
+      return;
+    }
+
     let parsed: unknown;
     try {
       parsed = JSON.parse(rawData);
     } catch {
       sendError(client, 'INVALID_JSON', 'Message is not valid JSON');
+      return;
+    }
+
+    // Handle auth message
+    if (!client.authenticated && authRequired) {
+      handleAuthMessage(client, parsed);
       return;
     }
 
@@ -144,6 +188,56 @@ export function createWSManager(): WSManager {
         handleTaskKill(client, payload);
         break;
     }
+  }
+
+  /**
+   * Handle the first message from an unauthenticated client.
+   */
+  function handleAuthMessage(client: WSClient, parsed: unknown): void {
+    const result = AuthMessageSchema.safeParse(parsed);
+    if (!result.success) {
+      sendError(client, 'AUTH_REQUIRED', 'First message must be { type: "auth", token: "<api-key>" }');
+      try {
+        client.socket.close();
+      } catch {
+        // best-effort close
+      }
+      return;
+    }
+
+    if (!db) {
+      // Should not happen if authRequired is true, but guard anyway
+      client.authenticated = true;
+      return;
+    }
+
+    const keyHash = hashApiKey(result.data.token);
+    const apiKey = findApiKeyByHash(db, keyHash);
+
+    if (!apiKey) {
+      const failMsg: WSOutgoingMessage = {
+        type: 'auth.failed',
+        payload: { detail: 'Invalid API key' },
+        timestamp: new Date().toISOString(),
+      };
+      safeSend(client.socket, serialize(failMsg));
+      log.warn({ clientId: client.id }, 'WebSocket auth failed — invalid key');
+      try {
+        client.socket.close();
+      } catch {
+        // best-effort close
+      }
+      return;
+    }
+
+    client.authenticated = true;
+    const okMsg: WSOutgoingMessage = {
+      type: 'auth.ok',
+      payload: { clientId: client.id },
+      timestamp: new Date().toISOString(),
+    };
+    safeSend(client.socket, serialize(okMsg));
+    log.debug({ clientId: client.id }, 'WebSocket client authenticated');
   }
 
   function handleSubscribe(client: WSClient, payload: unknown): void {
@@ -231,9 +325,32 @@ export function createWSManager(): WSManager {
         socket,
         topics: new Set<string>(),
         connectedAt: new Date(),
+        authenticated: !authRequired,
       };
 
       clients.set(clientId, client);
+
+      // Set auth timeout — disconnect if client doesn't authenticate in time
+      if (authRequired) {
+        const authTimer = setTimeout(() => {
+          if (!client.authenticated) {
+            log.warn({ clientId }, 'WebSocket client auth timeout — disconnecting');
+            sendError(client, 'AUTH_TIMEOUT', `Authentication required within ${authTimeoutMs}ms`);
+            try {
+              client.socket.close();
+            } catch {
+              // best-effort close
+            }
+            clients.delete(clientId);
+          }
+        }, authTimeoutMs);
+        authTimer.unref();
+
+        // Clear timeout on disconnect to avoid memory leak
+        socket.on('close', () => {
+          clearTimeout(authTimer);
+        });
+      }
 
       socket.on('message', (data: Buffer | string) => {
         const raw = typeof data === 'string' ? data : data.toString('utf-8');
@@ -269,6 +386,7 @@ export function createWSManager(): WSManager {
     broadcast(topic: string, message: WSOutgoingMessage): void {
       const data = serialize(message);
       for (const client of clients.values()) {
+        if (!client.authenticated) continue;
         if (client.topics.has(topic) || client.topics.has('*')) {
           safeSend(client.socket, data);
         }
