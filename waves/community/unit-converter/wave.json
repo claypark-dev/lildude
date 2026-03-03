@@ -1,0 +1,29 @@
+{
+  "name": "unit-converter",
+  "version": "1.0.0",
+  "description": "Convert between units of measurement (length, weight, temperature, volume)",
+  "author": "lil-dude-community",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["convert", "how many", "miles to", "kg to", "celsius to", "fahrenheit"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "convert_unit",
+      "description": "Convert between units",
+      "parameters": {
+        "value": "number",
+        "from": "string",
+        "to": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe"
+}

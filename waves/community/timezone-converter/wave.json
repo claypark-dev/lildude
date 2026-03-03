@@ -1,0 +1,29 @@
+{
+  "name": "timezone-converter",
+  "version": "1.0.0",
+  "description": "Convert times between timezones with natural language input",
+  "author": "lil-dude-community",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["timezone", "time in", "convert time", "what time is it in"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "convert_timezone",
+      "description": "Convert time between timezones",
+      "parameters": {
+        "time": "string",
+        "fromTz": "string",
+        "toTz": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe"
+}

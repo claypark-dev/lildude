@@ -1,0 +1,226 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-03-03T00:00:00.000Z",
+  "waves": [
+    {
+      "name": "weather-checker",
+      "description": "Check weather forecasts for any location using Open-Meteo API",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-weather-checker",
+      "triggers": ["weather", "forecast", "temperature", "rain", "sunny"],
+      "version": "1.2.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 1250
+    },
+    {
+      "name": "todo-manager",
+      "description": "Create, list, and manage todo items with priorities and due dates",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-todo-manager",
+      "triggers": ["todo", "task", "to-do", "add task", "task list"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 980
+    },
+    {
+      "name": "note-taker",
+      "description": "Take and organize notes from conversations with tagging",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-note-taker",
+      "triggers": ["note", "notes", "remember", "save", "jot down"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 870
+    },
+    {
+      "name": "timezone-converter",
+      "description": "Convert times between timezones with natural language",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-timezone-converter",
+      "triggers": ["timezone", "time in", "convert time", "what time is it in"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 750
+    },
+    {
+      "name": "unit-converter",
+      "description": "Convert between units of measurement (length, weight, temp, volume)",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-unit-converter",
+      "triggers": ["convert", "how many", "miles to", "kg to", "celsius to"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 690
+    },
+    {
+      "name": "currency-converter",
+      "description": "Convert between currencies using live exchange rates",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-currency-converter",
+      "triggers": ["currency", "exchange rate", "usd to", "eur to", "convert money"],
+      "version": "1.1.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 820
+    },
+    {
+      "name": "file-organizer",
+      "description": "Organize files in directories by type, date, or custom rules",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-file-organizer",
+      "triggers": ["organize", "files", "cleanup", "sort files", "tidy"],
+      "version": "1.1.0",
+      "safetyTier": "modify",
+      "verified": true,
+      "downloads": 540
+    },
+    {
+      "name": "timer-pomodoro",
+      "description": "Pomodoro timer with focus sessions and break reminders",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-timer-pomodoro",
+      "triggers": ["pomodoro", "timer", "focus", "work session", "break"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 430
+    },
+    {
+      "name": "clipboard-saver",
+      "description": "Save and recall clipboard snippets with labels",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-clipboard-saver",
+      "triggers": ["clipboard", "snippet", "save text", "paste", "copy"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 320
+    },
+    {
+      "name": "email-template",
+      "description": "Generate email drafts from templates with variable substitution",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-email-template",
+      "triggers": ["email template", "draft email", "compose email", "write email"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 610
+    },
+    {
+      "name": "quick-reply",
+      "description": "Suggest quick reply options for incoming messages",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-quick-reply",
+      "triggers": ["quick reply", "suggest reply", "reply options"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 380
+    },
+    {
+      "name": "contact-lookup",
+      "description": "Look up contact details from your address book",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-contact-lookup",
+      "triggers": ["contact", "phone number", "look up", "find contact"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 450
+    },
+    {
+      "name": "expense-tracker",
+      "description": "Track expenses with categories, amounts, and monthly summaries",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-expense-tracker",
+      "triggers": ["expense", "spent", "cost", "track spending", "budget"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 520
+    },
+    {
+      "name": "receipt-parser",
+      "description": "Parse receipt images and extract totals, items, and tax",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-receipt-parser",
+      "triggers": ["receipt", "parse receipt", "scan receipt"],
+      "version": "0.9.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 280
+    },
+    {
+      "name": "text-summarizer",
+      "description": "Summarize long text, articles, or documents",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-text-summarizer",
+      "triggers": ["summarize", "tldr", "summary", "shorten"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 710
+    },
+    {
+      "name": "url-shortener",
+      "description": "Shorten URLs using various shortening services",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-url-shortener",
+      "triggers": ["shorten url", "short link", "url shortener"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 350
+    },
+    {
+      "name": "birthday-reminder",
+      "description": "Track birthdays and send reminders before the date",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-birthday-reminder",
+      "triggers": ["birthday", "birthday reminder", "upcoming birthdays"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 410
+    },
+    {
+      "name": "rsvp-tracker",
+      "description": "Track RSVPs and attendance for events",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-rsvp-tracker",
+      "triggers": ["rsvp", "attendance", "who's coming", "event tracker"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 190
+    },
+    {
+      "name": "gift-ideas",
+      "description": "Suggest gift ideas based on interests and budget",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-gift-ideas",
+      "triggers": ["gift", "gift ideas", "present", "what to buy"],
+      "version": "1.0.0",
+      "safetyTier": "observe",
+      "verified": true,
+      "downloads": 230
+    },
+    {
+      "name": "social-scheduler",
+      "description": "Schedule and track social media posts across platforms",
+      "author": "lil-dude-community",
+      "source": "github:lildude-community/wave-social-scheduler",
+      "triggers": ["schedule post", "social media", "post to", "tweet"],
+      "version": "1.0.0",
+      "safetyTier": "create",
+      "verified": true,
+      "downloads": 340
+    }
+  ]
+}

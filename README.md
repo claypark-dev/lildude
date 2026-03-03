@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,334_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,374_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -114,6 +114,18 @@ lil-dude wave list
 ```
 
 **Wave Registry & Updates:** HMAC-SHA256 signed wave manifests with verified badges. Automatic update checking compares installed versions against the community registry. One-click updates preserve configuration.
+
+**20+ Verified Community Waves** — Pre-built, security-scanned capabilities ready to install:
+
+| Category | Waves |
+|----------|-------|
+| **Productivity** | note-taker, todo-manager, file-organizer, timer-pomodoro, clipboard-saver |
+| **Communication** | email-template, quick-reply, contact-lookup |
+| **Finance** | expense-tracker, currency-converter, receipt-parser |
+| **Utilities** | weather-checker, timezone-converter, unit-converter, text-summarizer, url-shortener |
+| **Social** | birthday-reminder, rsvp-tracker, gift-ideas, social-scheduler |
+
+All deterministic-first, verified by the CI pipeline, and installable with `lil-dude wave install`.
 
 [Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation)
 
@@ -244,7 +256,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,334 tests |
+| `npm test` | Run 2,374 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -270,7 +282,8 @@ src/
   types/            # All canonical interfaces
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
-tests/              # 2,334 tests across 128 files
+waves/community/    # 20+ verified community waves with registry
+tests/              # 2,374 tests across 129 files
 ```
 
 ### Architecture Principles
