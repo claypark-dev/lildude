@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,374_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,440_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -162,6 +162,8 @@ Lil Dude knows who's talking to it. Every sender is resolved to a contact with a
 
 Per-contact rate limits, budget caps, wave allowlists, and favorites. All trust level changes logged to the security audit trail.
 
+**Contact Groups & Activity Dashboard:** Organize contacts into named groups (Family, Work, VIP). Per-contact activity metrics track message counts, spending, wave usage, meeting requests, and relayed messages. Per-contact notification preferences with mute, digest frequency, and per-event toggles. External activity summary powers the dashboard widget showing unread messages, pending meetings, and recent events.
+
 ### External User Waves
 
 Five bundled waves let external contacts interact with Lil Dude safely — without needing the owner present:
@@ -256,7 +258,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,374 tests |
+| `npm test` | Run 2,440 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -271,8 +273,8 @@ src/
   providers/        # LLM adapters (Anthropic, OpenAI, Gemini, DeepSeek, Ollama) + plugins
   channels/         # 8 channel adapters + plugin discovery
   cost/             # Pricing, budget enforcement, token counting
-  contacts/         # Contact permissions, trust-level gating, profile learning, rate limiting, budget tracking
-  persistence/      # SQLite DAL with 11 migrations
+  contacts/         # Contact permissions, trust-level gating, profile learning, rate limiting, budget tracking, activity metrics, notifications
+  persistence/      # SQLite DAL with 12 migrations
   context/          # Knowledge management, summarization
   memory/           # Hybrid search (vector + BM25), embeddings, temporal decay, MMR
   integrations/     # OAuth2, Gmail, Google Calendar, MCP client
@@ -283,7 +285,7 @@ src/
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
 waves/community/    # 20+ verified community waves with registry
-tests/              # 2,374 tests across 129 files
+tests/              # 2,440 tests across 132 files
 ```
 
 ### Architecture Principles

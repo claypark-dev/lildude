@@ -23,3 +23,5 @@ export { getAutoResponderConfig, updateAutoResponderConfig } from './auto-respon
 export type { AutoResponderConfig, UpdateAutoResponderInput, OwnerStatus } from './auto-responder.js';
 export { createMeetingRequest, getMeetingRequest, listMeetingRequests, approveMeetingRequest, declineMeetingRequest, countPendingMeetingRequests, getMeetingRequestsByContact } from './meeting-requests.js';
 export type { MeetingRequest, CreateMeetingRequestInput, MeetingRequestStatus } from './meeting-requests.js';
+export { createContactGroup, getContactGroup, getContactGroupByName, listContactGroups, updateContactGroup, deleteContactGroup, addContactToGroup, removeContactFromGroup, getGroupsForContact, countContactGroups } from './contact-groups.js';
+export type { ContactGroup, CreateContactGroupInput, UpdateContactGroupInput } from './contact-groups.js';
