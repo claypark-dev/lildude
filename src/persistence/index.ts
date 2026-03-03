@@ -17,3 +17,9 @@ export { createApproval, getApproval, getPendingApprovals, approveRequest, denyR
 export { createContact, getContact, getContactByPhone, getContactByEmail, getContactByChannelId, updateContact, deleteContact, listContacts, getContactsByTrustLevel, getFavoriteContacts, searchContacts, resolveContact, touchContact, countContacts } from './contacts.js';
 export { logExternalEvent, getExternalAuditByContact, getExternalAuditByType, countExternalEvents } from './external-audit.js';
 export type { ExternalAuditEventType, ExternalAuditEntry } from './external-audit.js';
+export { createRelayedMessage, getRelayedMessage, listRelayedMessages, markMessageRead, markMessageReplied, archiveMessage, countUnreadMessages, getMessagesByContact } from './relayed-messages.js';
+export type { RelayedMessage, CreateRelayedMessageInput, MessageUrgency, MessageStatus } from './relayed-messages.js';
+export { getAutoResponderConfig, updateAutoResponderConfig } from './auto-responder.js';
+export type { AutoResponderConfig, UpdateAutoResponderInput, OwnerStatus } from './auto-responder.js';
+export { createMeetingRequest, getMeetingRequest, listMeetingRequests, approveMeetingRequest, declineMeetingRequest, countPendingMeetingRequests, getMeetingRequestsByContact } from './meeting-requests.js';
+export type { MeetingRequest, CreateMeetingRequestInput, MeetingRequestStatus } from './meeting-requests.js';

@@ -1,0 +1,25 @@
+{
+  "name": "contact-share",
+  "version": "1.0.0",
+  "description": "Share owner's preferred contact methods with external users",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["contact info", "how to reach", "email address", "phone number", "get in touch"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "get_contact_info",
+      "description": "Get owner's shareable contact information",
+      "parameters": {}
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe"
+}

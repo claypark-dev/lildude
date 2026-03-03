@@ -1,0 +1,28 @@
+{
+  "name": "message-relay",
+  "version": "1.0.0",
+  "description": "External users can leave messages for the owner",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["leave a message", "tell them", "pass along", "relay", "let them know"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "relay_message",
+      "description": "Leave a message for the owner",
+      "parameters": {
+        "message": "string",
+        "urgency": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "create"
+}

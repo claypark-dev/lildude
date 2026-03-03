@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,156_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,258_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -146,6 +146,20 @@ Lil Dude knows who's talking to it. Every sender is resolved to a contact with a
 
 Per-contact rate limits, budget caps, wave allowlists, and favorites. All trust level changes logged to the security audit trail.
 
+### External User Waves
+
+Five bundled waves let external contacts interact with Lil Dude safely — without needing the owner present:
+
+| Wave | Safety Tier | Description |
+|------|-------------|-------------|
+| **availability-check** | observe | Check owner's free time without revealing event details |
+| **meeting-request** | create | Propose meeting times for owner approval |
+| **contact-share** | observe | Get owner's shareable contact info (privacy-first, opt-in fields only) |
+| **message-relay** | create | Leave messages with urgency levels (low/normal/high/urgent) |
+| **auto-responder** | observe | Get owner's current status/away message |
+
+All gated by trust levels — owner controls who can do what. Meeting requests and relayed messages require owner approval. Full audit trail on every external interaction.
+
 ### Smart Model Routing
 
 5 providers, 3 tiers, automatic complexity classification:
@@ -226,7 +240,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,156 tests |
+| `npm test` | Run 2,258 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -242,7 +256,7 @@ src/
   channels/         # 8 channel adapters + plugin discovery
   cost/             # Pricing, budget enforcement, token counting
   contacts/         # Contact permissions, trust-level gating, profile learning, rate limiting, budget tracking
-  persistence/      # SQLite DAL with 10 migrations
+  persistence/      # SQLite DAL with 11 migrations
   context/          # Knowledge management, summarization
   memory/           # Hybrid search (vector + BM25), embeddings, temporal decay, MMR
   integrations/     # OAuth2, Gmail, Google Calendar, MCP client
@@ -252,7 +266,7 @@ src/
   types/            # All canonical interfaces
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
-tests/              # 2,156 tests across 116 files
+tests/              # 2,258 tests across 124 files
 ```
 
 ### Architecture Principles

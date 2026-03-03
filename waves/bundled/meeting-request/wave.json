@@ -1,0 +1,30 @@
+{
+  "name": "meeting-request",
+  "version": "1.0.0",
+  "description": "External users can propose meeting times for owner approval",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["meet", "meeting", "schedule a call", "book time", "set up a meeting"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "request_meeting",
+      "description": "Submit a meeting request for owner approval",
+      "parameters": {
+        "proposedTime": "string",
+        "duration": "number",
+        "subject": "string",
+        "message": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "create"
+}

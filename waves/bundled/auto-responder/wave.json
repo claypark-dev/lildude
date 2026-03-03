@@ -1,0 +1,25 @@
+{
+  "name": "auto-responder",
+  "version": "1.0.0",
+  "description": "Automatic status and away message responses for external users",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["status", "are you there", "available", "away", "out of office"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "get_status",
+      "description": "Get owner's current status/away message",
+      "parameters": {}
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe"
+}
