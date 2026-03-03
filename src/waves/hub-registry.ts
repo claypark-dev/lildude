@@ -24,19 +24,55 @@ const DEFAULT_REGISTRY_URL =
 /** Default cache TTL in hours. */
 const DEFAULT_CACHE_TTL_HOURS = 24;
 
-/** Schema for registry JSON entries. */
-interface RegistryJson {
+/** Schema for v1 registry JSON. */
+interface RegistryJsonV1 {
   version: string;
   waves: WaveRegistryEntry[];
 }
 
+/** Schema for v2 registry JSON (with categories and featured list). */
+interface RegistryJsonV2 {
+  version: string;
+  categories?: string[];
+  featured?: string[];
+  waves: WaveRegistryEntry[];
+}
+
+/** Union of v1 and v2 registry shapes. */
+type RegistryJson = RegistryJsonV1 | RegistryJsonV2;
+
+/**
+ * Parse a registry JSON payload, supporting both v1 and v2 formats.
+ * v2 adds optional `featured` and `categories` arrays. If `featured` is
+ * present, each matching wave gets `featured: true` merged in.
+ *
+ * @param raw - The parsed JSON object.
+ * @returns Array of enriched wave registry entries.
+ */
+export function parseRegistryPayload(raw: RegistryJson): WaveRegistryEntry[] {
+  if (!Array.isArray(raw.waves)) {
+    throw new Error('Invalid registry format: missing waves array');
+  }
+
+  const isV2 = 'featured' in raw || 'categories' in raw;
+  if (!isV2) return raw.waves;
+
+  const v2 = raw as RegistryJsonV2;
+  const featuredSet = new Set(v2.featured ?? []);
+
+  return v2.waves.map((wave) => ({
+    ...wave,
+    featured: wave.featured ?? featuredSet.has(wave.name),
+  }));
+}
+
 /** Hardcoded fallback registry for offline/error scenarios. */
 const FALLBACK_REGISTRY: WaveRegistryEntry[] = [
-  { name: 'weather-checker', description: 'Check weather forecasts for any location', author: 'lil-dude-community', source: 'github:community/weather-checker', triggers: ['weather', 'forecast', 'temperature'], version: '1.2.0' },
-  { name: 'email-summarizer', description: 'Summarize unread emails from Gmail or Outlook', author: 'lil-dude-community', source: 'github:community/email-summarizer', triggers: ['email', 'inbox', 'unread', 'mail'], version: '0.9.0' },
-  { name: 'code-reviewer', description: 'Review code changes and provide feedback', author: 'lil-dude-community', source: 'github:community/code-reviewer', triggers: ['review', 'code review', 'PR', 'pull request'], version: '2.0.1' },
-  { name: 'note-taker', description: 'Take and organize notes from conversations', author: 'lil-dude-community', source: 'github:community/note-taker', triggers: ['note', 'notes', 'remember', 'save'], version: '1.0.0' },
-  { name: 'file-organizer', description: 'Organize files in directories by type and date', author: 'lil-dude-community', source: 'github:community/file-organizer', triggers: ['organize', 'files', 'cleanup', 'sort files'], version: '1.1.0' },
+  { name: 'weather-checker', description: 'Check weather forecasts for any location', author: 'lil-dude-community', source: 'github:community/weather-checker', triggers: ['weather', 'forecast', 'temperature'], version: '1.2.0', category: 'utilities', tags: ['weather', 'forecast'], waveCategory: 'personal', safetyTier: 'observe', deterministic: true, verified: true, installCount: 342, averageRating: 4.5, ratingCount: 28 },
+  { name: 'email-summarizer', description: 'Summarize unread emails from Gmail or Outlook', author: 'lil-dude-community', source: 'github:community/email-summarizer', triggers: ['email', 'inbox', 'unread', 'mail'], version: '0.9.0', category: 'communication', tags: ['email', 'inbox', 'summary'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 215, averageRating: 4.2, ratingCount: 18 },
+  { name: 'code-reviewer', description: 'Review code changes and provide feedback', author: 'lil-dude-community', source: 'github:community/code-reviewer', triggers: ['review', 'code review', 'PR', 'pull request'], version: '2.0.1', category: 'developer', tags: ['code', 'review', 'git'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 189, averageRating: 4.7, ratingCount: 42 },
+  { name: 'note-taker', description: 'Take and organize notes from conversations', author: 'lil-dude-community', source: 'github:community/note-taker', triggers: ['note', 'notes', 'remember', 'save'], version: '1.0.0', category: 'productivity', tags: ['notes', 'organize', 'save'], waveCategory: 'personal', safetyTier: 'create', deterministic: true, verified: false, installCount: 127, averageRating: 3.8, ratingCount: 12 },
+  { name: 'file-organizer', description: 'Organize files in directories by type and date', author: 'lil-dude-community', source: 'github:community/file-organizer', triggers: ['organize', 'files', 'cleanup', 'sort files'], version: '1.1.0', category: 'utilities', tags: ['files', 'organize', 'cleanup'], waveCategory: 'personal', safetyTier: 'modify', deterministic: true, verified: false, installCount: 96, averageRating: 4.0, ratingCount: 8 },
 ];
 
 /**
@@ -59,7 +95,7 @@ export async function fetchRegistry(
     if (cached) {
       registryLogger.debug({ registryUrl }, 'Using cached registry');
       const parsed = JSON.parse(cached.data) as RegistryJson;
-      return parsed.waves;
+      return parseRegistryPayload(parsed);
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -88,7 +124,7 @@ export async function fetchRegistry(
       if (existingCached) {
         setCachedRegistry(db, registryUrl, existingCached.data, cacheTtlHours, cachedEtag ?? undefined);
         const parsed = JSON.parse(existingCached.data) as RegistryJson;
-        return parsed.waves;
+        return parseRegistryPayload(parsed);
       }
     }
 
@@ -99,20 +135,19 @@ export async function fetchRegistry(
     const data = await response.text();
     const parsed = JSON.parse(data) as RegistryJson;
 
-    if (!Array.isArray(parsed.waves)) {
-      throw new Error('Invalid registry format: missing waves array');
-    }
+    // Validate and parse (supports both v1 and v2 formats)
+    const waves = parseRegistryPayload(parsed);
 
     // Cache the result
     const etag = response.headers.get('ETag') ?? undefined;
     setCachedRegistry(db, registryUrl, data, cacheTtlHours, etag);
 
     registryLogger.info(
-      { registryUrl, waveCount: parsed.waves.length },
+      { registryUrl, waveCount: waves.length, version: parsed.version },
       'Registry fetched and cached',
     );
 
-    return parsed.waves;
+    return waves;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     registryLogger.warn(
