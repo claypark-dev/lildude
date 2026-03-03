@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,295_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,334_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -133,6 +133,8 @@ Commands are parsed, not string-matched. Prompt injection is detected and blocke
 
 **Prompt Injection Hardening:** 30+ threat patterns covering instruction overrides, role impersonation, delimiter injection, Unicode homoglyphs, invisible characters, HTML/markdown injection, multi-turn jailbreaks, and indirect injection via tool results. Output filter scans every LLM response for leaked API keys, private keys, database schemas, and config paths. Canary tokens detect context leakage. Nonce-tagged spotlighting prevents delimiter-matching attacks.
 
+**Advanced Security Pipeline:** Unified input/output security chain — intent classification, injection detection, output filtering, and canary token verification in a single pipeline. Abuse detection auto-blocks contacts after 3 injection attempts within an hour (reversible by owner). All security events logged to audit trail.
+
 [Full security documentation](docs/security.md)
 
 ### Contact Management + Trust Levels
@@ -242,7 +244,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,295 tests |
+| `npm test` | Run 2,334 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -268,7 +270,7 @@ src/
   types/            # All canonical interfaces
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
-tests/              # 2,295 tests across 126 files
+tests/              # 2,334 tests across 128 files
 ```
 
 ### Architecture Principles
