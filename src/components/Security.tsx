@@ -24,10 +24,12 @@ interface KeyFeature {
 }
 
 const keyFeatures: KeyFeature[] = [
-  { icon: '{}', title: 'Command Parsing', description: 'Parsed, not string-matched' },
+  { icon: '{}', title: 'Command Parsing', description: 'Parsed, not string-matched. No shell injection.' },
+  { icon: '🛡️', title: 'Wave Safety Tiers', description: 'observe/create/modify/destroy/execute classification' },
+  { icon: '🤖', title: 'Model-Aware', description: 'Small models auto-restricted to safe operations' },
+  { icon: '✋', title: 'Approval Queue', description: 'Destructive actions always require confirmation' },
   { icon: '🔍', title: 'Injection Detection', description: 'Content scanned before processing' },
-  { icon: '✋', title: 'Approval Queue', description: 'High-risk actions require confirmation' },
-  { icon: '🖥️', title: 'Cross-Platform', description: 'Unix + Windows patterns covered' },
+  { icon: '📈', title: 'Auto-Escalation', description: 'Failed tool calls escalate to better models' },
 ]
 
 export const Security: FC = () => {
@@ -41,7 +43,7 @@ export const Security: FC = () => {
       <div className="max-w-4xl mx-auto">
         <SectionHeading
           title="Gnarly Security"
-          subtitle="Five levels. Zero wipeouts."
+          subtitle="Five levels. Five safety tiers. Every model stays safe."
           id="security"
         />
         <div
@@ -103,7 +105,7 @@ export const Security: FC = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {keyFeatures.map((feature) => (
               <div
                 key={feature.title}

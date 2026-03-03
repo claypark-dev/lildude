@@ -52,9 +52,9 @@ export const Stats: FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 w-full gap-2">
             <StatItem value={5} label="Providers" isInView={isInView} />
             <StatItem value={8} label="Channels" isInView={isInView} />
+            <StatItem value={5} label="Safety Tiers" isInView={isInView} />
             <StatItem value={5} label="Security Levels" isInView={isInView} />
             <StatItem value={1569} label="Tests" isInView={isInView} formatted />
-            <StatItem value={3} label="Routing Tiers" isInView={isInView} />
           </div>
         </div>
       </div>

@@ -1,16 +1,16 @@
 import { type FC, useState } from 'react'
-import { Zap, MessageSquare, Shield, Puzzle, Mic, Sunrise, Globe, HardDrive, Layers } from 'lucide-react'
+import { Zap, MessageSquare, Shield, Puzzle, Globe, HardDrive, Brain, Waves, Lock } from 'lucide-react'
 
 const lucideIconMap: Record<string, FC<{ size?: number; strokeWidth?: number; color?: string }>> = {
   Zap,
   MessageSquare,
   Shield,
   Puzzle,
-  Mic,
-  Sunrise,
   Globe,
   HardDrive,
-  Layers,
+  Brain,
+  Waves,
+  Lock,
 }
 
 interface FeatureCardProps {

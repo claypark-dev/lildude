@@ -16,7 +16,7 @@ export const Features: FC = () => {
       <div className="max-w-6xl mx-auto">
         <SectionHeading
           title="The Lineup"
-          subtitle="Everything your lil dude can do"
+          subtitle="A self-learning assistant that builds new capabilities and keeps every model safe"
           id="features"
         />
         <div

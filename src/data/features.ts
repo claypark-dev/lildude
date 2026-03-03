@@ -6,19 +6,29 @@ export interface Feature {
 
 export const features: Feature[] = [
   {
-    title: 'Web Onboarding',
-    description: 'No terminal needed. Start the app and set everything up through a web wizard. Pick providers, download models, configure settings — all in your browser.',
-    icon: 'Globe',
+    title: 'Self-Learning',
+    description: 'Learns your preferences, communication style, and routines from every conversation. Your assistant gets smarter and more personalized over time.',
+    icon: 'Brain',
+  },
+  {
+    title: 'Wave Safety Tiers',
+    description: 'Every action is classified: observe, create, modify, destroy, or execute. Read-only tasks always work. Destructive actions always confirm. Your local model stays safe.',
+    icon: 'Shield',
+  },
+  {
+    title: 'Shorebreak',
+    description: "Can't check your email? Lil Dude builds the capability itself. Template-based generation with AST security scanning and user approval before activation.",
+    icon: 'Waves',
+  },
+  {
+    title: 'Local Model Safeguards',
+    description: 'Tool input validation, malformed JSON repair, and auto-escalation. Two consecutive failures upgrade to a better model. Every model is safe by design.',
+    icon: 'HardDrive',
   },
   {
     title: 'Smart Routing',
-    description: 'Routes every message to the most efficient model that can handle it. Simple questions go to small/fast models, complex tasks get the big guns.',
+    description: 'Routes every message to the most efficient model. Simple questions hit small/fast models, complex tasks get the big guns. Quality feedback improves routing over time.',
     icon: 'Zap',
-  },
-  {
-    title: 'Local Models',
-    description: 'Run open-source models locally with Ollama. Pick from a curated catalog with hardware-aware recommendations. No API key required.',
-    icon: 'HardDrive',
   },
   {
     title: '8 Channels',
@@ -27,27 +37,17 @@ export const features: Feature[] = [
   },
   {
     title: 'Security Sandbox',
-    description: '5-level permission system. Every shell command is parsed (not string-matched), every network request checked. Prompt injection detection built in.',
-    icon: 'Shield',
+    description: '5-level permission system intersected with wave safety tiers and model capabilities. Commands are parsed, not string-matched. Prompt injection detected and blocked.',
+    icon: 'Lock',
   },
   {
-    title: 'Voice I/O',
-    description: 'Text-to-speech in the web chat. Play assistant responses as audio with one click. Supports ElevenLabs cloud and local backends.',
-    icon: 'Mic',
-  },
-  {
-    title: 'Skill System',
-    description: 'Install community skills from GitHub with one command. Each skill runs sandboxed with declared permissions.',
+    title: 'Wave Hub',
+    description: 'Curated community wave registry with AST-level security scanning, permission auditing, and manual review. More secure than "anyone can upload" registries.',
     icon: 'Puzzle',
   },
   {
-    title: 'Daily Briefings',
-    description: 'Scheduled tasks and morning summaries delivered to your preferred channel. Cron jobs with zero config.',
-    icon: 'Sunrise',
-  },
-  {
-    title: 'Starts Lean',
-    description: 'Everything is opt-in. Start with just one provider and add features as you need them. Your assistant grows with you.',
-    icon: 'Layers',
+    title: 'Web Onboarding',
+    description: 'No terminal needed. Start the app and set everything up through a web wizard. Pick providers, download models, configure settings — all in your browser.',
+    icon: 'Globe',
   },
 ]
