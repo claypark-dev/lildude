@@ -39,6 +39,7 @@ import { registerShorebreakRoutes } from './api/shorebreak.js';
 import { registerOAuthRoutes } from './api/oauth.js';
 import { registerFeedbackRoutes } from './api/feedback.js';
 import { registerHubRoutes } from './api/hub.js';
+import { registerContactRoutes } from './api/contacts.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const log = gatewayLogger;
@@ -155,6 +156,7 @@ export function createGatewayServer(
   registerShorebreakRoutes(app, db);
   registerFeedbackRoutes(app, db);
   registerHubRoutes(app, db);
+  registerContactRoutes(app, db);
   const oauthBaseUrl = `http://${config.gateway.host}:${config.gateway.httpPort}`;
   registerOAuthRoutes(app, db, oauthBaseUrl);
 

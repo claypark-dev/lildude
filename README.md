@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,027_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,106_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -133,6 +133,19 @@ Commands are parsed, not string-matched. Prompt injection is detected and blocke
 
 [Full security documentation](docs/security.md)
 
+### Contact Management + Trust Levels
+
+Lil Dude knows who's talking to it. Every sender is resolved to a contact with a trust level that controls what they can do:
+
+| Trust Level | Wave Access | Description |
+|-------------|-------------|-------------|
+| **owner** | All tiers | Full access to everything |
+| **trusted** | observe/create/modify | Friends and close contacts |
+| **known** | observe only | Acquaintances (read-only waves) |
+| **unknown** | Messages only | First-time senders (no wave access) |
+
+Per-contact rate limits, budget caps, wave allowlists, and favorites. All trust level changes logged to the security audit trail.
+
 ### Smart Model Routing
 
 5 providers, 3 tiers, automatic complexity classification:
@@ -213,7 +226,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,027 tests |
+| `npm test` | Run 2,106 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -228,7 +241,8 @@ src/
   providers/        # LLM adapters (Anthropic, OpenAI, Gemini, DeepSeek, Ollama) + plugins
   channels/         # 8 channel adapters + plugin discovery
   cost/             # Pricing, budget enforcement, token counting
-  persistence/      # SQLite DAL with 8 migrations
+  contacts/         # Contact permissions, trust-level gating
+  persistence/      # SQLite DAL with 9 migrations
   context/          # Knowledge management, summarization
   memory/           # Hybrid search (vector + BM25), embeddings, temporal decay, MMR
   integrations/     # OAuth2, Gmail, Google Calendar, MCP client
@@ -238,7 +252,7 @@ src/
   types/            # All canonical interfaces
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
-tests/              # 2,027 tests across 109 files
+tests/              # 2,106 tests across 112 files
 ```
 
 ### Architecture Principles

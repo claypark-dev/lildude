@@ -391,6 +391,56 @@ export interface WSMessage {
   timestamp: string;
 }
 
+// === Contacts ===
+
+export type TrustLevel = 'owner' | 'trusted' | 'known' | 'unknown';
+
+export interface Contact {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  trustLevel: TrustLevel;
+  isFavorite: boolean;
+  notes: string | null;
+  permittedWaves: string[];
+  channelIds: Record<string, string>;
+  rateLimitPerHour: number;
+  budgetCapUsd: number;
+  tags: string[];
+  lastContactedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateContactInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  trustLevel?: TrustLevel;
+  isFavorite?: boolean;
+  notes?: string;
+  permittedWaves?: string[];
+  channelIds?: Record<string, string>;
+  rateLimitPerHour?: number;
+  budgetCapUsd?: number;
+  tags?: string[];
+}
+
+export interface UpdateContactInput {
+  name?: string;
+  phone?: string | null;
+  email?: string | null;
+  trustLevel?: TrustLevel;
+  isFavorite?: boolean;
+  notes?: string | null;
+  permittedWaves?: string[];
+  channelIds?: Record<string, string>;
+  rateLimitPerHour?: number;
+  budgetCapUsd?: number;
+  tags?: string[];
+}
+
 // === Health ===
 
 export interface HealthData {

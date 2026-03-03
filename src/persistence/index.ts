@@ -14,3 +14,4 @@ export { recordTokenUsage, getUsageByTask, getUsageByModel, getDailyTotalCost, g
 export { createCronJob, getCronJob, getEnabledCronJobs, updateCronJobLastRun, toggleCronJob, deleteCronJob, getMissedJobs } from './cron-jobs.js';
 export { appendSecurityLog, getRecentSecurityLogs, getSecurityLogsByAction, getSecurityLogsByAllowed, countSecurityLogs } from './security-log.js';
 export { createApproval, getApproval, getPendingApprovals, approveRequest, denyRequest, expireOldApprovals, getApprovalsByTask } from './approvals.js';
+export { createContact, getContact, getContactByPhone, getContactByEmail, getContactByChannelId, updateContact, deleteContact, listContacts, getContactsByTrustLevel, getFavoriteContacts, searchContacts, resolveContact, touchContact, countContacts } from './contacts.js';
