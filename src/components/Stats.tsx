@@ -49,12 +49,13 @@ export const Stats: FC = () => {
     >
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex flex-wrap justify-center gap-2">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 w-full gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 w-full gap-2">
             <StatItem value={5} label="Providers" isInView={isInView} />
             <StatItem value={8} label="Channels" isInView={isInView} />
-            <StatItem value={5} label="Safety Tiers" isInView={isInView} />
-            <StatItem value={5} label="Security Levels" isInView={isInView} />
-            <StatItem value={2027} label="Tests" isInView={isInView} formatted />
+            <StatItem value={27} label="Waves" suffix="+" isInView={isInView} />
+            <StatItem value={4} label="Trust Levels" isInView={isInView} />
+            <StatItem value={12} label="DB Migrations" isInView={isInView} />
+            <StatItem value={2461} label="Tests" isInView={isInView} formatted />
           </div>
         </div>
       </div>

@@ -46,7 +46,7 @@ export const Footer: FC = () => {
               className="text-sm"
               style={{ color: 'var(--text-muted)' }}
             >
-              MIT Licensed
+              MIT Licensed &middot; v1.0.0
             </p>
           </div>
 

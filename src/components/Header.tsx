@@ -10,7 +10,8 @@ interface NavLink {
 
 const NAV_LINKS: readonly NavLink[] = [
   { label: 'Features', href: '#features' },
-  { label: 'Channels', href: '#channels' },
+  { label: 'Contacts', href: '#contacts' },
+  { label: 'Waves', href: '#waves' },
   { label: 'Security', href: '#security' },
   { label: 'Quick Start', href: '#quickstart' },
   {

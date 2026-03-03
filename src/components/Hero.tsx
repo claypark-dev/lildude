@@ -39,7 +39,7 @@ export const Hero: FC = () => {
           className="text-lg md:text-xl mb-10 max-w-2xl mx-auto"
           style={{ color: 'var(--text-secondary)' }}
         >
-          A self-learning executive assistant that gets better every day. Self-hosted. Security-first. Privacy-first.
+          A self-learning executive assistant that gets better every day. Multi-user. Self-hosted. Security-first. v1.0 is here.
         </p>
 
         {/* CTA buttons */}

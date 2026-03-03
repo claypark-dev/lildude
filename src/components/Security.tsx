@@ -26,16 +26,16 @@ interface KeyFeature {
 const keyFeatures: KeyFeature[] = [
   { icon: '{}', title: 'Command Parsing', description: 'Parsed, not string-matched. No shell injection.' },
   { icon: '🛡️', title: 'Wave Safety Tiers', description: 'observe/create/modify/destroy/execute classification' },
-  { icon: '🤖', title: 'Model-Aware', description: 'Small models auto-restricted to safe operations' },
-  { icon: '✋', title: 'Approval Queue', description: 'Destructive actions always require confirmation' },
-  { icon: '🔑', title: 'Bearer Token Auth', description: 'Every API endpoint authenticated. API key generate/revoke/list.' },
-  { icon: '⏱️', title: 'Rate Limiting', description: 'Token-bucket at 100 req/min. WebSocket auth with 5s timeout.' },
+  { icon: '🔑', title: 'Bearer Token Auth', description: 'Every API endpoint authenticated. API key lifecycle management.' },
+  { icon: '⏱️', title: 'Rate Limiting', description: 'Token-bucket + per-contact rate limits + budget caps.' },
   { icon: '🔍', title: '30+ Threat Patterns', description: 'Homoglyphs, invisible chars, HTML injection, jailbreaks blocked' },
-  { icon: '🚫', title: 'Output Filtering', description: 'LLM responses scanned for leaked keys, schemas, and config paths' },
+  { icon: '🚫', title: 'Output Filtering', description: 'LLM responses scanned for leaked keys, schemas, and secrets' },
   { icon: '🪤', title: 'Canary Tokens', description: 'Detect context leakage with embedded canary markers' },
-  { icon: '🏷️', title: 'Nonce Spotlighting', description: 'Tagged delimiters prevent delimiter-matching attacks' },
-  { icon: '🧠', title: 'Intent Classifier', description: 'Deterministic stub for dual-LLM architecture' },
-  { icon: '📈', title: 'Auto-Escalation', description: 'Failed tool calls escalate to better models' },
+  { icon: '🏷️', title: 'Nonce Spotlighting', description: 'Randomized tagged delimiters prevent delimiter-matching attacks' },
+  { icon: '🧠', title: 'Intent Classifier', description: 'Dual-LLM architecture classifies benign vs injection attempts' },
+  { icon: '🚨', title: 'Abuse Detection', description: '3 injection attempts in 1 hour = auto-block. Owner-reversible.' },
+  { icon: '✍️', title: 'Manifest Signing', description: 'HMAC-SHA256 signed wave manifests with verified badges' },
+  { icon: '🔒', title: 'Contact Isolation', description: 'External users get separate agent loop. No access to owner data.' },
 ]
 
 export const Security: FC = () => {
@@ -49,7 +49,7 @@ export const Security: FC = () => {
       <div className="max-w-4xl mx-auto">
         <SectionHeading
           title="Gnarly Security"
-          subtitle="Five levels. Five safety tiers. Gateway hardened. Prompt injection blocked."
+          subtitle="Five levels. Four trust tiers. Gateway hardened. Injection blocked. Abuse auto-detected."
           id="security"
         />
         <div

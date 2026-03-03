@@ -3,6 +3,8 @@ import { Hero } from './components/Hero'
 import { Stats } from './components/Stats'
 import { Features } from './components/Features'
 import { Architecture } from './components/Architecture'
+import { Contacts } from './components/Contacts'
+import { CommunityWaves } from './components/CommunityWaves'
 import { Channels } from './components/Channels'
 import { Providers } from './components/Providers'
 import { Security } from './components/Security'
@@ -21,6 +23,8 @@ export function App() {
         <Stats />
         <Features />
         <Architecture />
+        <Contacts />
+        <CommunityWaves />
         <Channels />
         <Providers />
         <Security />
