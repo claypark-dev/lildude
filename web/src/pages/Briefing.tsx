@@ -54,7 +54,7 @@ export function Briefing() {
 function SummaryCards({ summary }: { summary: BriefingSummary }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <SummaryCard label="Skills" value={String(summary.activeSkills)} color="text-blue-400" />
+      <SummaryCard label="Waves" value={String(summary.activeWaves)} color="text-blue-400" />
       <SummaryCard label="Scheduled" value={String(summary.scheduledJobs)} color="text-blue-400" />
       <SummaryCard label="Pending" value={String(summary.pendingTasks)} color="text-purple-400" />
       <SummaryCard

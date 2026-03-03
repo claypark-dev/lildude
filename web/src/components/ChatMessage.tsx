@@ -1,17 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ChatMessage as ChatMessageType } from '../lib/types.ts';
 import { synthesizeSpeech } from '../lib/api.ts';
+import { FeedbackButtons } from './FeedbackButtons.tsx';
 
 interface ChatMessageProps {
   message: ChatMessageType;
   voiceEnabled?: boolean;
+  /** Optional task ID for associating feedback. */
+  taskId?: string;
 }
 
 /** TTS playback state */
 type PlayState = 'idle' | 'loading' | 'playing';
 
-/** Single chat message bubble with optional TTS play button for assistant messages */
-export function ChatMessage({ message, voiceEnabled = false }: ChatMessageProps) {
+/** Single chat message bubble with optional TTS play button and feedback for assistant messages */
+export function ChatMessage({ message, voiceEnabled = false, taskId }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const [playState, setPlayState] = useState<PlayState>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -80,22 +83,25 @@ export function ChatMessage({ message, voiceEnabled = false }: ChatMessageProps)
           >
             {new Date(message.timestamp).toLocaleTimeString()}
           </p>
-          {showPlayButton && (
-            <button
-              type="button"
-              className="ml-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-              onClick={handlePlay}
-              aria-label={
-                playState === 'playing' ? 'Stop audio' : 'Play audio'
-              }
-            >
-              {playState === 'loading' && (
-                <span className="inline-block w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-              )}
-              {playState === 'playing' && '\u23F9'}
-              {playState === 'idle' && '\uD83D\uDD0A'}
-            </button>
-          )}
+          <span className="flex items-center gap-2">
+            {!isUser && <FeedbackButtons taskId={taskId} />}
+            {showPlayButton && (
+              <button
+                type="button"
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={handlePlay}
+                aria-label={
+                  playState === 'playing' ? 'Stop audio' : 'Play audio'
+                }
+              >
+                {playState === 'loading' && (
+                  <span className="inline-block w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                )}
+                {playState === 'playing' && '\u23F9'}
+                {playState === 'idle' && '\uD83D\uDD0A'}
+              </button>
+            )}
+          </span>
         </div>
       </div>
     </div>

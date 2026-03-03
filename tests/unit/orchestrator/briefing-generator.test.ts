@@ -59,6 +59,22 @@ function createTestDb(): Database.Database {
       enabled INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE oauth_tokens (
+      id TEXT PRIMARY KEY,
+      provider TEXT NOT NULL,
+      account_label TEXT NOT NULL DEFAULT 'default',
+      access_token_encrypted TEXT NOT NULL,
+      refresh_token_encrypted TEXT,
+      token_type TEXT NOT NULL DEFAULT 'Bearer',
+      scope TEXT,
+      expires_at DATETIME,
+      iv TEXT NOT NULL,
+      auth_tag TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(provider, account_label)
+    );
   `);
 
   return db;
@@ -112,8 +128,8 @@ describe('BriefingGenerator', () => {
   });
 
   describe('generateBriefing', () => {
-    it('returns a valid DailyBriefing structure', () => {
-      const briefing = generateBriefing(db);
+    it('returns a valid DailyBriefing structure', async () => {
+      const briefing = await generateBriefing(db);
 
       expect(briefing).toBeDefined();
       expect(briefing.generatedAt).toBeTruthy();
@@ -122,49 +138,65 @@ describe('BriefingGenerator', () => {
       expect(briefing.summary).toBeDefined();
     });
 
-    it('includes all four sections', () => {
-      const briefing = generateBriefing(db);
+    it('includes all expected sections', async () => {
+      const briefing = await generateBriefing(db);
 
       const sectionTitles = briefing.sections.map((s) => s.title);
+      expect(sectionTitles).toContain('Integrations');
+      expect(sectionTitles).toContain('Email');
+      expect(sectionTitles).toContain('Calendar');
       expect(sectionTitles).toContain('Active Waves');
       expect(sectionTitles).toContain('Recent Tasks');
       expect(sectionTitles).toContain('Scheduled Jobs');
       expect(sectionTitles).toContain('Cost Overview');
+      expect(briefing.sections).toHaveLength(7);
     });
 
-    it('sets generatedAt to a valid ISO timestamp', () => {
-      const briefing = generateBriefing(db);
+    it('shows placeholder email/calendar when no Google token', async () => {
+      const briefing = await generateBriefing(db);
+
+      const emailSection = briefing.sections.find((s) => s.title === 'Email');
+      expect(emailSection).toBeDefined();
+      expect(emailSection!.items[0].label).toContain('Gmail not connected');
+
+      const calSection = briefing.sections.find((s) => s.title === 'Calendar');
+      expect(calSection).toBeDefined();
+      expect(calSection!.items[0].label).toContain('Calendar not connected');
+    });
+
+    it('sets generatedAt to a valid ISO timestamp', async () => {
+      const briefing = await generateBriefing(db);
       const date = new Date(briefing.generatedAt);
       expect(date.getTime()).not.toBeNaN();
     });
   });
 
   describe('greeting', () => {
-    it('returns a morning greeting before noon', () => {
+    it('returns a morning greeting before noon', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-02-19T09:00:00'));
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       expect(briefing.greeting).toContain('morning');
 
       vi.useRealTimers();
     });
 
-    it('returns an afternoon greeting between noon and 5pm', () => {
+    it('returns an afternoon greeting between noon and 5pm', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-02-19T14:00:00'));
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       expect(briefing.greeting).toContain('afternoon');
 
       vi.useRealTimers();
     });
 
-    it('returns an evening greeting after 5pm', () => {
+    it('returns an evening greeting after 5pm', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-02-19T20:00:00'));
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       expect(briefing.greeting).toContain('evening');
 
       vi.useRealTimers();
@@ -172,20 +204,20 @@ describe('BriefingGenerator', () => {
   });
 
   describe('summary', () => {
-    it('reports zero active waves when none registered', () => {
-      const briefing = generateBriefing(db);
+    it('reports zero active waves when none registered', async () => {
+      const briefing = await generateBriefing(db);
       expect(briefing.summary.activeWaves).toBe(0);
     });
 
-    it('counts registered waves', () => {
+    it('counts registered waves', async () => {
       registerWave('reminders', createTestWave('reminders', true));
       registerWave('web-search', createTestWave('web-search', false));
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       expect(briefing.summary.activeWaves).toBe(2);
     });
 
-    it('counts scheduled jobs', () => {
+    it('counts scheduled jobs', async () => {
       db.prepare(
         `INSERT INTO cron_jobs (id, schedule, task_description, enabled) VALUES (?, ?, ?, 1)`,
       ).run('job-1', '0 9 * * *', 'Morning reminder');
@@ -194,11 +226,11 @@ describe('BriefingGenerator', () => {
         `INSERT INTO cron_jobs (id, schedule, task_description, enabled) VALUES (?, ?, ?, 1)`,
       ).run('job-2', '*/30 * * * *', 'Stock check');
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       expect(briefing.summary.scheduledJobs).toBe(2);
     });
 
-    it('counts pending tasks', () => {
+    it('counts pending tasks', async () => {
       db.prepare(
         `INSERT INTO tasks (id, status, type, description) VALUES (?, 'pending', 'chat', ?)`,
       ).run('task-1', 'Waiting task');
@@ -207,26 +239,26 @@ describe('BriefingGenerator', () => {
         `INSERT INTO tasks (id, status, type, description) VALUES (?, 'completed', 'chat', ?)`,
       ).run('task-2', 'Done task');
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       expect(briefing.summary.pendingTasks).toBe(1);
     });
 
-    it('reports daily and monthly costs', () => {
+    it('reports daily and monthly costs', async () => {
       const today = new Date().toISOString().slice(0, 10);
       db.prepare(
         `INSERT INTO token_usage (task_id, provider, model, input_tokens, output_tokens, cost_usd, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
       ).run('task-1', 'anthropic', 'claude-3-haiku', 100, 50, 0.0025, `${today}T10:00:00`);
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       expect(briefing.summary.todayCostUsd).toBe(0.0025);
       expect(briefing.summary.monthlyCostUsd).toBe(0.0025);
     });
   });
 
   describe('waves section', () => {
-    it('shows "no waves loaded" when registry is empty', () => {
-      const briefing = generateBriefing(db);
+    it('shows "no waves loaded" when registry is empty', async () => {
+      const briefing = await generateBriefing(db);
       const wavesSection = briefing.sections.find((s) => s.title === 'Active Waves');
 
       expect(wavesSection).toBeDefined();
@@ -234,11 +266,11 @@ describe('BriefingGenerator', () => {
       expect(wavesSection!.items[0].label).toBe('No waves loaded');
     });
 
-    it('lists registered waves with descriptions', () => {
+    it('lists registered waves with descriptions', async () => {
       registerWave('reminders', createTestWave('reminders', true));
       registerWave('web-search', createTestWave('web-search', false));
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const wavesSection = briefing.sections.find((s) => s.title === 'Active Waves');
 
       expect(wavesSection!.items).toHaveLength(2);
@@ -254,8 +286,8 @@ describe('BriefingGenerator', () => {
   });
 
   describe('tasks section', () => {
-    it('shows "no recent tasks" when empty', () => {
-      const briefing = generateBriefing(db);
+    it('shows "no recent tasks" when empty', async () => {
+      const briefing = await generateBriefing(db);
       const tasksSection = briefing.sections.find((s) => s.title === 'Recent Tasks');
 
       expect(tasksSection).toBeDefined();
@@ -263,7 +295,7 @@ describe('BriefingGenerator', () => {
       expect(tasksSection!.items[0].label).toBe('No recent tasks');
     });
 
-    it('lists recent tasks with status and cost', () => {
+    it('lists recent tasks with status and cost', async () => {
       db.prepare(
         `INSERT INTO tasks (id, status, type, description, tokens_spent_usd) VALUES (?, ?, ?, ?, ?)`,
       ).run('task-1', 'completed', 'chat', 'Set a reminder', 0.0015);
@@ -272,7 +304,7 @@ describe('BriefingGenerator', () => {
         `INSERT INTO tasks (id, status, type, description, tokens_spent_usd) VALUES (?, ?, ?, ?, ?)`,
       ).run('task-2', 'failed', 'wave', 'Search the web', 0.003);
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const tasksSection = briefing.sections.find((s) => s.title === 'Recent Tasks');
 
       expect(tasksSection!.items).toHaveLength(2);
@@ -288,22 +320,22 @@ describe('BriefingGenerator', () => {
       expect(failedTask!.status).toBe('warning');
     });
 
-    it('limits to 10 recent tasks', () => {
+    it('limits to 10 recent tasks', async () => {
       for (let idx = 0; idx < 15; idx++) {
         db.prepare(
           `INSERT INTO tasks (id, status, type, description, tokens_spent_usd) VALUES (?, ?, ?, ?, ?)`,
         ).run(`task-${idx}`, 'completed', 'chat', `Task ${idx}`, 0.001);
       }
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const tasksSection = briefing.sections.find((s) => s.title === 'Recent Tasks');
       expect(tasksSection!.items).toHaveLength(10);
     });
   });
 
   describe('schedule section', () => {
-    it('shows "no scheduled jobs" when empty', () => {
-      const briefing = generateBriefing(db);
+    it('shows "no scheduled jobs" when empty', async () => {
+      const briefing = await generateBriefing(db);
       const schedSection = briefing.sections.find((s) => s.title === 'Scheduled Jobs');
 
       expect(schedSection).toBeDefined();
@@ -311,14 +343,14 @@ describe('BriefingGenerator', () => {
       expect(schedSection!.items[0].label).toBe('No scheduled jobs');
     });
 
-    it('lists enabled cron jobs with next run and last status', () => {
+    it('lists enabled cron jobs with next run and last status', async () => {
       const futureTime = new Date(Date.now() + 3_600_000).toISOString(); // 1 hour from now
       db.prepare(
         `INSERT INTO cron_jobs (id, schedule, task_description, next_run_at, last_run_status, enabled)
          VALUES (?, ?, ?, ?, ?, 1)`,
       ).run('job-1', '0 9 * * *', 'Morning reminder', futureTime, 'success');
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const schedSection = briefing.sections.find((s) => s.title === 'Scheduled Jobs');
 
       expect(schedSection!.items).toHaveLength(1);
@@ -327,22 +359,22 @@ describe('BriefingGenerator', () => {
       expect(schedSection!.items[0].status).toBe('good');
     });
 
-    it('excludes disabled cron jobs', () => {
+    it('excludes disabled cron jobs', async () => {
       db.prepare(
         `INSERT INTO cron_jobs (id, schedule, task_description, enabled) VALUES (?, ?, ?, 0)`,
       ).run('job-disabled', '0 9 * * *', 'Disabled reminder');
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const schedSection = briefing.sections.find((s) => s.title === 'Scheduled Jobs');
       expect(schedSection!.items[0].label).toBe('No scheduled jobs');
     });
 
-    it('shows "never run" status for new jobs', () => {
+    it('shows "never run" status for new jobs', async () => {
       db.prepare(
         `INSERT INTO cron_jobs (id, schedule, task_description, enabled) VALUES (?, ?, ?, 1)`,
       ).run('job-new', '0 9 * * *', 'New job');
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const schedSection = briefing.sections.find((s) => s.title === 'Scheduled Jobs');
 
       expect(schedSection!.items[0].value).toContain('never run');
@@ -351,8 +383,8 @@ describe('BriefingGenerator', () => {
   });
 
   describe('cost section', () => {
-    it('shows zero costs when no token usage', () => {
-      const briefing = generateBriefing(db);
+    it('shows zero costs when no token usage', async () => {
+      const briefing = await generateBriefing(db);
       const costSection = briefing.sections.find((s) => s.title === 'Cost Overview');
 
       expect(costSection).toBeDefined();
@@ -361,14 +393,14 @@ describe('BriefingGenerator', () => {
       expect(costSection!.items[1].value).toBe('$0.0000');
     });
 
-    it('reports daily cost with correct status', () => {
+    it('reports daily cost with correct status', async () => {
       const today = new Date().toISOString().slice(0, 10);
       db.prepare(
         `INSERT INTO token_usage (task_id, provider, model, input_tokens, output_tokens, cost_usd, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
       ).run('task-1', 'anthropic', 'claude-3-haiku', 1000, 500, 1.5, `${today}T12:00:00`);
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const costSection = briefing.sections.find((s) => s.title === 'Cost Overview');
       const dailyItem = costSection!.items.find((i) => i.label === "Today's Spend");
 
@@ -376,14 +408,14 @@ describe('BriefingGenerator', () => {
       expect(dailyItem!.status).toBe('warning'); // > $1.00
     });
 
-    it('marks low cost as good status', () => {
+    it('marks low cost as good status', async () => {
       const today = new Date().toISOString().slice(0, 10);
       db.prepare(
         `INSERT INTO token_usage (task_id, provider, model, input_tokens, output_tokens, cost_usd, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
       ).run('task-1', 'anthropic', 'claude-3-haiku', 100, 50, 0.005, `${today}T12:00:00`);
 
-      const briefing = generateBriefing(db);
+      const briefing = await generateBriefing(db);
       const costSection = briefing.sections.find((s) => s.title === 'Cost Overview');
       const dailyItem = costSection!.items.find((i) => i.label === "Today's Spend");
 
@@ -391,9 +423,20 @@ describe('BriefingGenerator', () => {
     });
   });
 
+  describe('integrations section', () => {
+    it('shows "no integrations" when oauth_tokens table is empty', async () => {
+      const briefing = await generateBriefing(db);
+      const intSection = briefing.sections.find((s) => s.title === 'Integrations');
+
+      expect(intSection).toBeDefined();
+      expect(intSection!.items).toHaveLength(1);
+      expect(intSection!.items[0].label).toBe('No integrations connected');
+    });
+  });
+
   describe('section icons', () => {
-    it('each section has an icon', () => {
-      const briefing = generateBriefing(db);
+    it('each section has an icon', async () => {
+      const briefing = await generateBriefing(db);
       for (const section of briefing.sections) {
         expect(section.icon).toBeTruthy();
       }

@@ -6,6 +6,8 @@ import { Chat } from './pages/Chat.tsx';
 import { Tasks } from './pages/Tasks.tsx';
 import { Settings } from './pages/Settings.tsx';
 import { Briefing } from './pages/Briefing.tsx';
+import { ShorebreakApprovals } from './pages/ShorebreakApprovals.tsx';
+import { WaveHub } from './pages/WaveHub.tsx';
 import { Onboarding } from './pages/Onboarding.tsx';
 
 /** Root application component with routing */
@@ -23,6 +25,8 @@ export function App() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/briefing" element={<Briefing />} />
+            <Route path="/shorebreak" element={<ShorebreakApprovals />} />
+            <Route path="/hub" element={<WaveHub />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

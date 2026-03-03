@@ -8,10 +8,11 @@
  *
  * This is a deterministic wave: only 1 LLM call (parameter extraction)
  * is made by the wave executor. The execute() function uses pure API calls.
+ *
+ * Uses centralized OAuth2 via injected _deps.getAccessToken('google').
  */
 
 import { z } from 'zod';
-import { getTokens, isTokenExpired, refreshToken, storeTokens } from './oauth.js';
 
 /** Google Calendar API base URL. */
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3';
@@ -95,45 +96,24 @@ export async function execute(wavePlan) {
 
     const extractedParams = params.data;
 
-    // Check for required dependencies injected via plan context
+    // Get OAuth access token via injected deps (centralized OAuth2)
     const deps = wavePlan.extractedParams._deps;
-    if (!deps) {
+    if (!deps || !deps.getAccessToken) {
       return {
         success: false,
-        output: 'Google Calendar requires OAuth setup. Please run the OAuth flow first.',
+        output: 'Google Calendar requires OAuth setup. Please connect your Google account first via Settings > Integrations.',
         error: 'Missing OAuth dependencies',
       };
     }
 
-    const { db, encryptionSecret, cryptoUtils, knowledgeStore, clientId, clientSecret } = deps;
-
-    // Get stored tokens
-    let tokens = getTokens(db, encryptionSecret, cryptoUtils, knowledgeStore);
-
-    if (!tokens) {
+    const accessToken = await deps.getAccessToken('google');
+    if (!accessToken) {
       return {
         success: false,
-        output: 'No Google Calendar OAuth tokens found. Please authorize the wave first.',
-        error: 'No OAuth tokens',
+        output: 'No Google Calendar access token available. Please connect your Google account first.',
+        error: 'No OAuth token',
       };
     }
-
-    // Refresh tokens if expired
-    if (isTokenExpired(tokens)) {
-      try {
-        tokens = await refreshToken(tokens.refreshToken, clientId, clientSecret);
-        storeTokens(db, tokens, encryptionSecret, cryptoUtils, knowledgeStore);
-      } catch (refreshError) {
-        const message = refreshError instanceof Error ? refreshError.message : String(refreshError);
-        return {
-          success: false,
-          output: 'Failed to refresh Google Calendar access token. Please re-authorize.',
-          error: message,
-        };
-      }
-    }
-
-    const accessToken = tokens.accessToken;
 
     switch (extractedParams.action) {
       case 'list':

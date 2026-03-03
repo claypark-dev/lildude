@@ -9,9 +9,11 @@ import type {
   ChatResponse,
   ContentBlock,
   ChannelType,
+  ModelTier,
 } from '../types/index.js';
 import type { SecurityLevel } from '../security/permissions.js';
 import type { ToolExecutor } from '../tools/executor.js';
+import type { ToolGuard, ToolGuardDecision } from './tool-guard.js';
 import { needsSummarization, summarizeConversation, extractKeyFacts } from '../context/summarizer.js';
 import { getConversationLogs } from '../persistence/conversation-logs.js';
 import { upsertKnowledge } from '../persistence/knowledge.js';
@@ -31,6 +33,12 @@ export interface AgentLoopDeps {
   securityLevel: SecurityLevel;
   userName: string;
   monthlyBudgetUsd: number;
+  /** Optional embedding generator for hybrid search. */
+  embeddingGenerator?: {
+    generateEmbedding(text: string): Promise<import('../memory/embeddings.js').EmbeddingResult>;
+  };
+  /** OAuth access token getter — returns a valid token for a given provider, or null. */
+  getAccessToken?: (provider: string) => Promise<string | null>;
 }
 
 /** Configurable kill condition overrides. */
@@ -42,6 +50,10 @@ export interface AgentLoopConfig {
   taskBudgetUsd?: number;
   enabledProviders?: string[];
   enableQualityChecks?: boolean;
+  /** Enable hybrid search (vector + BM25) for knowledge retrieval. Defaults to false. */
+  enableHybridSearch?: boolean;
+  /** Enable Shorebreak dynamic wave generation on capability gaps. Defaults to false. */
+  enableShorebreak?: boolean;
 }
 
 /** Result returned from processing a single message. */
@@ -85,20 +97,48 @@ export function extractResponseText(response: ChatResponse): string {
   return parts.join('');
 }
 
+/** Result from executeTools including guard decisions. */
+export interface ExecuteToolsResult {
+  /** The tool result content blocks for the LLM. */
+  results: ContentBlock[];
+  /** The most critical guard decision from this batch (if any tool failed). */
+  guardDecision?: ToolGuardDecision;
+}
+
 /**
  * Execute a batch of tool_use blocks via the tool executor.
+ * Reports successes and failures to the tool guard for tracking.
+ *
  * @param toolExecutor - The configured tool executor.
  * @param toolUseBlocks - Array of tool_use ContentBlocks from the LLM.
- * @returns Array of tool_result ContentBlocks.
+ * @param toolGuard - Optional tool guard for failure tracking and escalation.
+ * @param taskId - Task ID for guard tracking.
+ * @param currentTier - Current model tier for escalation decisions.
+ * @returns Tool results and optional guard decision.
  */
 export async function executeTools(
   toolExecutor: ToolExecutor,
   toolUseBlocks: ContentBlock[],
-): Promise<ContentBlock[]> {
+  toolGuard?: ToolGuard,
+  taskId?: string,
+  currentTier?: ModelTier,
+): Promise<ExecuteToolsResult> {
   const results: ContentBlock[] = [];
+  let guardDecision: ToolGuardDecision | undefined;
+
   for (const toolBlock of toolUseBlocks) {
+    const toolName = toolBlock.name ?? 'unknown';
     try {
       const result = await toolExecutor.execute(toolBlock);
+      if (result.isError && toolGuard && taskId && currentTier) {
+        const errorContent = typeof result.content === 'string' ? result.content : 'Tool returned error';
+        const decision = toolGuard.recordFailure(taskId, toolName, errorContent, currentTier);
+        if (!guardDecision || !decision.shouldContinue || decision.shouldEscalate) {
+          guardDecision = decision;
+        }
+      } else if (toolGuard && taskId) {
+        toolGuard.recordSuccess(taskId, toolName);
+      }
       results.push(result);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -108,9 +148,15 @@ export async function executeTools(
         content: `Tool execution failed: ${errorMessage}`,
         isError: true,
       });
+      if (toolGuard && taskId && currentTier) {
+        const decision = toolGuard.recordFailure(taskId, toolName, errorMessage, currentTier);
+        if (!guardDecision || !decision.shouldContinue || decision.shouldEscalate) {
+          guardDecision = decision;
+        }
+      }
     }
   }
-  return results;
+  return { results, guardDecision };
 }
 
 /**

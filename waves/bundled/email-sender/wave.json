@@ -1,0 +1,36 @@
+{
+  "name": "email-sender",
+  "version": "1.0.0",
+  "description": "Compose and send emails via Gmail",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [
+      "gmail.googleapis.com",
+      "www.googleapis.com",
+      "accounts.google.com",
+      "oauth2.googleapis.com"
+    ],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": ["google"]
+  },
+  "triggers": ["send email", "compose email", "write email", "send mail", "reply", "draft"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "send_email",
+      "description": "Send an email via Gmail",
+      "parameters": {
+        "to": "string",
+        "subject": "string",
+        "body": "string",
+        "cc": "string",
+        "bcc": "string"
+      }
+    }
+  ],
+  "minTier": "standard",
+  "entryPoint": "index.js",
+  "safetyTier": "create"
+}

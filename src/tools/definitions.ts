@@ -171,4 +171,27 @@ export const CORE_TOOLS: ToolDefinition[] = [
       required: ['schedule', 'description'],
     },
   },
+  {
+    name: 'browser_navigate',
+    description:
+      'Open a URL in a headless browser and extract the page content. Optionally run JavaScript on the page or capture a screenshot. Requires Playwright to be installed. The domain must be in the allowed domains list.',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'The full URL to navigate to (must include protocol, e.g. https://).',
+        },
+        script: {
+          type: 'string',
+          description: 'Optional JavaScript to execute in the page context after load. The return value is included in the result.',
+        },
+        screenshot: {
+          type: 'boolean',
+          description: 'Whether to capture a full-page screenshot. The file path is returned in the result.',
+        },
+      },
+      required: ['url'],
+    },
+  },
 ];

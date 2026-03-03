@@ -167,6 +167,23 @@ function applyEnvOverrides(config: Record<string, unknown>): Record<string, unkn
     gateway.host = host;
   }
 
+  // Integration OAuth credentials
+  const integrationCredMap: Record<string, { parent: string; field: string }> = {
+    LIL_DUDE_GOOGLE_CLIENT_ID: { parent: 'google', field: 'clientId' },
+    LIL_DUDE_GOOGLE_CLIENT_SECRET: { parent: 'google', field: 'clientSecret' },
+    LIL_DUDE_MICROSOFT_CLIENT_ID: { parent: 'microsoft', field: 'clientId' },
+    LIL_DUDE_MICROSOFT_CLIENT_SECRET: { parent: 'microsoft', field: 'clientSecret' },
+  };
+
+  for (const [envVar, mapping] of Object.entries(integrationCredMap)) {
+    const value = process.env[envVar];
+    if (value !== undefined) {
+      const integration = ensureNested(merged, 'integrations', mapping.parent);
+      integration[mapping.field] = value;
+      log.info({ integration: mapping.parent }, 'OAuth credential set from env var');
+    }
+  }
+
   return merged;
 }
 

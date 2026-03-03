@@ -60,6 +60,14 @@ describe('Build Output Verification', () => {
     expect(existsSync(join(ROOT, 'dist', 'migrations', '003_waves_foundation.sql'))).toBe(true);
   });
 
+  it('copies fourth migration file (FTS5)', () => {
+    expect(existsSync(join(ROOT, 'dist', 'migrations', '004_fts5_knowledge.sql'))).toBe(true);
+  });
+
+  it('copies fifth migration file (OAuth tokens)', () => {
+    expect(existsSync(join(ROOT, 'dist', 'migrations', '005_oauth_tokens.sql'))).toBe(true);
+  });
+
   it('copies bundled wave manifests to dist/waves/', () => {
     expect(existsSync(join(ROOT, 'dist', 'waves', 'bundled', 'web-search', 'wave.json'))).toBe(
       true,

@@ -32,6 +32,10 @@ import { registerRoutingHistoryRoutes } from './api/routing-history.js';
 import { registerOnboardingRoutes } from './api/onboarding.js';
 import { registerOllamaRoutes } from './api/ollama.js';
 import { registerVoiceRoutes } from './api/voice.js';
+import { registerShorebreakRoutes } from './api/shorebreak.js';
+import { registerOAuthRoutes } from './api/oauth.js';
+import { registerFeedbackRoutes } from './api/feedback.js';
+import { registerHubRoutes } from './api/hub.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const log = gatewayLogger;
@@ -127,6 +131,11 @@ export function createGatewayServer(
   registerOnboardingRoutes(app);
   registerOllamaRoutes(app, wsManager);
   registerVoiceRoutes(app, config);
+  registerShorebreakRoutes(app, db);
+  registerFeedbackRoutes(app, db);
+  registerHubRoutes(app, db);
+  const oauthBaseUrl = `http://${config.gateway.host}:${config.gateway.httpPort}`;
+  registerOAuthRoutes(app, db, oauthBaseUrl);
 
   // ── SPA fallback ──────────────────────────────────────────────────
   // React Router uses client-side routing (e.g. /chat, /onboarding).

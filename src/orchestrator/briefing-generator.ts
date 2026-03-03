@@ -1,7 +1,8 @@
 /**
  * Daily Briefing Generator.
  * Assembles a structured briefing from all active waves, tasks, cron jobs,
- * and cost data. Purely deterministic — no LLM calls required.
+ * cost data, and connected integrations (email, calendar).
+ * No LLM calls — only deterministic DB queries and API fetches.
  *
  * See HLD Section 6.4 for briefing architecture.
  */
@@ -11,6 +12,9 @@ import { getRecentTasks, getTasksByStatus } from '../persistence/tasks.js';
 import { getDailyTotalCost, getMonthlyTotalCost } from '../persistence/token-usage.js';
 import { getEnabledCronJobs } from '../persistence/cron-jobs.js';
 import { getAllWaves } from '../waves/registry.js';
+import { listTokens } from '../integrations/oauth-store.js';
+import { listEmails } from '../integrations/gmail.js';
+import { listEvents } from '../integrations/google-calendar.js';
 import { createModuleLogger } from '../utils/logger.js';
 
 const briefingLogger = createModuleLogger('briefing');
@@ -46,19 +50,45 @@ export interface BriefingSummary {
   monthlyCostUsd: number;
 }
 
+/** Optional OAuth accessor passed to the briefing for fetching integration data. */
+export interface BriefingOAuthDeps {
+  getAccessToken: (provider: string) => Promise<string | null>;
+}
+
 /**
  * Generate a daily briefing by querying all available data sources.
- * This is purely deterministic — no LLM calls, no token cost.
+ * No LLM calls — only DB queries and optional API fetches for integrations.
+ *
  * @param db - The better-sqlite3 Database instance.
+ * @param oauthDeps - Optional OAuth deps for fetching live email/calendar data.
  * @returns A structured DailyBriefing object.
  */
-export function generateBriefing(db: BetterSqlite3.Database): DailyBriefing {
+export async function generateBriefing(
+  db: BetterSqlite3.Database,
+  oauthDeps?: BriefingOAuthDeps,
+): Promise<DailyBriefing> {
   briefingLogger.info('Generating daily briefing');
 
   const now = new Date();
   const greeting = buildGreeting(now);
   const summary = buildSummary(db);
   const sections: BriefingSection[] = [];
+
+  sections.push(buildIntegrationsSection(db));
+
+  // Fetch live email + calendar data if OAuth is available
+  const hasGoogleToken = hasGoogleOAuthToken(db);
+  if (hasGoogleToken && oauthDeps) {
+    const [emailSection, calendarSection] = await Promise.all([
+      buildEmailSection(oauthDeps),
+      buildCalendarSection(oauthDeps),
+    ]);
+    sections.push(emailSection);
+    sections.push(calendarSection);
+  } else if (!hasGoogleToken) {
+    sections.push(buildNoEmailSection());
+    sections.push(buildNoCalendarSection());
+  }
 
   sections.push(buildWavesSection());
   sections.push(buildTasksSection(db));
@@ -76,6 +106,16 @@ export function generateBriefing(db: BetterSqlite3.Database): DailyBriefing {
     sections,
     summary,
   };
+}
+
+/** Check if a Google OAuth token exists in the database. */
+function hasGoogleOAuthToken(db: BetterSqlite3.Database): boolean {
+  try {
+    const tokens = listTokens(db);
+    return tokens.some((t) => t.provider === 'google');
+  } catch {
+    return false;
+  }
 }
 
 /** Build a time-appropriate greeting message. */
@@ -103,6 +143,229 @@ function buildSummary(db: BetterSqlite3.Database): BriefingSummary {
     monthlyCostUsd: getMonthlyTotalCost(db, currentMonth),
   };
 }
+
+/** Build the integrations section showing connected services. */
+function buildIntegrationsSection(db: BetterSqlite3.Database): BriefingSection {
+  const items: BriefingItem[] = [];
+
+  try {
+    const tokens = listTokens(db);
+
+    if (tokens.length === 0) {
+      items.push({
+        label: 'No integrations connected',
+        value: 'Connect Google or Microsoft via Settings > Integrations',
+        status: 'neutral',
+      });
+    } else {
+      for (const token of tokens) {
+        const expired = token.expiresAt ? new Date(token.expiresAt) < new Date() : false;
+        items.push({
+          label: `${token.provider} (${token.accountLabel})`,
+          value: token.scope ? `Scopes: ${token.scope.split(' ').length}` : 'Connected',
+          status: expired ? 'warning' : 'good',
+        });
+      }
+    }
+  } catch {
+    items.push({
+      label: 'Integration check failed',
+      value: 'Could not load integration status',
+      status: 'warning',
+    });
+  }
+
+  return { title: 'Integrations', icon: '\uD83D\uDD17', items };
+}
+
+// ─── Email Section ──────────────────────────────────────────────────────────
+
+/** Build the email section by fetching unread count from Gmail. */
+async function buildEmailSection(oauthDeps: BriefingOAuthDeps): Promise<BriefingSection> {
+  const items: BriefingItem[] = [];
+
+  try {
+    const accessToken = await oauthDeps.getAccessToken('google');
+    if (!accessToken) {
+      return buildNoEmailSection();
+    }
+
+    const result = await listEmails(accessToken, {
+      maxResults: 10,
+      unreadOnly: true,
+    });
+
+    if (!result.success) {
+      items.push({
+        label: 'Email check failed',
+        value: result.error ?? 'Could not fetch emails',
+        status: 'warning',
+      });
+      return { title: 'Email', icon: '\u2709', items };
+    }
+
+    const emails = result.emails ?? [];
+    const unreadCount = emails.length;
+
+    if (unreadCount === 0) {
+      items.push({
+        label: 'Inbox zero',
+        value: 'No unread emails',
+        status: 'good',
+      });
+    } else {
+      items.push({
+        label: 'Unread emails',
+        value: `${unreadCount} unread message${unreadCount === 1 ? '' : 's'}`,
+        status: unreadCount > 5 ? 'warning' : 'info',
+      });
+
+      // Show top 3 unread subjects
+      for (const email of emails.slice(0, 3)) {
+        items.push({
+          label: email.subject || '(no subject)',
+          value: `From: ${email.from}`,
+          status: 'neutral',
+        });
+      }
+
+      if (unreadCount > 3) {
+        items.push({
+          label: `+${unreadCount - 3} more`,
+          value: 'Say "check my email" to see all',
+          status: 'neutral',
+        });
+      }
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    briefingLogger.warn({ error: message }, 'Failed to build email section');
+    items.push({
+      label: 'Email unavailable',
+      value: 'Could not connect to Gmail',
+      status: 'warning',
+    });
+  }
+
+  return { title: 'Email', icon: '\u2709', items };
+}
+
+/** Placeholder email section when Google isn't connected. */
+function buildNoEmailSection(): BriefingSection {
+  return {
+    title: 'Email',
+    icon: '\u2709',
+    items: [{
+      label: 'Gmail not connected',
+      value: 'Connect Google via Settings > Integrations to see emails here',
+      status: 'neutral',
+    }],
+  };
+}
+
+// ─── Calendar Section ───────────────────────────────────────────────────────
+
+/** Build the calendar section by fetching today's events. */
+async function buildCalendarSection(oauthDeps: BriefingOAuthDeps): Promise<BriefingSection> {
+  const items: BriefingItem[] = [];
+
+  try {
+    const accessToken = await oauthDeps.getAccessToken('google');
+    if (!accessToken) {
+      return buildNoCalendarSection();
+    }
+
+    const now = new Date();
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const result = await listEvents(
+      accessToken,
+      now.toISOString(),
+      endOfDay.toISOString(),
+      20,
+    );
+
+    if (!result.success) {
+      items.push({
+        label: 'Calendar check failed',
+        value: result.error ?? 'Could not fetch events',
+        status: 'warning',
+      });
+      return { title: 'Calendar', icon: '\uD83D\uDCC5', items };
+    }
+
+    const events = result.events ?? [];
+
+    if (events.length === 0) {
+      items.push({
+        label: 'No events today',
+        value: 'Your calendar is clear for the rest of the day',
+        status: 'good',
+      });
+    } else {
+      items.push({
+        label: "Today's events",
+        value: `${events.length} event${events.length === 1 ? '' : 's'} remaining`,
+        status: 'info',
+      });
+
+      for (const event of events.slice(0, 5)) {
+        const startTime = formatEventTime(event.start);
+        const locationText = event.location ? ` | ${event.location}` : '';
+        items.push({
+          label: event.summary,
+          value: `${startTime}${locationText}`,
+          status: 'neutral',
+        });
+      }
+
+      if (events.length > 5) {
+        items.push({
+          label: `+${events.length - 5} more events`,
+          value: 'Say "check my calendar" to see all',
+          status: 'neutral',
+        });
+      }
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    briefingLogger.warn({ error: message }, 'Failed to build calendar section');
+    items.push({
+      label: 'Calendar unavailable',
+      value: 'Could not connect to Google Calendar',
+      status: 'warning',
+    });
+  }
+
+  return { title: 'Calendar', icon: '\uD83D\uDCC5', items };
+}
+
+/** Placeholder calendar section when Google isn't connected. */
+function buildNoCalendarSection(): BriefingSection {
+  return {
+    title: 'Calendar',
+    icon: '\uD83D\uDCC5',
+    items: [{
+      label: 'Calendar not connected',
+      value: 'Connect Google via Settings > Integrations to see events here',
+      status: 'neutral',
+    }],
+  };
+}
+
+/** Format an event start time for display. */
+function formatEventTime(isoStr: string): string {
+  try {
+    const date = new Date(isoStr);
+    if (isNaN(date.getTime())) return isoStr;
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return isoStr;
+  }
+}
+
+// ─── Other Sections ─────────────────────────────────────────────────────────
 
 /** Build the registered waves section listing all available capabilities. */
 function buildWavesSection(): BriefingSection {

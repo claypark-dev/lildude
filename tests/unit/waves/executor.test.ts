@@ -221,7 +221,8 @@ describe('wave executor', () => {
 
       expect(wave.execute).toHaveBeenCalledTimes(1);
       const planArg = (wave.execute as ReturnType<typeof vi.fn>).mock.calls[0][0] as WavePlan;
-      expect(planArg.extractedParams).toEqual({ ticker: 'GOOG', exchange: 'NASDAQ' });
+      expect(planArg.extractedParams).toEqual(expect.objectContaining({ ticker: 'GOOG', exchange: 'NASDAQ' }));
+      expect(planArg.extractedParams._deps).toBeDefined();
       expect(planArg.isDeterministic).toBe(true);
     });
 
@@ -242,7 +243,10 @@ describe('wave executor', () => {
       // Should still succeed — empty params is a valid fallback
       expect(result.success).toBe(true);
       const planArg = (wave.execute as ReturnType<typeof vi.fn>).mock.calls[0][0] as WavePlan;
-      expect(planArg.extractedParams).toEqual({});
+      // _deps is always injected; the user-facing params should be empty
+      const { _deps: _depsIgnored, ...userParams } = planArg.extractedParams;
+      expect(userParams).toEqual({});
+      expect(planArg.extractedParams._deps).toBeDefined();
     });
 
     it('extracts JSON from markdown-wrapped response', async () => {
@@ -260,7 +264,8 @@ describe('wave executor', () => {
       await executeWave(wave, 'check stock TSLA', deps);
 
       const planArg = (wave.execute as ReturnType<typeof vi.fn>).mock.calls[0][0] as WavePlan;
-      expect(planArg.extractedParams).toEqual({ ticker: 'TSLA' });
+      expect(planArg.extractedParams).toEqual(expect.objectContaining({ ticker: 'TSLA' }));
+      expect(planArg.extractedParams._deps).toBeDefined();
     });
   });
 

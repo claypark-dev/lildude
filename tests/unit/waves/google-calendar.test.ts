@@ -81,25 +81,13 @@ const SAMPLE_TOKENS = {
   tokenType: 'Bearer',
 };
 
-/** Build mock deps for plan.extractedParams._deps */
-function createMockDeps(tokenOverrides?: Partial<typeof SAMPLE_TOKENS>) {
-  const tokens = { ...SAMPLE_TOKENS, ...tokenOverrides };
-  const encryptedTokens = encrypt(JSON.stringify(tokens), TEST_SECRET);
-
-  const knowledgeStore = createMockKnowledgeStore();
-  knowledgeStore.getKnowledge.mockReturnValue([
-    { value: encryptedTokens, category: 'oauth', key: 'google-calendar-tokens' },
-  ]);
-
+/** Build mock deps for plan.extractedParams._deps using centralized OAuth. */
+function createMockDeps(accessToken: string | null = SAMPLE_TOKENS.accessToken) {
   return {
-    db: {},
-    encryptionSecret: TEST_SECRET,
-    cryptoUtils: { encrypt, decrypt },
-    knowledgeStore,
-    clientId: 'test-client-id',
-    clientSecret: 'test-client-secret',
+    getAccessToken: vi.fn().mockResolvedValue(accessToken),
   };
 }
+
 
 // ─── Tests ────────────────────────────────────────────────────────────────
 
@@ -316,31 +304,21 @@ describe('google-calendar wave', () => {
   });
 
   describe('execute() — missing OAuth tokens', () => {
-    it('handles missing OAuth tokens gracefully', async () => {
-      const knowledgeStore = createMockKnowledgeStore();
-      knowledgeStore.getKnowledge.mockReturnValue([]);
-
+    it('handles null access token gracefully', async () => {
       const plan: WavePlan = {
         steps: [{ type: 'api_call', description: 'List events', params: {} }],
         estimatedCostUsd: 0,
         isDeterministic: true,
         extractedParams: {
           action: 'list',
-          _deps: {
-            db: {},
-            encryptionSecret: TEST_SECRET,
-            cryptoUtils: { encrypt, decrypt },
-            knowledgeStore,
-            clientId: 'test-client-id',
-            clientSecret: 'test-client-secret',
-          },
+          _deps: createMockDeps(null),
         },
       };
 
       const result = await waveModule.execute(plan);
 
       expect(result.success).toBe(false);
-      expect(result.output).toContain('No Google Calendar OAuth tokens found');
+      expect(result.output).toContain('No Google Calendar access token');
     });
 
     it('handles missing deps gracefully', async () => {

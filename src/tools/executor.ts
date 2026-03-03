@@ -14,7 +14,9 @@ import { readFile, writeFile, listDirectory } from './filesystem.js';
 import { httpRequest } from './api.js';
 import { knowledgeStore, knowledgeRecall } from './knowledge.js';
 import { scheduleTask } from './scheduler.js';
+import { executeBrowserAction } from './browser.js';
 import { CORE_TOOLS } from './definitions.js';
+import { DOMAIN_RULES } from '../security/defaults.js';
 
 /** Default timeout for tool execution in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -127,6 +129,36 @@ function validateToolInput(toolName: string, input: Record<string, unknown>): st
 }
 
 /**
+ * Build the allowed domains list for browser navigation based on security level.
+ * Levels 1-3: only the default API domains (restrictive).
+ * Level 4-5: common web domains are also allowed for broader browsing.
+ *
+ * @param securityLevel - The current security level (1-5).
+ * @returns Array of allowed domain strings for the browser tool.
+ */
+function getAllowedBrowserDomains(securityLevel: SecurityLevel): string[] {
+  const base = [...DOMAIN_RULES.DEFAULT_ALLOWED_OUTBOUND];
+
+  // At higher trust levels, allow common web browsing domains
+  if (securityLevel >= 4) {
+    base.push(
+      'google.com', 'www.google.com',
+      'github.com', 'www.github.com',
+      'stackoverflow.com', 'www.stackoverflow.com',
+      'wikipedia.org', 'en.wikipedia.org',
+      'reddit.com', 'www.reddit.com',
+      'news.ycombinator.com',
+      'wttr.in',
+      'mail.google.com',
+      'calendar.google.com',
+      'docs.google.com',
+    );
+  }
+
+  return base;
+}
+
+/**
  * Create a tool executor configured with the given database, security level, and task ID.
  *
  * The executor maps tool names to their handler functions and applies
@@ -210,6 +242,26 @@ export function createToolExecutor(
         securityLevel,
         taskId,
       });
+    },
+
+    browser_navigate: async (input) => {
+      const url = input.url as string;
+      const script = input.script as string | undefined;
+      const screenshot = input.screenshot as boolean | undefined;
+      // Browser uses the same domain allowlist as HTTP requests.
+      // At security levels 1-3, only explicitly allowed domains work.
+      // At levels 4-5, all non-blocked domains are allowed.
+      const allowedDomains = getAllowedBrowserDomains(securityLevel);
+      const result = await executeBrowserAction({ url, script, screenshot, allowedDomains });
+      return {
+        success: result.success,
+        output: result.success
+          ? result.screenshotPath
+            ? `${result.content}\n\nScreenshot saved: ${result.screenshotPath}`
+            : result.content
+          : '',
+        error: result.error,
+      };
     },
   };
 

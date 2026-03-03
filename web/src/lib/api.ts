@@ -13,6 +13,9 @@ import type {
   OllamaStatus,
   OllamaModelsResponse,
   VoiceStatus,
+  ProposalsResponse,
+  WaveProposal,
+  ProposalActionResponse,
 } from './types.ts';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:18421';
@@ -158,6 +161,34 @@ export function pullOllamaModel(
     method: 'POST',
     body: JSON.stringify({ model }),
   });
+}
+
+// ── Shorebreak APIs ───────────────────────────────────────────────
+
+/** Fetch pending Shorebreak wave proposals */
+export function fetchProposals(): Promise<ProposalsResponse> {
+  return request<ProposalsResponse>('/api/v1/shorebreak/proposals');
+}
+
+/** Fetch a single Shorebreak proposal with full detail */
+export function fetchProposalDetail(id: string): Promise<WaveProposal> {
+  return request<WaveProposal>(`/api/v1/shorebreak/proposals/${encodeURIComponent(id)}`);
+}
+
+/** Approve a Shorebreak wave proposal */
+export function approveProposal(id: string): Promise<ProposalActionResponse> {
+  return request<ProposalActionResponse>(
+    `/api/v1/shorebreak/proposals/${encodeURIComponent(id)}/approve`,
+    { method: 'POST' },
+  );
+}
+
+/** Reject a Shorebreak wave proposal */
+export function rejectProposal(id: string): Promise<ProposalActionResponse> {
+  return request<ProposalActionResponse>(
+    `/api/v1/shorebreak/proposals/${encodeURIComponent(id)}/reject`,
+    { method: 'POST' },
+  );
 }
 
 // ── Voice APIs ─────────────────────────────────────────────────────

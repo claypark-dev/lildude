@@ -87,11 +87,46 @@ export interface BriefingSection {
 
 /** Summary counts for the briefing header. */
 export interface BriefingSummary {
-  activeSkills: number;
+  activeWaves: number;
   scheduledJobs: number;
   pendingTasks: number;
   todayCostUsd: number;
   monthlyCostUsd: number;
+}
+
+/** A Shorebreak wave proposal awaiting approval. */
+export interface WaveProposal {
+  id: string;
+  name: string;
+  description: string;
+  safetyTier: string;
+  sourceTemplate: string;
+  sourceCode: string;
+  manifest: Record<string, unknown>;
+  scanResult: Record<string, unknown>;
+  scanPassed: boolean;
+  testPassed: boolean;
+  createdAt: string;
+}
+
+/** Response for listing proposals. */
+export interface ProposalsResponse {
+  proposals: Array<{
+    id: string;
+    name: string;
+    description: string;
+    safety_tier: string;
+    scan_passed: number;
+    test_passed: number;
+    created_at: string;
+  }>;
+  count: number;
+}
+
+/** Response for approve/reject actions. */
+export interface ProposalActionResponse {
+  message: string;
+  proposalId: string;
 }
 
 /** Complete daily briefing response. */

@@ -65,6 +65,13 @@ export async function loadWaves(
     'installed',
   );
 
+  const resolvedGeneratedDir = join(
+    process.env.HOME ?? process.env.USERPROFILE ?? '.',
+    '.lil-dude',
+    'waves',
+    'generated',
+  );
+
   let loadedCount = 0;
 
   try {
@@ -89,6 +96,18 @@ export async function loadWaves(
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     loaderLogger.warn({ dir: resolvedInstalledDir, error: message }, 'Failed to scan installed waves directory');
+  }
+
+  try {
+    const generatedLoaded = await loadWavesFromDirectory(
+      db,
+      resolvedGeneratedDir,
+      'generated',
+    );
+    loadedCount += generatedLoaded;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    loaderLogger.warn({ dir: resolvedGeneratedDir, error: message }, 'Failed to scan generated waves directory');
   }
 
   loaderLogger.info({ loadedCount }, 'Wave loading complete');

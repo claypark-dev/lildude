@@ -1,0 +1,34 @@
+{
+  "name": "email-reader",
+  "version": "1.0.0",
+  "description": "Read and search Gmail emails",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": [
+      "gmail.googleapis.com",
+      "www.googleapis.com",
+      "accounts.google.com",
+      "oauth2.googleapis.com"
+    ],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": ["google"]
+  },
+  "triggers": ["email", "mail", "inbox", "unread", "messages", "gmail"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "list_emails",
+      "description": "List recent or unread emails from Gmail",
+      "parameters": {
+        "maxResults": "number",
+        "query": "string",
+        "unreadOnly": "boolean"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe"
+}

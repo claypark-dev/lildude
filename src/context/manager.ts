@@ -15,6 +15,10 @@ import { getConversationLogs } from '../persistence/conversation-logs.js';
 import type { ConversationLogRow } from '../persistence/conversation-logs.js';
 import { buildSystemPrompt } from '../orchestrator/system-prompt.js';
 import { formatKnowledgeForContext } from './knowledge.js';
+import { hybridSearch, recordKnowledgeAccess } from '../memory/hybrid-search.js';
+import type { EmbeddingResult } from '../memory/embeddings.js';
+import { loadUserProfile } from '../memory/preference-extractor.js';
+import type { ProfileEntry } from '../orchestrator/system-prompt.js';
 import { orchestratorLogger } from '../utils/logger.js';
 
 /** Default total token budget for context payloads. */
@@ -39,6 +43,10 @@ export interface BuildContextOptions {
   securityLevel?: number;
   /** List of active wave names. Defaults to empty array. */
   activeWaves?: string[];
+  /** Pre-computed embedding of the user query for hybrid search. */
+  queryEmbedding?: EmbeddingResult;
+  /** Whether to use hybrid search (vector + BM25). Defaults to false. */
+  useHybridSearch?: boolean;
 }
 
 /**
@@ -135,41 +143,86 @@ export async function buildContext(
     const securityLevel = options?.securityLevel ?? 3;
     const activeWaves = options?.activeWaves ?? [];
     const targetBudget = options?.targetTokenBudget ?? DEFAULT_TOKEN_BUDGET;
+    const useHybridSearch = options?.useHybridSearch ?? false;
+    const queryEmbedding = options?.queryEmbedding ?? null;
 
-    // Step 1: Build system prompt
-    const systemPrompt = buildSystemPrompt(userName, securityLevel, activeWaves);
+    // Step 1: Load user profile and build system prompt
+    let userProfile: ProfileEntry[] | undefined;
+    try {
+      const profileRows = loadUserProfile(db);
+      if (profileRows.length > 0) {
+        userProfile = profileRows.map((row) => ({
+          key: row.key,
+          value: row.value,
+        }));
+      }
+    } catch {
+      // user_profile table may not exist yet on older DBs
+    }
+
+    const systemPrompt = buildSystemPrompt(userName, securityLevel, activeWaves, userProfile);
     const systemPromptTokens = countTokens(systemPrompt);
 
     // Step 2: Query knowledge base for relevant entries
     const knowledgeIncluded: string[] = [];
     let knowledgeContext = '';
-    const searchTerms = extractSearchTerms(userMessage);
 
-    if (searchTerms.length > 0) {
-      // Search each term individually and deduplicate by entry ID
-      const seenIds = new Set<number>();
-      const allEntries: KnowledgeRow[] = [];
+    if (useHybridSearch) {
+      // Hybrid search: vector + BM25 with temporal decay and MMR
+      const hybridResults = hybridSearch(db, queryEmbedding, userMessage);
 
-      for (const term of searchTerms) {
-        const entries = searchKnowledge(db, term);
-        for (const entry of entries) {
-          if (!seenIds.has(entry.id)) {
-            seenIds.add(entry.id);
-            allEntries.push(entry);
+      if (hybridResults.length > 0) {
+        // Convert hybrid results to KnowledgeRow-compatible format for the formatter
+        const entries: KnowledgeRow[] = hybridResults.map((result) => ({
+          id: result.knowledgeId,
+          category: result.category,
+          key: result.key,
+          value: result.value,
+          sourceConversationId: null,
+          sourceTaskId: null,
+          confidence: result.score,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }));
+
+        knowledgeContext = formatKnowledgeForContext(entries, BUDGET_KNOWLEDGE);
+
+        // Record access for temporal decay tracking
+        for (const result of hybridResults) {
+          if (knowledgeContext.includes(result.key)) {
+            knowledgeIncluded.push(result.key);
+            recordKnowledgeAccess(db, result.knowledgeId);
           }
         }
       }
+    } else {
+      // Fallback: substring-based search (original behavior)
+      const searchTerms = extractSearchTerms(userMessage);
 
-      // Sort by confidence descending so higher-confidence entries are included first
-      const sortedEntries = allEntries.sort(
-        (entryA, entryB) => entryB.confidence - entryA.confidence,
-      );
+      if (searchTerms.length > 0) {
+        const seenIds = new Set<number>();
+        const allEntries: KnowledgeRow[] = [];
 
-      knowledgeContext = formatKnowledgeForContext(sortedEntries, BUDGET_KNOWLEDGE);
+        for (const term of searchTerms) {
+          const entries = searchKnowledge(db, term);
+          for (const entry of entries) {
+            if (!seenIds.has(entry.id)) {
+              seenIds.add(entry.id);
+              allEntries.push(entry);
+            }
+          }
+        }
 
-      for (const entry of sortedEntries) {
-        if (knowledgeContext.includes(entry.key)) {
-          knowledgeIncluded.push(entry.key);
+        const sortedEntries = allEntries.sort(
+          (entryA, entryB) => entryB.confidence - entryA.confidence,
+        );
+
+        knowledgeContext = formatKnowledgeForContext(sortedEntries, BUDGET_KNOWLEDGE);
+
+        for (const entry of sortedEntries) {
+          if (knowledgeContext.includes(entry.key)) {
+            knowledgeIncluded.push(entry.key);
+          }
         }
       }
     }

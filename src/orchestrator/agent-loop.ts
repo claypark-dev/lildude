@@ -7,10 +7,12 @@
  */
 
 import type { ChatResponse, Message, ChannelType, ModelSelection } from '../types/index.js';
+import type { EmbeddingResult } from '../memory/embeddings.js';
+import { extractAndStorePreferences } from '../memory/preference-extractor.js';
 import { checkForInjection } from '../security/injection.js';
 import { canAfford, isWithinMonthlyBudget } from '../cost/budget.js';
 import { calculateCost } from '../cost/pricing.js';
-import { classifyComplexity, selectModel } from '../providers/router.js';
+import { classifyComplexity, selectModel, selectModelWithHistory } from '../providers/router.js';
 import { buildContext } from '../context/manager.js';
 import { createToolExecutor } from '../tools/executor.js';
 import { CORE_TOOLS } from '../tools/definitions.js';
@@ -24,9 +26,14 @@ import {
 import { appendConversationLog } from '../persistence/conversation-logs.js';
 import { createTask, updateTaskStatus, updateTaskSpend } from '../persistence/tasks.js';
 import { recordRoutingDecision } from '../persistence/routing-history.js';
+import { recordFailurePattern } from '../persistence/failure-patterns.js';
+import { recordWaveExecution } from '../persistence/wave-effectiveness.js';
 import { orchestratorLogger } from '../utils/logger.js';
 import { matchWave } from '../waves/registry.js';
 import { executeWave } from '../waves/executor.js';
+import { checkWaveSafety, getDefaultSafetyTier } from '../waves/safety.js';
+import { detectGap, generateWaveProposal } from '../waves/shorebreak.js';
+import { createToolGuard } from './tool-guard.js';
 import { runPostTaskQualityCheck } from './quality-checker.js';
 import {
   DEFAULT_MAX_ROUND_TRIPS,
@@ -74,6 +81,7 @@ export function createAgentLoop(
   const maxConsecutiveErrors = config?.maxConsecutiveErrors ?? DEFAULT_MAX_CONSECUTIVE_ERRORS;
   const taskBudgetUsd = config?.taskBudgetUsd ?? DEFAULT_TASK_BUDGET_USD;
   const enabledProviders = config?.enabledProviders ?? [deps.provider.name];
+  const enableHybridSearch = config?.enableHybridSearch ?? false;
 
   return {
     async processMessage(
@@ -130,11 +138,11 @@ export function createAgentLoop(
           );
         }
 
-        // Step 5: Model routing
+        // Step 5: Model routing — prefer quality-aware routing with history
         const tier = classifyComplexity(userMessage, false);
         let modelSelection: ModelSelection;
         try {
-          modelSelection = selectModel(tier, enabledProviders);
+          modelSelection = selectModelWithHistory(tier, enabledProviders, deps.db, 'chat');
         } catch {
           updateTaskStatus(deps.db, taskId, 'failed', 'No model available');
           return buildResult(
@@ -146,13 +154,39 @@ export function createAgentLoop(
         // Step 5b: Wave routing — check if a registered wave matches
         const waveMatch = matchWave(userMessage);
         if (waveMatch && waveMatch.score > WAVE_MATCH_THRESHOLD) {
+          // Wave safety check before execution
+          const waveSafetyTier = waveMatch.wave.manifest.safetyTier ?? getDefaultSafetyTier();
+          const safetyResult = checkWaveSafety(waveSafetyTier, modelSelection.tier, deps.securityLevel);
+
+          if (safetyResult.decision === 'block') {
+            orchestratorLogger.warn(
+              { waveName: waveMatch.wave.manifest.name, reason: safetyResult.reason },
+              'Wave blocked by safety check',
+            );
+            updateTaskStatus(deps.db, taskId, 'failed', safetyResult.reason);
+            const blockMsg = safetyResult.requiredTier
+              ? `I can't run "${waveMatch.wave.manifest.name}" with the current model and security settings. A ${safetyResult.requiredTier}-tier model is required.`
+              : `I can't run "${waveMatch.wave.manifest.name}" at this security level. Please adjust your security settings.`;
+            return buildResult(blockMsg, totalInputTokens, totalOutputTokens,
+              totalCostUsd, toolCallCount, roundTrips);
+          }
+
+          if (safetyResult.decision === 'confirm') {
+            orchestratorLogger.info(
+              { waveName: waveMatch.wave.manifest.name, reason: safetyResult.reason },
+              'Wave requires user confirmation (auto-approved in current version)',
+            );
+            // TODO: Wire user confirmation channel when approval queue is built (Sprint 4)
+          }
+
           orchestratorLogger.info(
-            { waveName: waveMatch.wave.manifest.name, score: waveMatch.score },
+            { waveName: waveMatch.wave.manifest.name, score: waveMatch.score, safety: safetyResult.decision },
             'Wave matched, routing to wave executor',
           );
           const waveResult = await executeWave(waveMatch.wave, userMessage, {
             db: deps.db, provider: deps.provider,
             taskBudgetUsd, taskSpentUsd: totalCostUsd, enabledProviders,
+            getAccessToken: deps.getAccessToken,
           });
           totalInputTokens += waveResult.tokensUsed.input;
           totalOutputTokens += waveResult.tokensUsed.output;
@@ -160,14 +194,47 @@ export function createAgentLoop(
           updateTaskSpend(deps.db, taskId, totalCostUsd);
           updateTaskStatus(deps.db, taskId, waveResult.success ? 'completed' : 'failed',
             waveResult.success ? undefined : waveResult.output);
+
+          // Track wave effectiveness for self-improvement
+          recordWaveExecution(deps.db, waveMatch.wave.manifest.name, waveResult.success);
+
+          // Record failure pattern if wave execution failed
+          if (!waveResult.success) {
+            try {
+              recordFailurePattern(deps.db, {
+                intent: userMessage.slice(0, 200),
+                waveName: waveMatch.wave.manifest.name,
+                errorType: 'wave_execution_failure',
+                errorMessage: waveResult.output.slice(0, 500),
+                model: modelSelection.model,
+                provider: modelSelection.provider,
+              });
+            } catch {
+              // Non-critical — don't fail the request
+            }
+          }
+
           return buildResult(waveResult.output, totalInputTokens, totalOutputTokens,
             totalCostUsd, toolCallCount, waveResult.llmCallCount);
         }
 
-        // Step 6: Build context
+        // Step 6: Generate query embedding for hybrid search (if enabled)
+        let queryEmbedding: EmbeddingResult | undefined;
+        if (enableHybridSearch && deps.embeddingGenerator) {
+          try {
+            queryEmbedding = await deps.embeddingGenerator.generateEmbedding(userMessage);
+          } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            orchestratorLogger.warn({ error: msg }, 'Embedding generation failed, falling back to keyword search');
+          }
+        }
+
+        // Step 7: Build context
         const contextPayload = await buildContext(deps.db, conversationId, userMessage, {
           userName: deps.userName,
           securityLevel: deps.securityLevel,
+          useHybridSearch: enableHybridSearch,
+          queryEmbedding,
         });
 
         // Step 7: Log user message
@@ -185,8 +252,9 @@ export function createAgentLoop(
           );
         }
 
-        // Step 9: Create tool executor
+        // Step 9: Create tool executor and tool guard
         const toolExecutor = createToolExecutor(deps.db, deps.securityLevel, taskId);
+        const toolGuard = createToolGuard();
 
         // Step 10: LLM call with tool-use loop
         const messages: Message[] = [...contextPayload.messages];
@@ -274,17 +342,91 @@ export function createAgentLoop(
                 orchestratorLogger.info({ taskId, score: qualityResult.score, feedback: qualityResult.feedback }, 'Quality check completed');
               }
             }
+
+            // Shorebreak: detect capability gaps and propose new waves
+            if (config?.enableShorebreak) {
+              try {
+                const gapResult = await detectGap(responseText, userMessage, {
+                  db: deps.db, provider: deps.provider,
+                  taskBudgetUsd, taskSpentUsd: totalCostUsd, enabledProviders,
+                });
+                if (gapResult?.isGap) {
+                  orchestratorLogger.info(
+                    { waveName: gapResult.suggestedWaveName, reason: gapResult.reason },
+                    'Shorebreak detected capability gap',
+                  );
+                  const proposal = await generateWaveProposal(gapResult, userMessage, {
+                    db: deps.db, provider: deps.provider,
+                    taskBudgetUsd, taskSpentUsd: totalCostUsd, enabledProviders,
+                  });
+                  if (proposal) {
+                    const shorebreakNote = proposal.scanPassed
+                      ? `\n\n---\n💡 I noticed I couldn't do this, so I generated a new "${proposal.name}" wave. Review and approve it in the web panel to enable this capability next time.`
+                      : `\n\n---\n⚠️ I tried to generate a "${proposal.name}" wave for this, but it didn't pass the security scan. You can review details in the web panel.`;
+                    triggerSummarizationIfNeeded(deps.db, conversationId, deps.provider, totalCostUsd, taskBudgetUsd);
+                    extractKeyFactsOnTaskCompletion(deps.db, conversationId);
+                    extractAndStorePreferences(deps.db, [userMessage]);
+                    return buildResult(responseText + shorebreakNote, totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
+                  }
+                }
+              } catch (shorebreakError: unknown) {
+                const sbMsg = shorebreakError instanceof Error ? shorebreakError.message : String(shorebreakError);
+                orchestratorLogger.warn({ error: sbMsg }, 'Shorebreak gap detection failed (non-critical)');
+              }
+            }
+
             triggerSummarizationIfNeeded(deps.db, conversationId, deps.provider, totalCostUsd, taskBudgetUsd);
             extractKeyFactsOnTaskCompletion(deps.db, conversationId);
+            extractAndStorePreferences(deps.db, [userMessage]);
             return buildResult(responseText, totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
           }
 
           if (response.stopReason === 'tool_use') {
             const toolUseBlocks = response.content.filter((block) => block.type === 'tool_use');
             messages.push({ role: 'assistant', content: response.content });
-            const toolResultBlocks = await executeTools(toolExecutor, toolUseBlocks);
+            const toolExecResult = await executeTools(
+              toolExecutor, toolUseBlocks, toolGuard, taskId, modelSelection.tier,
+            );
             toolCallCount += toolUseBlocks.length;
-            messages.push({ role: 'user', content: toolResultBlocks });
+            messages.push({ role: 'user', content: toolExecResult.results });
+
+            // Handle tool guard decisions
+            if (toolExecResult.guardDecision) {
+              if (!toolExecResult.guardDecision.shouldContinue) {
+                orchestratorLogger.warn({ taskId }, 'Tool guard stopping task due to repeated failures');
+                updateTaskStatus(deps.db, taskId, 'failed', toolExecResult.guardDecision.reason);
+                toolGuard.clearTask(taskId);
+
+                // Record failure pattern for learning
+                try {
+                  recordFailurePattern(deps.db, {
+                    intent: userMessage.slice(0, 200),
+                    errorType: 'tool_guard_stop',
+                    errorMessage: toolExecResult.guardDecision.reason ?? 'Repeated tool failures',
+                    model: modelSelection.model,
+                    provider: modelSelection.provider,
+                  });
+                } catch {
+                  // Non-critical
+                }
+
+                return buildResult(
+                  `I had trouble completing your request: ${toolExecResult.guardDecision.reason}`,
+                  totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips,
+                );
+              }
+              if (toolExecResult.guardDecision.shouldEscalate && toolExecResult.guardDecision.recommendedTier) {
+                try {
+                  modelSelection = selectModel(toolExecResult.guardDecision.recommendedTier, enabledProviders);
+                  orchestratorLogger.info(
+                    { taskId, from: modelSelection.tier, to: toolExecResult.guardDecision.recommendedTier },
+                    'Model escalated by tool guard',
+                  );
+                } catch {
+                  orchestratorLogger.warn({ taskId }, 'Tool guard recommended escalation but no model available');
+                }
+              }
+            }
             continue;
           }
 
@@ -304,12 +446,14 @@ export function createAgentLoop(
             }
           }
           extractKeyFactsOnTaskCompletion(deps.db, conversationId);
+          extractAndStorePreferences(deps.db, [userMessage]);
           return buildResult(responseText || 'I completed your request.',
             totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
         }
 
         orchestratorLogger.warn({ conversationId, roundTrips }, 'Max round trips reached');
         updateTaskStatus(deps.db, task.id, 'killed', 'Max round trips exceeded');
+        toolGuard.clearTask(taskId);
         return buildResult('I reached the maximum number of processing steps for this request.',
           totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
       } catch (error: unknown) {

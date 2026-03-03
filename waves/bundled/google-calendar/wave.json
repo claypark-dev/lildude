@@ -44,5 +44,6 @@
     }
   ],
   "minTier": "basic",
-  "entryPoint": "index.js"
+  "entryPoint": "index.js",
+  "safetyTier": "modify"
 }

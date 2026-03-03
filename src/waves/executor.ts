@@ -43,6 +43,8 @@ export interface WaveExecutorDeps {
   taskBudgetUsd: number;
   taskSpentUsd: number;
   enabledProviders: string[];
+  /** OAuth access token getter — returns a valid token for a given provider, or null. */
+  getAccessToken?: (provider: string) => Promise<string | null>;
 }
 
 /**
@@ -148,7 +150,12 @@ async function executeDeterministic(
     'Parameters extracted for deterministic wave',
   );
 
-  // Step 5: Build a WavePlan with the extracted params
+  // Step 5: Build a WavePlan with the extracted params + injected deps
+  const waveDeps = {
+    db: deps.db,
+    getAccessToken: deps.getAccessToken,
+  };
+
   const plan: WavePlan = {
     steps: wave.manifest.tools.map((tool) => ({
       type: 'api_call' as const,
@@ -157,7 +164,7 @@ async function executeDeterministic(
     })),
     estimatedCostUsd: extractionCost,
     isDeterministic: true,
-    extractedParams,
+    extractedParams: { ...extractedParams, _deps: waveDeps },
   };
 
   // Step 6: Execute the wave directly (no LLM call)
@@ -208,8 +215,12 @@ async function executeNonDeterministic(
   const estimatedPlanCost = calculateCost(modelSelection.model, 1000, 500);
   assertCanAfford(deps, estimatedPlanCost);
 
-  // Step 3: Call wave.plan() to generate a WavePlan (uses LLM internally)
-  const plan = await wave.plan(userMessage, {});
+  // Step 3: Call wave.plan() with injected deps context
+  const waveDeps = {
+    db: deps.db,
+    getAccessToken: deps.getAccessToken,
+  };
+  const plan = await wave.plan(userMessage, { _deps: waveDeps });
 
   executorLogger.debug(
     { waveName, stepCount: plan.steps.length, isDeterministic: plan.isDeterministic },

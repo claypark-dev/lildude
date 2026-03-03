@@ -96,6 +96,16 @@ export const ConfigSchema = z.object({
     powerUserMode: z.boolean().default(false),
     enableQualityChecks: z.boolean().default(false),
   }).default({}),
+  integrations: z.object({
+    google: z.object({
+      clientId: z.string().optional(),
+      clientSecret: z.string().optional(),
+    }).default({}),
+    microsoft: z.object({
+      clientId: z.string().optional(),
+      clientSecret: z.string().optional(),
+    }).default({}),
+  }).default({}),
   voice: z.object({
     enabled: z.boolean().default(false),
     transcription: z.object({
