@@ -7,8 +7,8 @@
 import type { FastifyInstance } from 'fastify';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { SecurityLevel } from '../../security/permissions.js';
-import { installWave, listWaves, uninstallWave } from '../../waves/hub.js';
-import { fetchRegistry, searchRegistry } from '../../waves/hub-registry.js';
+import { installWave, listWaves, uninstallWave, updateWave } from '../../waves/hub.js';
+import { fetchRegistry, searchRegistry, checkForUpdates } from '../../waves/hub-registry.js';
 import {
   rateWave,
   getWaveRating,
@@ -165,6 +165,50 @@ export function registerHubRoutes(
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       return reply.status(500).send({ error: message } as never);
+    }
+  });
+
+  // GET /api/v1/hub/updates — Check for wave updates
+  app.get('/api/v1/hub/updates', async (_request, reply) => {
+    try {
+      const updates = await checkForUpdates(db);
+      return reply.status(200).send({ updates, total: updates.length });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      hubApiLogger.error({ error: message }, 'Failed to check for updates');
+      return reply.status(500).send({ error: 'Failed to check for updates' } as never);
+    }
+  });
+
+  // POST /api/v1/hub/update/:name — Update an installed wave
+  app.post<{
+    Params: { name: string };
+    Body: { source: string; securityLevel?: number };
+  }>('/api/v1/hub/update/:name', async (request, reply) => {
+    try {
+      const { name } = request.params;
+      const { source, securityLevel } = request.body;
+
+      if (!source) {
+        return reply.status(400).send({
+          error: 'source is required (format: github:user/repo)',
+        } as never);
+      }
+
+      const level = (securityLevel ?? 3) as SecurityLevel;
+      const manifest = await updateWave(db, name, source, level);
+
+      hubApiLogger.info({ name, version: manifest.version }, 'Wave updated via API');
+
+      return reply.status(200).send({
+        message: `Wave "${name}" updated to version ${manifest.version}`,
+        name: manifest.name,
+        version: manifest.version,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      hubApiLogger.error({ error: message }, 'Failed to update wave');
+      return reply.status(400).send({ error: message } as never);
     }
   });
 

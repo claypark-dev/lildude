@@ -2,7 +2,7 @@
  * Remote Wave Hub registry.
  * Fetches the curated wave registry from a remote URL (GitHub JSON)
  * with 24-hour caching in SQLite. Falls back to the hardcoded registry
- * if the remote fetch fails.
+ * if the remote fetch fails. Supports update checking for installed waves.
  */
 
 import type BetterSqlite3 from 'better-sqlite3';
@@ -13,6 +13,7 @@ import {
 } from '../persistence/wave-hub-cache.js';
 import { createModuleLogger } from '../utils/logger.js';
 import type { WaveRegistryEntry } from './hub-helpers.js';
+import { listWaves } from './hub.js';
 
 const registryLogger = createModuleLogger('hub-registry');
 
@@ -144,4 +145,92 @@ export function searchRegistry(
     );
     return nameMatch || descMatch || triggerMatch;
   });
+}
+
+/** Information about a wave update. */
+export interface WaveUpdateInfo {
+  name: string;
+  currentVersion: string;
+  latestVersion: string;
+  source: string;
+  description: string;
+}
+
+/**
+ * Compare two semver-ish version strings.
+ * Returns true if `latest` is newer than `current`.
+ *
+ * @param current - The currently installed version.
+ * @param latest - The latest available version.
+ * @returns True if latest > current.
+ */
+export function isNewerVersion(current: string, latest: string): boolean {
+  const parseParts = (version: string): number[] =>
+    version
+      .replace(/^v/, '')
+      .split('.')
+      .map((part) => parseInt(part, 10) || 0);
+
+  const currentParts = parseParts(current);
+  const latestParts = parseParts(latest);
+
+  const maxLen = Math.max(currentParts.length, latestParts.length);
+  for (let i = 0; i < maxLen; i++) {
+    const curVal = currentParts[i] ?? 0;
+    const latVal = latestParts[i] ?? 0;
+    if (latVal > curVal) return true;
+    if (latVal < curVal) return false;
+  }
+
+  return false;
+}
+
+/**
+ * Check installed waves against the registry for available updates.
+ * Compares version strings of installed waves with registry entries.
+ *
+ * @param db - The database instance.
+ * @param registryUrl - Optional override for the registry URL.
+ * @returns Array of waves with updates available.
+ */
+export async function checkForUpdates(
+  db: BetterSqlite3.Database,
+  registryUrl?: string,
+): Promise<WaveUpdateInfo[]> {
+  try {
+    const registryWaves = await fetchRegistry(db, registryUrl);
+    const installedWaves = listWaves(db);
+    const updates: WaveUpdateInfo[] = [];
+
+    const registryByName = new Map<string, WaveRegistryEntry>();
+    for (const entry of registryWaves) {
+      registryByName.set(entry.name, entry);
+    }
+
+    for (const installed of installedWaves) {
+      const registryEntry = registryByName.get(installed.name);
+      if (!registryEntry) continue;
+
+      if (isNewerVersion(installed.version, registryEntry.version)) {
+        updates.push({
+          name: installed.name,
+          currentVersion: installed.version,
+          latestVersion: registryEntry.version,
+          source: registryEntry.source,
+          description: registryEntry.description,
+        });
+      }
+    }
+
+    registryLogger.info(
+      { updatesAvailable: updates.length, checkedCount: installedWaves.length },
+      'Update check complete',
+    );
+
+    return updates;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    registryLogger.warn({ error: errorMessage }, 'Failed to check for updates');
+    return [];
+  }
 }

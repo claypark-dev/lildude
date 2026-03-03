@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,258_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,295_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -112,6 +112,8 @@ Waves are self-contained modules that give Lil Dude new abilities. Each wave dec
 lil-dude wave install github:user/awesome-wave
 lil-dude wave list
 ```
+
+**Wave Registry & Updates:** HMAC-SHA256 signed wave manifests with verified badges. Automatic update checking compares installed versions against the community registry. One-click updates preserve configuration.
 
 [Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation)
 
@@ -240,7 +242,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,258 tests |
+| `npm test` | Run 2,295 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -266,7 +268,7 @@ src/
   types/            # All canonical interfaces
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
-tests/              # 2,258 tests across 124 files
+tests/              # 2,295 tests across 126 files
 ```
 
 ### Architecture Principles
