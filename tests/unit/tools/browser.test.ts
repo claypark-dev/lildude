@@ -353,7 +353,7 @@ describe('browser tool', () => {
       const result = await executeBrowserAction(options);
 
       expect(result.success).toBe(true);
-      expect(result.content).toContain('<external_data');
+      expect(result.content).toContain('<EXTERNAL_');
       expect(result.content).toContain('trust_level="untrusted"');
       expect(result.content).toContain('browser:www.google.com');
     });

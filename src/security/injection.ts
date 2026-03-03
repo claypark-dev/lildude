@@ -1,6 +1,9 @@
 /**
  * Prompt injection detection.
  * Scans inbound messages and external content for injection attempts.
+ * Covers: instruction overrides, role impersonation, delimiter injection,
+ * tool abuse, prompt extraction, Unicode homoglyphs, invisible characters,
+ * markdown/HTML injection, multi-turn jailbreaks, indirect injection.
  * See HLD Section 14.
  */
 
@@ -20,7 +23,7 @@ interface ThreatPattern {
 }
 
 const THREAT_PATTERNS: ThreatPattern[] = [
-  // 1. Instruction override attempts
+  // ── 1. Instruction override attempts ───────────────────────────────
   {
     name: 'instruction_override',
     pattern: /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|rules)/i,
@@ -42,8 +45,15 @@ const THREAT_PATTERNS: ThreatPattern[] = [
     description: 'Attempts to make agent forget instructions',
     externalOnly: false,
   },
+  {
+    name: 'instruction_override',
+    pattern: /new\s+instructions?\s*:/i,
+    severity: 'high',
+    description: 'Attempts to inject new instructions',
+    externalOnly: false,
+  },
 
-  // 2. Role impersonation
+  // ── 2. Role impersonation ──────────────────────────────────────────
   {
     name: 'role_impersonation',
     pattern: /you\s+are\s+(now|actually)\s+/i,
@@ -65,8 +75,15 @@ const THREAT_PATTERNS: ThreatPattern[] = [
     description: 'External content demands obedience',
     externalOnly: true,
   },
+  {
+    name: 'role_impersonation',
+    pattern: /pretend\s+(you\s+are|to\s+be)\s+/i,
+    severity: 'high',
+    description: 'Attempts to make agent pretend to be something else',
+    externalOnly: true,
+  },
 
-  // 3. Delimiter injection
+  // ── 3. Delimiter injection ─────────────────────────────────────────
   {
     name: 'delimiter_injection',
     pattern: /<\/?system>|<\/?user>|\[INST\]|\[\/INST\]|<\|im_start\|>|<\|im_end\|>/i,
@@ -82,7 +99,7 @@ const THREAT_PATTERNS: ThreatPattern[] = [
     externalOnly: false,
   },
 
-  // 4. Tool abuse (external content mentioning tool names)
+  // ── 4. Tool abuse ──────────────────────────────────────────────────
   {
     name: 'tool_name_mention',
     pattern: /\b(execute_shell|write_file|http_request|schedule_task|read_file|list_directory|knowledge_store)\b/i,
@@ -91,12 +108,106 @@ const THREAT_PATTERNS: ThreatPattern[] = [
     externalOnly: true,
   },
 
-  // 5. System prompt extraction
+  // ── 5. System prompt extraction ────────────────────────────────────
   {
     name: 'prompt_extraction',
     pattern: /\b(show|reveal|output|print|display|repeat)\s+(your\s+)?(system\s+)?(prompt|instructions|rules)/i,
     severity: 'medium',
     description: 'Attempts to extract system prompt',
+    externalOnly: true,
+  },
+
+  // ── 6. Unicode homoglyph attacks ───────────────────────────────────
+  {
+    name: 'unicode_homoglyph',
+    pattern: /[\u0400-\u04FF]{3,}/,
+    severity: 'low',
+    description: 'Cyrillic characters that may be homoglyph substitutes',
+    externalOnly: true,
+  },
+  {
+    name: 'unicode_confusable',
+    pattern: /[\uFF01-\uFF5E]{3,}/,
+    severity: 'medium',
+    description: 'Fullwidth characters used to evade filters',
+    externalOnly: true,
+  },
+
+  // ── 7. Invisible characters ────────────────────────────────────────
+  {
+    name: 'invisible_chars',
+    pattern: /[\u200B\u200C\u200D\u00AD\uFEFF]{2,}/,
+    severity: 'medium',
+    description: 'Multiple invisible Unicode characters detected',
+    externalOnly: false,
+  },
+  {
+    name: 'rtl_override',
+    pattern: /[\u202E\u202D\u2066\u2067\u2068\u2069]/,
+    severity: 'high',
+    description: 'Bidirectional text override character detected',
+    externalOnly: false,
+  },
+
+  // ── 8. HTML/Markdown injection ─────────────────────────────────────
+  {
+    name: 'html_injection',
+    pattern: /<script\b|<iframe\b|<object\b|<embed\b|<form\b.*action\s*=/i,
+    severity: 'high',
+    description: 'HTML injection attempt (script/iframe/form)',
+    externalOnly: true,
+  },
+  {
+    name: 'markdown_injection',
+    pattern: /!\[.*?\]\(javascript:/i,
+    severity: 'high',
+    description: 'Markdown image with javascript: URL',
+    externalOnly: true,
+  },
+
+  // ── 9. Multi-turn jailbreak ────────────────────────────────────────
+  {
+    name: 'jailbreak_attempt',
+    pattern: /\b(DAN|Do\s+Anything\s+Now)\s*(mode|prompt)?\b/i,
+    severity: 'high',
+    description: 'Known jailbreak attempt (DAN)',
+    externalOnly: false,
+  },
+  {
+    name: 'jailbreak_attempt',
+    pattern: /\bjailbreak(ed)?\b/i,
+    severity: 'medium',
+    description: 'Jailbreak keyword detected',
+    externalOnly: false,
+  },
+  {
+    name: 'jailbreak_attempt',
+    pattern: /\b(developer|debug|maintenance|god)\s+mode\b/i,
+    severity: 'high',
+    description: 'Attempts to activate special mode',
+    externalOnly: false,
+  },
+
+  // ── 10. Indirect injection via tool results ────────────────────────
+  {
+    name: 'indirect_injection',
+    pattern: /\b(IMPORTANT|URGENT|CRITICAL)\s*:\s*(?:ignore|disregard|forget|override)/i,
+    severity: 'high',
+    description: 'Indirect injection via urgency prefix',
+    externalOnly: true,
+  },
+  {
+    name: 'indirect_injection',
+    pattern: /\bnote\s+(?:from|to)\s+(?:the\s+)?(?:admin|developer|system|operator)\s*:/i,
+    severity: 'high',
+    description: 'Fake admin/system note injection',
+    externalOnly: true,
+  },
+  {
+    name: 'indirect_injection',
+    pattern: /\b(?:admin|system|root)\s+(?:override|command|instruction)\s*:/i,
+    severity: 'high',
+    description: 'Fake administrative override',
     externalOnly: true,
   },
 ];
@@ -108,6 +219,10 @@ const SUSPICIOUS_DECODED_WORDS = /ignore|execute|run|delete|send|override|bypass
  * Check for prompt injection patterns in input text.
  * Runs on every inbound message and every piece of external content
  * before it enters the context.
+ *
+ * @param input - The text to scan for injection patterns.
+ * @param source - Whether the input comes from the 'user' or 'external' source.
+ * @returns A SanitizationResult with threat details.
  */
 export function checkForInjection(input: string, source: ContentSource): SanitizationResult {
   const threats: SanitizationResult['threats'] = [];

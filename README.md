@@ -19,7 +19,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-1,898_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,027_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
 </p>
 
 ---
@@ -127,6 +127,10 @@ lil-dude wave list
 
 Commands are parsed, not string-matched. Prompt injection is detected and blocked. Security-relevant actions are logged.
 
+**Gateway Security:** Bearer token authentication on all API endpoints, token-bucket rate limiting (100 req/min default), WebSocket auth protocol with 5-second timeout, message size limits.
+
+**Prompt Injection Hardening:** 30+ threat patterns covering instruction overrides, role impersonation, delimiter injection, Unicode homoglyphs, invisible characters, HTML/markdown injection, multi-turn jailbreaks, and indirect injection via tool results. Output filter scans every LLM response for leaked API keys, private keys, database schemas, and config paths. Canary tokens detect context leakage. Nonce-tagged spotlighting prevents delimiter-matching attacks.
+
 [Full security documentation](docs/security.md)
 
 ### Smart Model Routing
@@ -209,7 +213,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 1,898 tests |
+| `npm test` | Run 2,027 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -220,21 +224,21 @@ cd lildude && npm install
 src/
   orchestrator/     # Agent loop, task pool, tool guard, quality rater, learning journal
   waves/            # Wave loader, executor, safety tiers, hub, shorebreak, request classifier
-  security/         # Permission engine, command parser, injection detection
+  security/         # Permission engine, command parser, injection detection, output filter, canary tokens, intent classifier
   providers/        # LLM adapters (Anthropic, OpenAI, Gemini, DeepSeek, Ollama) + plugins
   channels/         # 8 channel adapters + plugin discovery
   cost/             # Pricing, budget enforcement, token counting
-  persistence/      # SQLite DAL with 7 migrations
+  persistence/      # SQLite DAL with 8 migrations
   context/          # Knowledge management, summarization
   memory/           # Hybrid search (vector + BM25), embeddings, temporal decay, MMR
   integrations/     # OAuth2, Gmail, Google Calendar, MCP client
   tools/            # Tool executor with input validation
   voice/            # Transcription, synthesis
-  gateway/          # Fastify HTTP + WebSocket + REST APIs
+  gateway/          # Fastify HTTP + WebSocket + REST APIs + auth middleware + rate limiter
   types/            # All canonical interfaces
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
-tests/              # 1,898 tests across 102 files
+tests/              # 2,027 tests across 109 files
 ```
 
 ### Architecture Principles
