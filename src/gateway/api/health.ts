@@ -7,6 +7,22 @@ import type { FastifyInstance } from 'fastify';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { HealthData } from '../../types/index.js';
 import { getTasksByStatus } from '../../persistence/tasks.js';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** Read version from package.json at module load time. */
+function getPackageVersion(): string {
+  try {
+    const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string };
+    return pkg.version;
+  } catch {
+    return '1.0.0';
+  }
+}
+
+const APP_VERSION = getPackageVersion();
 
 /** Timestamp when the server started (set on registration). */
 let startTime: number;
@@ -39,7 +55,7 @@ export function registerHealthRoutes(app: FastifyInstance, db: BetterSqlite3.Dat
         memoryUsageMb: Math.round(memUsage.heapUsed / 1024 / 1024),
         dbSizeBytes,
         activeTasks: activeTasks.length,
-        version: '0.1.0',
+        version: APP_VERSION,
       };
 
       return reply.status(200).send(health);

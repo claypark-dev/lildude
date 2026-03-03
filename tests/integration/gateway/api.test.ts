@@ -91,7 +91,7 @@ describe('Gateway REST API', () => {
       expect(body).toHaveProperty('memoryUsageMb');
       expect(typeof body.memoryUsageMb).toBe('number');
       expect(body).toHaveProperty('version');
-      expect(body.version).toBe('0.1.0');
+      expect(body.version).toBe('1.0.0');
       expect(body).toHaveProperty('activeTasks');
       expect(body.activeTasks).toBe(0);
     });

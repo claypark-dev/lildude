@@ -1,0 +1,51 @@
+# =============================================================================
+# Lil Dude v1.0.0 — Docker Compose
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+# =============================================================================
+
+services:
+  lildude:
+    build: .
+    image: lildude:1.0.0
+    container_name: lildude
+    restart: unless-stopped
+    ports:
+      - "18421:18421"   # HTTP / REST API / Web Panel
+      - "18420:18420"   # WebSocket
+    volumes:
+      - "${HOME}/.lil-dude:/home/lildude/.lil-dude"
+    environment:
+      - NODE_ENV=production
+      - LIL_DUDE_HOME=/home/lildude/.lil-dude
+      # Uncomment and set your provider API keys:
+      # - LIL_DUDE_ANTHROPIC_KEY=sk-ant-...
+      # - LIL_DUDE_OPENAI_KEY=sk-...
+      # - LIL_DUDE_GEMINI_KEY=AIza...
+      # - LIL_DUDE_DEEPSEEK_KEY=sk-...
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18421/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # Optional: Ollama for local LLM inference (free, runs on your hardware)
+  # Uncomment to enable:
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: lildude-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         memory: 4G
+
+# volumes:
+#   ollama_data:

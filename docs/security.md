@@ -308,3 +308,75 @@ All shell commands run in a restricted child process environment:
   }
 }
 ```
+
+---
+
+## Advanced Security (v1.0)
+
+### Gateway Authentication
+- Bearer token auth on all `/api/v1/*` endpoints (except `/health`)
+- API key generated via `nanoid()` on first boot, stored SHA-256 hashed
+- WebSocket auth: first message must be `{ type: 'auth', token }`; disconnected after 5s if unauthenticated
+- Message size limit: 64KB default (configurable)
+
+### Enhanced Spotlighting
+Random nonce-tagged delimiters per session:
+```
+<EXTERNAL_b7f3a2>untrusted content</EXTERNAL_b7f3a2>
+```
+Defeats pattern-matching attacks against fixed delimiter strings.
+
+### Canary Tokens
+- Unique 16-character canary token embedded in every system prompt
+- If canary appears in LLM output → context leakage detected
+- Automatic stripping + security log entry + alert
+
+### Output Filtering
+Every LLM response scanned before delivery:
+- API key formats (Anthropic `sk-ant-`, OpenAI `sk-`, AWS `AKIA`, etc.)
+- Private key patterns (RSA, SSH, PGP headers)
+- Database connection strings and config paths
+- System prompt fragments
+- Other users' data patterns
+
+### Dual-LLM Intent Classification
+- Cheap model classifies intent: `benign-conversation`, `tool-request`, `injection-attempt`, `unclear`
+- `injection-attempt` → reject immediately
+- `unclear` → add safety wrapper to system prompt
+- Falls back to pattern-based detection if only one provider configured
+- Capped at $0.001 per classification
+
+### Abuse Detection & Auto-Block
+- In-memory sliding window tracks injection attempts per contact/IP
+- Configurable threshold (default: 3 attempts within 1 hour)
+- Auto-block: downgrades contact to `unknown` trust level
+- Owner notified, can reverse in web panel
+- Never auto-blocks owner contact
+
+### Unified Security Pipeline
+Single entry point for all security checks:
+```
+Input Pipeline:  injection check → intent classification → abuse tracking
+Output Pipeline: data filtering → canary leak detection → stripping
+```
+
+### Contact Trust Levels
+| Level | Wave Access | Budget | Description |
+|-------|-----------|--------|-------------|
+| **owner** | All safety tiers | Unlimited | Full access, cannot be deleted or downgraded |
+| **trusted** | observe/create/modify | Configurable | Close contacts |
+| **known** | observe only | Configurable | Acquaintances, read-only waves |
+| **unknown** | None (messages only) | Fixed low cap | First-time or auto-blocked senders |
+
+### Wave Manifest Signing
+- HMAC-SHA256 signature verification
+- Signing key must be ≥16 characters
+- Timing-safe comparison via `crypto.timingSafeEqual()`
+- Signature stored in `.wave-signature` JSON file
+- Unsigned waves install with warning, no "verified" badge
+
+### External User Isolation
+- Separate agent loop for external users (restricted system prompt)
+- No access to owner's knowledge or conversation history
+- Per-contact rate limiting and budget enforcement
+- All external interactions logged to audit trail

@@ -257,3 +257,207 @@ Wave Hub is the curated community registry for Lil Dude waves. It provides:
 - **Trust scores**: Community ratings and usage statistics
 
 Waves on the Hub must pass all security checks before being listed. The Hub never hosts waves that declare a lower safety tier than their code actually requires.
+
+---
+
+## Developing Custom Waves
+
+This section walks through creating, testing, and publishing a wave from scratch.
+
+### Project Structure
+
+A wave is a directory containing at minimum:
+
+```
+my-wave/
+  wave.json      # Manifest (required)
+  index.js       # Entry point (required)
+```
+
+### Entry Point Contract
+
+Your `index.js` must export three async functions:
+
+```javascript
+/**
+ * Plan the execution of this wave.
+ * @param {string} input - The user's message text.
+ * @param {object} ctx   - Context: { contactId, trustLevel, conversationId }.
+ * @returns {{ steps: Array, estimatedCostUsd: number, isDeterministic: boolean, extractedParams: object }}
+ */
+export async function plan(input, ctx) {
+  return {
+    steps: [{ type: 'compute', description: 'Calculate result' }],
+    estimatedCostUsd: 0,
+    isDeterministic: true,
+    extractedParams: { query: input },
+  };
+}
+
+/**
+ * Execute the planned wave.
+ * @param {object} wavePlan - The plan returned by plan().
+ * @returns {{ success: boolean, output: string, metadata?: object }}
+ */
+export async function execute(wavePlan) {
+  const result = doWork(wavePlan.extractedParams);
+  return {
+    success: true,
+    output: JSON.stringify(result),
+    metadata: { waveId: 'my-wave' },
+  };
+}
+
+/**
+ * Validate the execution result (optional but recommended).
+ * @param {object} result - The result returned by execute().
+ * @returns {{ valid: boolean, feedback?: string }}
+ */
+export async function validate(result) {
+  if (result.success) {
+    return { valid: true };
+  }
+  return { valid: false, feedback: result.error || 'Execution failed' };
+}
+```
+
+### Design Rules
+
+1. **Deterministic first**: If the wave can run without LLM calls beyond parameter extraction, set `"deterministic": true`. This is cheaper and faster.
+2. **Declare all permissions**: Every domain, shell binary, and directory the wave touches must be in the manifest. Undeclared access is blocked by the security scanner.
+3. **Keep it focused**: One wave = one capability. Split multi-feature modules into separate waves.
+4. **Handle errors gracefully**: Always return `{ success: false, output: errorMessage }` instead of throwing.
+5. **No secrets in code**: Never hardcode API keys. Use the context object or environment variables.
+
+### Testing Your Wave
+
+```bash
+# Validate the manifest
+node -e "
+  import('./src/waves/schema.js').then(m => {
+    const manifest = JSON.parse(require('fs').readFileSync('my-wave/wave.json', 'utf-8'));
+    console.log(m.validateManifest(manifest));
+  });
+"
+
+# Run the security scanner
+node -e "
+  import('./src/waves/security-scanner.js').then(m => {
+    const code = require('fs').readFileSync('my-wave/index.js', 'utf-8');
+    console.log(m.scanWaveCode(code));
+  });
+"
+```
+
+---
+
+## Trust Levels and External Users
+
+When external users interact with Lil Dude, wave access is gated by their **trust level**:
+
+| Trust Level | Allowed Safety Tiers | Notes |
+|-------------|---------------------|-------|
+| `owner` | All tiers | Full access to every wave |
+| `trusted` | `observe`, `create`, `modify` | Cannot run `destroy` or `execute` waves |
+| `known` | `observe` only | Read-only interactions |
+| `unknown` | None | Cannot trigger any waves; messaging only |
+
+Per-contact wave allowlists can further restrict access. If a contact has `permittedWaves` configured, only those specific waves are available regardless of trust level.
+
+---
+
+## Manifest Signing and Verification
+
+Waves published through the official registry are signed with HMAC-SHA256. Signed waves display a "Verified" badge in the Wave Hub.
+
+### How It Works
+
+1. The registry CI pipeline generates an HMAC signature of the `wave.json` content using a shared secret key.
+2. The signature is stored in a `.wave-signature` file alongside the manifest.
+3. When Lil Dude installs the wave, it verifies the signature against the manifest.
+
+### Signature File Format
+
+```json
+{
+  "signature": "a1b2c3d4e5f6...",
+  "algorithm": "sha256",
+  "signer": "lildude-ci",
+  "signedAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+Unsigned waves still install with a warning. Tampered manifests (where the content no longer matches the signature) are rejected.
+
+---
+
+## Community Wave Registry
+
+The community wave registry lives at `lildude-community/wave-registry` on GitHub. It is a JSON index that Lil Dude queries for discovery and updates.
+
+### Registry Structure
+
+```
+wave-registry/
+  registry.json                     # Main index of all published waves
+  schemas/wave-entry.schema.json    # Validation schema for registry entries
+  .github/workflows/validate-pr.yml # CI pipeline for wave submissions
+```
+
+### Submitting a Wave
+
+1. Create your wave in its own GitHub repository (e.g., `yourname/wave-my-tool`).
+2. Ensure `wave.json` passes manifest validation and `index.js` passes the security scanner with zero critical findings.
+3. Fork `lildude-community/wave-registry`.
+4. Add an entry to `registry.json`:
+
+```json
+{
+  "name": "my-tool",
+  "version": "1.0.0",
+  "description": "What your wave does",
+  "author": "yourname",
+  "repo": "github:yourname/wave-my-tool",
+  "category": "utilities",
+  "safetyTier": "observe",
+  "verified": false,
+  "tags": ["keyword1", "keyword2"]
+}
+```
+
+5. Open a pull request. The CI pipeline will:
+   - Clone your wave repo
+   - Validate the manifest against `WaveManifestSchema`
+   - Run `scanWaveCode()` on all JavaScript files
+   - Report any security findings
+6. If the scan passes with zero critical findings, maintainers review and merge. The `verified` field is set to `true` and the manifest is signed.
+
+### Update Checking
+
+Lil Dude periodically checks the registry for updates to installed waves:
+
+```
+GET /api/v1/hub/updates
+```
+
+Returns a list of waves with newer versions available. Users can update via the Wave Hub page or CLI:
+
+```bash
+lil-dude wave update <name>
+```
+
+---
+
+## Bundled External Waves
+
+These waves are designed for external user interactions:
+
+| Wave | Safety Tier | Description |
+|------|-------------|-------------|
+| `availability-check` | `observe` | Returns the owner's free time slots (without event details) |
+| `meeting-request` | `create` | External user proposes a meeting time; owner approves |
+| `contact-share` | `observe` | Shares the owner's preferred contact methods |
+| `message-relay` | `create` | Leaves a message for the owner with urgency tagging |
+| `auto-responder` | `observe` | Replies with the owner's away message (deterministic) |
+
+These waves respect privacy by design — `availability-check` returns time slots only, never event titles or details.

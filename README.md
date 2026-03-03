@@ -19,7 +19,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,440_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,461_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Version-1.0.0-orange?style=for-the-badge" alt="v1.0.0"/></a>
 </p>
 
 ---
@@ -58,6 +59,13 @@ The onboarding wizard walks you through provider API keys, channel setup, securi
 **Windows:** `irm https://raw.githubusercontent.com/claypark-dev/lildude/main/scripts/install.ps1 | iex`
 
 **From source:** `git clone`, `npm install`, `npm run build`, `npm run onboard`, `npm run start`
+
+**Docker:** `docker compose up -d` (see [Docker setup](#docker))
+
+**Auto-start on login:**
+- **macOS:** `bash scripts/install-macos.sh` (LaunchAgent)
+- **Linux:** `bash scripts/install-linux.sh` (systemd user service)
+- **Windows:** `powershell scripts/install-windows.ps1` (Scheduled Task)
 
 | Requirement | Minimum | Recommended |
 |-------------|---------|-------------|
@@ -233,6 +241,27 @@ Scheduled tasks and morning briefings (email summary, calendar, weather, cost ov
 
 ---
 
+## Docker
+
+Run Lil Dude in a container with persistent data:
+
+```bash
+# Build and start
+docker compose up -d
+
+# View logs
+docker compose logs -f lildude
+
+# Stop
+docker compose down
+```
+
+The Docker setup exposes port 18421 (HTTP API) and 18420 (WebSocket). Data persists in `~/.lil-dude/` on the host. Health checks run automatically on `/api/v1/health`.
+
+For local LLM support, uncomment the `ollama` service in `docker-compose.yml`.
+
+---
+
 ## Documentation
 
 | Topic | Description |
@@ -258,7 +287,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,440 tests |
+| `npm test` | Run 2,461 tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -274,7 +303,7 @@ src/
   channels/         # 8 channel adapters + plugin discovery
   cost/             # Pricing, budget enforcement, token counting
   contacts/         # Contact permissions, trust-level gating, profile learning, rate limiting, budget tracking, activity metrics, notifications
-  persistence/      # SQLite DAL with 12 migrations
+  persistence/      # SQLite DAL with 12 migrations (001-012)
   context/          # Knowledge management, summarization
   memory/           # Hybrid search (vector + BM25), embeddings, temporal decay, MMR
   integrations/     # OAuth2, Gmail, Google Calendar, MCP client
@@ -285,7 +314,8 @@ src/
 web/                # React + Tailwind control panel
 docs/               # Detailed documentation
 waves/community/    # 20+ verified community waves with registry
-tests/              # 2,440 tests across 132 files
+scripts/            # Install scripts (macOS/Linux/Windows), benchmark
+tests/              # 2,461 tests across 135 files (unit, integration, E2E)
 ```
 
 ### Architecture Principles
