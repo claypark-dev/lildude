@@ -1,6 +1,6 @@
 /**
  * Daily briefing API route handler.
- * GET /api/v1/briefing — Returns a structured daily briefing with skill,
+ * GET /api/v1/briefing — Returns a structured daily briefing with wave,
  * task, schedule, and cost data. Purely deterministic — no LLM calls.
  */
 

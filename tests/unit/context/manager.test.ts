@@ -235,16 +235,16 @@ describe('buildContext', () => {
     expect(result.systemPrompt).toContain('for User.');
     // Default securityLevel is 3
     expect(result.systemPrompt).toContain('Security Level: 3 (Balanced)');
-    // Default activeSkills is empty
-    expect(result.systemPrompt).toContain('No skills currently active.');
+    // Default activeWaves is empty
+    expect(result.systemPrompt).toContain('No waves currently active.');
   });
 
-  it('passes active skills through to the system prompt', async () => {
+  it('passes active waves through to the system prompt', async () => {
     const result = await buildContext(
       dbManager.db,
       'some-convo',
       'Do something',
-      { activeSkills: ['web-search', 'email-sender'] },
+      { activeWaves: ['web-search', 'email-sender'] },
     );
 
     expect(result.systemPrompt).toContain('- web-search');

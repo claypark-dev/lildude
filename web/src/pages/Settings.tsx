@@ -3,6 +3,7 @@ import { useApi } from '../hooks/useApi.ts';
 import { fetchConfig, updateConfig } from '../lib/api.ts';
 import { useVoiceStatus } from '../hooks/useVoiceStatus.ts';
 import { PowerUserPanel } from './PowerUserPanel.tsx';
+import { LocalModelsSettings } from '../components/LocalModelsSettings.tsx';
 
 const SECURITY_LEVELS: Record<number, string> = {
   1: 'Minimal -- Basic input validation only',
@@ -135,6 +136,9 @@ export function Settings() {
           onChange={(val) => setForm((prev) => ({ ...prev, webEnabled: val }))}
         />
       </section>
+
+      {/* Local Models */}
+      <LocalModelsSettings />
 
       {/* Security */}
       <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">

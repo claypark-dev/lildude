@@ -11,7 +11,7 @@ import { AnthropicProvider } from './anthropic.js';
 import { OpenAIProvider } from './openai.js';
 import { GeminiProvider } from './gemini.js';
 import { OllamaProvider } from './ollama.js';
-import { classifyComplexity, selectModel } from './router.js';
+import { classifyComplexity, selectModel, setConfiguredOllamaModel } from './router.js';
 import { providerLogger } from '../utils/logger.js';
 
 export { AnthropicProvider } from './anthropic.js';
@@ -27,7 +27,7 @@ export interface ProviderManager {
   /** List the names of all enabled providers. */
   getEnabledProviders(): string[];
   /** Classify and route a message to the best available model. */
-  route(messageText: string, hasActiveSkill?: boolean): ModelSelection;
+  route(messageText: string, hasActiveWave?: boolean): ModelSelection;
 }
 
 /** Minimal provider configuration needed to create a ProviderManager. */
@@ -114,6 +114,9 @@ export function createProviderManager(
     });
     providerMap.set('ollama', provider);
     enabledNames.push('ollama');
+
+    // Register configured model with router so it can route to the actual installed model
+    setConfiguredOllamaModel(ollamaCfg.model);
   }
 
   return {
@@ -125,8 +128,8 @@ export function createProviderManager(
       return [...enabledNames];
     },
 
-    route(messageText: string, hasActiveSkill: boolean = false): ModelSelection {
-      const tier = classifyComplexity(messageText, hasActiveSkill);
+    route(messageText: string, hasActiveWave: boolean = false): ModelSelection {
+      const tier = classifyComplexity(messageText, hasActiveWave);
       return selectModel(tier, enabledNames);
     },
   };

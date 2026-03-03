@@ -1,6 +1,6 @@
 /**
  * Daily Briefing Generator.
- * Assembles a structured briefing from all active skills, tasks, cron jobs,
+ * Assembles a structured briefing from all active waves, tasks, cron jobs,
  * and cost data. Purely deterministic — no LLM calls required.
  *
  * See HLD Section 6.4 for briefing architecture.
@@ -10,7 +10,7 @@ import type BetterSqlite3 from 'better-sqlite3';
 import { getRecentTasks, getTasksByStatus } from '../persistence/tasks.js';
 import { getDailyTotalCost, getMonthlyTotalCost } from '../persistence/token-usage.js';
 import { getEnabledCronJobs } from '../persistence/cron-jobs.js';
-import { getAllSkills } from '../skills/registry.js';
+import { getAllWaves } from '../waves/registry.js';
 import { createModuleLogger } from '../utils/logger.js';
 
 const briefingLogger = createModuleLogger('briefing');
@@ -39,7 +39,7 @@ export interface DailyBriefing {
 
 /** High-level summary counts for the briefing header. */
 export interface BriefingSummary {
-  activeSkills: number;
+  activeWaves: number;
   scheduledJobs: number;
   pendingTasks: number;
   todayCostUsd: number;
@@ -60,13 +60,13 @@ export function generateBriefing(db: BetterSqlite3.Database): DailyBriefing {
   const summary = buildSummary(db);
   const sections: BriefingSection[] = [];
 
-  sections.push(buildSkillsSection());
+  sections.push(buildWavesSection());
   sections.push(buildTasksSection(db));
   sections.push(buildScheduleSection(db));
   sections.push(buildCostSection(db));
 
   briefingLogger.info(
-    { sectionCount: sections.length, activeSkills: summary.activeSkills },
+    { sectionCount: sections.length, activeWaves: summary.activeWaves },
     'Daily briefing generated',
   );
 
@@ -89,14 +89,14 @@ function buildGreeting(now: Date): string {
 
 /** Build the summary counts used by the briefing header. */
 function buildSummary(db: BetterSqlite3.Database): BriefingSummary {
-  const skills = getAllSkills();
+  const waves = getAllWaves();
   const cronJobs = getEnabledCronJobs(db);
   const pendingTasks = getTasksByStatus(db, 'pending');
   const today = new Date().toISOString().slice(0, 10);
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   return {
-    activeSkills: skills.size,
+    activeWaves: waves.size,
     scheduledJobs: cronJobs.length,
     pendingTasks: pendingTasks.length,
     todayCostUsd: getDailyTotalCost(db, today),
@@ -104,13 +104,13 @@ function buildSummary(db: BetterSqlite3.Database): BriefingSummary {
   };
 }
 
-/** Build the registered skills section listing all available capabilities. */
-function buildSkillsSection(): BriefingSection {
-  const skills = getAllSkills();
+/** Build the registered waves section listing all available capabilities. */
+function buildWavesSection(): BriefingSection {
+  const waves = getAllWaves();
   const items: BriefingItem[] = [];
 
-  for (const [name, skill] of skills) {
-    const manifest = skill.manifest;
+  for (const [name, wave] of waves) {
+    const manifest = wave.manifest;
     items.push({
       label: name,
       value: manifest.description,
@@ -120,13 +120,13 @@ function buildSkillsSection(): BriefingSection {
 
   if (items.length === 0) {
     items.push({
-      label: 'No skills loaded',
-      value: 'Install skills in ~/.lil-dude/skills/installed/',
+      label: 'No waves loaded',
+      value: 'Install waves in ~/.lil-dude/waves/installed/',
       status: 'neutral',
     });
   }
 
-  return { title: 'Active Skills', icon: '\u26A1', items };
+  return { title: 'Active Waves', icon: '\u26A1', items };
 }
 
 /** Build the recent tasks section showing task activity. */

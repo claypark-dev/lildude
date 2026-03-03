@@ -14,6 +14,7 @@ import { readFile, writeFile, listDirectory } from './filesystem.js';
 import { httpRequest } from './api.js';
 import { knowledgeStore, knowledgeRecall } from './knowledge.js';
 import { scheduleTask } from './scheduler.js';
+import { CORE_TOOLS } from './definitions.js';
 
 /** Default timeout for tool execution in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -75,6 +76,54 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
   } finally {
     clearTimeout(timeoutHandle!);
   }
+}
+
+/**
+ * Validate tool call input against the tool's parameter schema.
+ * Checks that required parameters are present and have the correct types.
+ * @param toolName - The name of the tool being called.
+ * @param input - The input object from the LLM's tool_use block.
+ * @returns An error message if validation fails, or undefined if valid.
+ */
+function validateToolInput(toolName: string, input: Record<string, unknown>): string | undefined {
+  const toolDef = CORE_TOOLS.find((tool) => tool.name === toolName);
+  if (!toolDef) {
+    return undefined; // Unknown tool will be caught by handler lookup
+  }
+
+  const { properties, required } = toolDef.parameters;
+
+  // Check required parameters are present
+  if (required) {
+    const missingParams = required.filter((param) => input[param] === undefined || input[param] === null);
+    if (missingParams.length > 0) {
+      return `Missing required parameter(s): ${missingParams.join(', ')}. Expected: ${required.join(', ')}`;
+    }
+  }
+
+  // Check parameter types match schema
+  for (const [paramName, paramValue] of Object.entries(input)) {
+    const schema = properties[paramName] as { type?: string } | undefined;
+    if (!schema || !schema.type) {
+      continue;
+    }
+
+    const actualType = typeof paramValue;
+    if (schema.type === 'string' && actualType !== 'string') {
+      return `Parameter "${paramName}" must be a string, got ${actualType}`;
+    }
+    if (schema.type === 'number' && actualType !== 'number') {
+      return `Parameter "${paramName}" must be a number, got ${actualType}`;
+    }
+    if (schema.type === 'boolean' && actualType !== 'boolean') {
+      return `Parameter "${paramName}" must be a boolean, got ${actualType}`;
+    }
+    if (schema.type === 'object' && (actualType !== 'object' || paramValue === null || Array.isArray(paramValue))) {
+      return `Parameter "${paramName}" must be an object`;
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -169,6 +218,17 @@ export function createToolExecutor(
       const toolName = toolUseBlock.name ?? '';
       const toolUseId = toolUseBlock.id ?? '';
       const toolInput = (toolUseBlock.input ?? {}) as Record<string, unknown>;
+
+      // Validate tool input against schema before execution
+      const validationError = validateToolInput(toolName, toolInput);
+      if (validationError) {
+        const errorResult: ToolResult = {
+          success: false,
+          output: '',
+          error: `Invalid tool input for "${toolName}": ${validationError}`,
+        };
+        return buildToolResultBlock(toolUseId, errorResult);
+      }
 
       const handler = handlers[toolName];
 

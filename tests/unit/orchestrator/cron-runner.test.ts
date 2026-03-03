@@ -182,7 +182,7 @@ describe('cron-runner', () => {
       createCronJob(db, {
         schedule: '0 * * * *',
         taskDescription: 'Drink water',
-        skillId: 'reminders',
+        waveId: 'reminders',
         nextRunAt: pastDate,
       });
 
@@ -220,7 +220,7 @@ describe('cron-runner', () => {
       const job = createCronJob(db, {
         schedule: '0 9 20 2 *', // specific day+month = one-time
         taskDescription: 'Call mom',
-        skillId: 'reminders',
+        waveId: 'reminders',
         nextRunAt: pastDate,
       });
 
@@ -239,7 +239,7 @@ describe('cron-runner', () => {
       const job = createCronJob(db, {
         schedule: '0 * * * *', // every hour = recurring
         taskDescription: 'Drink water',
-        skillId: 'reminders',
+        waveId: 'reminders',
         nextRunAt: pastDate,
       });
 

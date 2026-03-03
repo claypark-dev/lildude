@@ -36,6 +36,7 @@ import {
   stopOllamaProcess,
 } from './providers/ollama-lifecycle.js';
 import { ConfigSchema } from './config/schema.js';
+import { registerRestartRoute } from './gateway/api/restart.js';
 
 export const VERSION = '0.1.0';
 
@@ -122,6 +123,9 @@ export async function startOnboardingMode(): Promise<OnboardingContext> {
   shutdownHandler.register('database', () => {
     dbManager.close();
   });
+
+  // Register restart endpoint (only available during onboarding mode)
+  registerRestartRoute(gateway.app, shutdownHandler);
 
   console.log('');
   console.log('  Lil Dude — Onboarding Mode');

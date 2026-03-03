@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsup && cd web && npm install && npm run build",
-    "postbuild": "cp -r src/persistence/migrations dist/migrations && cp -r skills dist/skills",
+    "postbuild": "cp -r src/persistence/migrations dist/migrations && cp -r waves dist/waves",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/cli.js start",
     "onboard": "tsx src/cli.ts onboard",

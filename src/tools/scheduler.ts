@@ -18,7 +18,7 @@ const ACTION_TYPE = 'schedule_task';
 
 /** Options for the schedule task operation. */
 export interface ScheduleTaskOptions {
-  skillId?: string;
+  waveId?: string;
   usesAi?: boolean;
   estimatedCostUsd?: number;
   securityLevel?: number;
@@ -87,7 +87,7 @@ export function validateCronExpression(expression: string): { isValid: boolean; 
  * @param db - The better-sqlite3 Database instance.
  * @param schedule - The 5-field cron expression (e.g. "0 9 * * 1-5").
  * @param description - Human-readable description of the scheduled task.
- * @param opts - Optional parameters for skill ID, AI usage, cost, and task tracking.
+ * @param opts - Optional parameters for wave ID, AI usage, cost, and task tracking.
  * @returns A ToolResult indicating success or failure (never throws).
  */
 export async function scheduleTask(
@@ -119,7 +119,7 @@ export async function scheduleTask(
     const cronJob = createCronJob(db, {
       schedule,
       taskDescription: description,
-      skillId: opts?.skillId,
+      waveId: opts?.waveId,
       usesAi: opts?.usesAi,
       estimatedCostPerRun: opts?.estimatedCostUsd,
     });

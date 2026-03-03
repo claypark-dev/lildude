@@ -130,7 +130,7 @@ export interface ToolResult {
 // === Tasks ===
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'killed' | 'awaiting_approval';
-export type TaskType = 'chat' | 'automation' | 'skill' | 'cron' | 'system';
+export type TaskType = 'chat' | 'automation' | 'wave' | 'cron' | 'system';
 
 export interface Task {
   id: string;
@@ -166,16 +166,16 @@ export interface KeyFact {
   confidence: number;
 }
 
-// === Skills ===
+// === Waves ===
 
-export interface Skill {
-  manifest: SkillManifest;
-  plan(userInput: string, context: Record<string, unknown>): Promise<SkillPlan>;
-  execute(plan: SkillPlan): Promise<ToolResult>;
+export interface Wave {
+  manifest: WaveManifest;
+  plan(userInput: string, context: Record<string, unknown>): Promise<WavePlan>;
+  execute(plan: WavePlan): Promise<ToolResult>;
   validate?(result: ToolResult): Promise<{ valid: boolean; feedback?: string }>;
 }
 
-export interface SkillManifest {
+export interface WaveManifest {
   name: string;
   version: string;
   description: string;
@@ -196,19 +196,89 @@ export interface SkillManifest {
   }>;
   minTier: 'basic' | 'standard' | 'power';
   entryPoint: string;
+  safetyTier?: WaveSafetyTier;
 }
 
-export interface SkillPlan {
-  steps: SkillStep[];
+export interface WavePlan {
+  steps: WaveStep[];
   estimatedCostUsd: number;
   isDeterministic: boolean;
   extractedParams: Record<string, unknown>;
 }
 
-export interface SkillStep {
+export interface WaveStep {
   type: 'api_call' | 'browser_action' | 'shell_command' | 'llm_call' | 'file_operation';
   description: string;
   params: Record<string, unknown>;
+}
+
+// === Wave Safety ===
+
+export type WaveSafetyTier = 'observe' | 'create' | 'modify' | 'destroy' | 'execute';
+
+// === User Profile ===
+
+export interface UserProfileEntry {
+  id: number;
+  key: string;
+  value: string;
+  source: 'inferred' | 'explicit' | 'system';
+  confidence: number;
+  accessCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// === User Feedback ===
+
+export interface UserFeedback {
+  id: number;
+  taskId: string;
+  conversationId?: string;
+  rating: -1 | 1;
+  comment?: string;
+  model?: string;
+  provider?: string;
+  waveName?: string;
+  createdAt: Date;
+}
+
+// === Generated Waves ===
+
+export interface GeneratedWave {
+  id: string;
+  name: string;
+  description: string;
+  safetyTier: WaveSafetyTier;
+  sourceTemplate?: string;
+  sourceCode: string;
+  manifest: string;
+  scanResult?: string;
+  scanPassed: boolean;
+  userApproved: boolean;
+  testPassed: boolean;
+  usageCount: number;
+  successCount: number;
+  lastUsedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// === Failure Patterns ===
+
+export interface FailurePattern {
+  id: number;
+  intent: string;
+  toolName?: string;
+  waveName?: string;
+  errorType: string;
+  errorMessage: string;
+  model?: string;
+  provider?: string;
+  resolution?: string;
+  occurrenceCount: number;
+  lastOccurredAt: Date;
+  createdAt: Date;
 }
 
 // === Model Routing ===

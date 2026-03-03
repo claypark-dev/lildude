@@ -31,10 +31,10 @@ const LARGE_TIER_KEYWORDS = [
 ] as const;
 
 /**
- * Preferred model ordering per tier. First available model wins.
+ * Base model ordering per tier. First available model wins.
  * Each entry maps to a known MODEL_PRICING key and its provider.
  */
-const TIER_PREFERENCES: Record<ModelTier, Array<{ model: string; provider: string }>> = {
+const BASE_TIER_PREFERENCES: Record<ModelTier, Array<{ model: string; provider: string }>> = {
   small: [
     { model: 'claude-haiku-4-5-20251001', provider: 'anthropic' },
     { model: 'gpt-4o-mini', provider: 'openai' },
@@ -55,6 +55,48 @@ const TIER_PREFERENCES: Record<ModelTier, Array<{ model: string; provider: strin
     { model: 'claude-sonnet-4-5-20250929', provider: 'anthropic' },
   ],
 };
+
+/** The configured Ollama model name, set at app startup. */
+let configuredOllamaModel: string | undefined;
+
+/**
+ * Set the configured Ollama model so the router can include it in tier preferences.
+ * Called during app startup when the Ollama provider is initialized.
+ *
+ * @param model - The Ollama model name from config (e.g. 'phi3', 'mistral')
+ */
+export function setConfiguredOllamaModel(model: string | undefined): void {
+  configuredOllamaModel = model;
+}
+
+/**
+ * Build tier preferences with only the configured Ollama model.
+ * Replaces all hardcoded Ollama entries with the single configured model,
+ * preventing the router from selecting an Ollama model that isn't installed.
+ * If no Ollama model is configured, strips Ollama entries entirely.
+ *
+ * @param tier - The model tier to get preferences for
+ * @returns Array of model/provider pairs for the tier
+ */
+function getTierPreferences(tier: ModelTier): Array<{ model: string; provider: string }> {
+  const base = BASE_TIER_PREFERENCES[tier];
+
+  // Remove all hardcoded Ollama entries from this tier
+  const withoutOllama = base.filter((entry) => entry.provider !== 'ollama');
+
+  if (!configuredOllamaModel) {
+    return withoutOllama;
+  }
+
+  // Only the small tier gets Ollama models (local models aren't suited for large tasks)
+  if (tier !== 'small') {
+    return withoutOllama;
+  }
+
+  // Append the single configured Ollama model
+  const ollamaModelId = `ollama/${configuredOllamaModel}`;
+  return [...withoutOllama, { model: ollamaModelId, provider: 'ollama' }];
+}
 
 /**
  * Count the number of words in a string.
@@ -109,12 +151,12 @@ function isMultiStep(text: string): boolean {
  * Classify the complexity of a user message into a model tier.
  * Uses deterministic heuristics: small (< 20 words), medium (20-100), large (100+ or keywords).
  * @param messageText - The raw text of the user message
- * @param hasActiveSkill - Whether a skill is currently active
+ * @param hasActiveWave - Whether a wave is currently active
  * @returns The recommended ModelTier
  */
 export function classifyComplexity(
   messageText: string,
-  hasActiveSkill: boolean,
+  hasActiveWave: boolean,
 ): ModelTier {
   const words = wordCount(messageText);
   const hasQuestionMark = messageText.includes('?');
@@ -128,14 +170,14 @@ export function classifyComplexity(
 
   // Simple tier: short, no questions, no complexity signals
   if (words < 20 && !hasQuestionMark) {
-    // Active skill does not promote simple messages
+    // Active wave does not promote simple messages
     return 'small';
   }
 
   // Simple messages with a question mark but still very short
   if (words < 20 && hasQuestionMark) {
     // Short questions like "What time is it?" are still simple
-    if (hasActiveSkill) {
+    if (hasActiveWave) {
       return 'small';
     }
     return 'small';
@@ -159,7 +201,7 @@ export function selectModel(
   tier: ModelTier,
   enabledProviders: string[],
 ): ModelSelection {
-  const preferences = TIER_PREFERENCES[tier];
+  const preferences = getTierPreferences(tier);
 
   // Try preferred models for this tier
   for (const pref of preferences) {
@@ -219,7 +261,7 @@ export function selectModelWithHistory(
   db: BetterSqlite3.Database,
   taskType?: string,
 ): ModelSelection {
-  const preferences = TIER_PREFERENCES[tier];
+  const preferences = getTierPreferences(tier);
 
   // Filter to only models whose provider is enabled
   const availableModels = preferences.filter(

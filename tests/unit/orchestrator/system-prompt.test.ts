@@ -37,23 +37,23 @@ describe('buildSystemPrompt', () => {
     );
   });
 
-  it('lists active skills when provided', () => {
+  it('lists active waves when provided', () => {
     const prompt = buildSystemPrompt('Eve', 3, [
       'web-search',
       'calendar-manager',
       'file-organizer',
     ]);
 
-    expect(prompt).toContain('## Available Skills');
+    expect(prompt).toContain('## Available Waves');
     expect(prompt).toContain('- web-search');
     expect(prompt).toContain('- calendar-manager');
     expect(prompt).toContain('- file-organizer');
   });
 
-  it('shows no skills message when activeSkills is empty', () => {
+  it('shows no waves message when activeWaves is empty', () => {
     const prompt = buildSystemPrompt('Frank', 3, []);
 
-    expect(prompt).toContain('No skills currently active.');
+    expect(prompt).toContain('No waves currently active.');
   });
 
   it('includes general instructions section', () => {
@@ -74,7 +74,7 @@ describe('buildSystemPrompt', () => {
   });
 
   it('returns a string (pure function, no side effects)', () => {
-    const prompt = buildSystemPrompt('Ivy', 2, ['test-skill']);
+    const prompt = buildSystemPrompt('Ivy', 2, ['test-wave']);
 
     expect(typeof prompt).toBe('string');
     expect(prompt.length).toBeGreaterThan(0);

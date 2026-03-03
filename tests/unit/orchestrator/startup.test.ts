@@ -55,7 +55,7 @@ describe('startup resume', () => {
       // Create tasks in various states
       const pendingTask = createTask(db, { type: 'chat', description: 'Already pending' });
       const runningTask = createTask(db, { type: 'automation', description: 'Was running' });
-      const completedTask = createTask(db, { type: 'skill', description: 'Already done' });
+      const completedTask = createTask(db, { type: 'wave', description: 'Already done' });
       const failedTask = createTask(db, { type: 'cron', description: 'Already failed' });
 
       // Force to specific statuses

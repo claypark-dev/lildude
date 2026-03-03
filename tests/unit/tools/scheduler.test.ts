@@ -174,7 +174,7 @@ describe('scheduler tool', () => {
 
     it('passes optional parameters to the cron job', async () => {
       const result = await scheduleTask(db, '0 0 * * *', 'Nightly backup', {
-        skillId: 'skill-backup',
+        waveId: 'wave-backup',
         usesAi: true,
         estimatedCostUsd: 0.05,
       });
@@ -182,7 +182,7 @@ describe('scheduler tool', () => {
       const jobId = result.metadata?.jobId as string;
       const job = getCronJob(db, jobId);
 
-      expect(job?.skillId).toBe('skill-backup');
+      expect(job?.waveId).toBe('wave-backup');
       expect(job?.usesAi).toBe(true);
       expect(job?.estimatedCostPerRun).toBe(0.05);
     });

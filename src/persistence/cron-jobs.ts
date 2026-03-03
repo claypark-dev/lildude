@@ -13,7 +13,7 @@ export interface CronJobRow {
   id: string;
   schedule: string;
   taskDescription: string;
-  skillId: string | null;
+  waveId: string | null;
   usesAi: boolean;
   estimatedCostPerRun: number;
   lastRunAt: Date | null;
@@ -27,7 +27,7 @@ export interface CronJobRow {
 export interface CreateCronJobInput {
   schedule: string;
   taskDescription: string;
-  skillId?: string;
+  waveId?: string;
   usesAi?: boolean;
   estimatedCostPerRun?: number;
   nextRunAt?: Date;
@@ -38,7 +38,7 @@ interface CronJobDbRow {
   id: string;
   schedule: string;
   task_description: string;
-  skill_id: string | null;
+  wave_id: string | null;
   uses_ai: number;
   estimated_cost_per_run: number;
   last_run_at: string | null;
@@ -58,7 +58,7 @@ function mapRow(row: CronJobDbRow): CronJobRow {
     id: row.id,
     schedule: row.schedule,
     taskDescription: row.task_description,
-    skillId: row.skill_id,
+    waveId: row.wave_id,
     usesAi: row.uses_ai === 1,
     estimatedCostPerRun: row.estimated_cost_per_run,
     lastRunAt: row.last_run_at ? new Date(row.last_run_at) : null,
@@ -83,13 +83,13 @@ export function createCronJob(
   try {
     const id = nanoid();
     db.prepare(
-      `INSERT INTO cron_jobs (id, schedule, task_description, skill_id, uses_ai, estimated_cost_per_run, next_run_at)
+      `INSERT INTO cron_jobs (id, schedule, task_description, wave_id, uses_ai, estimated_cost_per_run, next_run_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       input.schedule,
       input.taskDescription,
-      input.skillId ?? null,
+      input.waveId ?? null,
       input.usesAi ? 1 : 0,
       input.estimatedCostPerRun ?? 0,
       input.nextRunAt ? input.nextRunAt.toISOString() : null,

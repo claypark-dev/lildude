@@ -185,6 +185,31 @@ function mapStopReason(
 }
 
 /**
+ * Attempt to repair malformed tool call JSON from small models.
+ * Common issues include: markdown code fences, trailing commas,
+ * single quotes instead of double quotes, and unquoted keys.
+ * @param raw - The raw (possibly malformed) JSON string.
+ * @returns The repaired JSON string, or the original if repair fails.
+ */
+function repairToolCallJson(raw: string): string {
+  let cleaned = raw;
+
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+
+  // Remove trailing commas before closing braces/brackets
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+  // Replace single quotes with double quotes (simple heuristic)
+  // Only if the string doesn't already contain valid double-quoted strings
+  if (!cleaned.includes('"') && cleaned.includes("'")) {
+    cleaned = cleaned.replace(/'/g, '"');
+  }
+
+  return cleaned.trim();
+}
+
+/**
  * Parse an Ollama response message into our ContentBlock array.
  * Handles text content and tool_calls.
  * @param message - The Ollama response message
@@ -205,6 +230,33 @@ function parseResponseMessage(message: OllamaMessage): ContentBlock[] {
         name: toolCall.function.name,
         input: toolCall.function.arguments,
       });
+    }
+  }
+
+  // Attempt to extract tool calls from text content when small models
+  // embed JSON in the message text instead of using the structured tool_calls field
+  if (blocks.length === 1 && blocks[0].type === 'text' && !message.tool_calls) {
+    const text = blocks[0].text ?? '';
+    const toolCallMatch = text.match(/\{\s*"name"\s*:\s*"(\w+)"\s*,\s*"(?:arguments|parameters|input)"\s*:/s);
+    if (toolCallMatch) {
+      try {
+        const repaired = repairToolCallJson(text);
+        const parsed = JSON.parse(repaired) as { name: string; arguments?: Record<string, unknown>; parameters?: Record<string, unknown>; input?: Record<string, unknown> };
+        const args = parsed.arguments ?? parsed.parameters ?? parsed.input ?? {};
+        blocks.length = 0; // Clear the text block
+        blocks.push({
+          type: 'tool_use',
+          id: `call_${parsed.name}_${Date.now()}`,
+          name: parsed.name,
+          input: args,
+        });
+        providerLogger.info(
+          { toolName: parsed.name },
+          'Extracted tool call from text content (small model fallback)',
+        );
+      } catch {
+        providerLogger.debug('Failed to parse embedded tool call JSON from text content');
+      }
     }
   }
 
@@ -323,6 +375,7 @@ function buildRequestBody(
 export class OllamaProvider implements LLMProvider {
   readonly name = PROVIDER_NAME;
   private readonly baseUrl: string;
+  private readonly configuredModel: string | undefined;
 
   /**
    * Create a new OllamaProvider.
@@ -330,11 +383,22 @@ export class OllamaProvider implements LLMProvider {
    */
   constructor(config?: OllamaProviderConfig) {
     this.baseUrl = config?.baseUrl ?? DEFAULT_BASE_URL;
+    this.configuredModel = config?.model;
 
     providerLogger.info(
-      { provider: this.name, baseUrl: this.baseUrl },
+      { provider: this.name, baseUrl: this.baseUrl, model: this.configuredModel },
       'Ollama provider initialized',
     );
+  }
+
+  /**
+   * Get the model name configured for this provider.
+   * Used by the router to dynamically include the user's chosen model.
+   *
+   * @returns The configured model name, or undefined if using defaults.
+   */
+  getConfiguredModel(): string | undefined {
+    return this.configuredModel;
   }
 
   /**

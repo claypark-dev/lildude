@@ -103,18 +103,18 @@ describe('classifyComplexity', () => {
     });
   });
 
-  describe('active skill handling', () => {
-    it('simple message with active skill remains small', () => {
+  describe('active wave handling', () => {
+    it('simple message with active wave remains small', () => {
       const tier = classifyComplexity('yes', true);
       expect(tier).toBe('small');
     });
 
-    it('short question with active skill is small', () => {
+    it('short question with active wave is small', () => {
       const tier = classifyComplexity('What time is it?', true);
       expect(tier).toBe('small');
     });
 
-    it('complex message with active skill is still large', () => {
+    it('complex message with active wave is still large', () => {
       const tier = classifyComplexity(
         'Write a comprehensive analysis of the market trends',
         true,

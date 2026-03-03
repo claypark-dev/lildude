@@ -25,8 +25,8 @@ import { appendConversationLog } from '../persistence/conversation-logs.js';
 import { createTask, updateTaskStatus, updateTaskSpend } from '../persistence/tasks.js';
 import { recordRoutingDecision } from '../persistence/routing-history.js';
 import { orchestratorLogger } from '../utils/logger.js';
-import { matchSkill } from '../skills/registry.js';
-import { executeSkill } from '../skills/executor.js';
+import { matchWave } from '../waves/registry.js';
+import { executeWave } from '../waves/executor.js';
 import { runPostTaskQualityCheck } from './quality-checker.js';
 import {
   DEFAULT_MAX_ROUND_TRIPS,
@@ -51,8 +51,8 @@ import type {
 // Re-export types so existing consumers aren't broken
 export type { AgentLoopDeps, AgentLoopConfig, AgentLoopResult, AgentLoop, ProcessMessageOptions };
 
-/** Minimum match score for a skill to be routed to. */
-const SKILL_MATCH_THRESHOLD = 0.1;
+/** Minimum match score for a wave to be routed to. */
+const WAVE_MATCH_THRESHOLD = 0.1;
 
 /**
  * Create an agent loop configured with the given dependencies.
@@ -143,25 +143,25 @@ export function createAgentLoop(
           );
         }
 
-        // Step 5b: Skill routing — check if a registered skill matches
-        const skillMatch = matchSkill(userMessage);
-        if (skillMatch && skillMatch.score > SKILL_MATCH_THRESHOLD) {
+        // Step 5b: Wave routing — check if a registered wave matches
+        const waveMatch = matchWave(userMessage);
+        if (waveMatch && waveMatch.score > WAVE_MATCH_THRESHOLD) {
           orchestratorLogger.info(
-            { skillName: skillMatch.skill.manifest.name, score: skillMatch.score },
-            'Skill matched, routing to skill executor',
+            { waveName: waveMatch.wave.manifest.name, score: waveMatch.score },
+            'Wave matched, routing to wave executor',
           );
-          const skillResult = await executeSkill(skillMatch.skill, userMessage, {
+          const waveResult = await executeWave(waveMatch.wave, userMessage, {
             db: deps.db, provider: deps.provider,
             taskBudgetUsd, taskSpentUsd: totalCostUsd, enabledProviders,
           });
-          totalInputTokens += skillResult.tokensUsed.input;
-          totalOutputTokens += skillResult.tokensUsed.output;
-          totalCostUsd += skillResult.costUsd;
+          totalInputTokens += waveResult.tokensUsed.input;
+          totalOutputTokens += waveResult.tokensUsed.output;
+          totalCostUsd += waveResult.costUsd;
           updateTaskSpend(deps.db, taskId, totalCostUsd);
-          updateTaskStatus(deps.db, taskId, skillResult.success ? 'completed' : 'failed',
-            skillResult.success ? undefined : skillResult.output);
-          return buildResult(skillResult.output, totalInputTokens, totalOutputTokens,
-            totalCostUsd, toolCallCount, skillResult.llmCallCount);
+          updateTaskStatus(deps.db, taskId, waveResult.success ? 'completed' : 'failed',
+            waveResult.success ? undefined : waveResult.output);
+          return buildResult(waveResult.output, totalInputTokens, totalOutputTokens,
+            totalCostUsd, toolCallCount, waveResult.llmCallCount);
         }
 
         // Step 6: Build context

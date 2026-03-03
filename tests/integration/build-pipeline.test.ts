@@ -56,8 +56,12 @@ describe('Build Output Verification', () => {
     expect(existsSync(join(ROOT, 'dist', 'migrations', '002_routing_history.sql'))).toBe(true);
   });
 
-  it('copies bundled skill manifests to dist/skills/', () => {
-    expect(existsSync(join(ROOT, 'dist', 'skills', 'bundled', 'web-search', 'skill.json'))).toBe(
+  it('copies third migration file', () => {
+    expect(existsSync(join(ROOT, 'dist', 'migrations', '003_waves_foundation.sql'))).toBe(true);
+  });
+
+  it('copies bundled wave manifests to dist/waves/', () => {
+    expect(existsSync(join(ROOT, 'dist', 'waves', 'bundled', 'web-search', 'wave.json'))).toBe(
       true,
     );
   });

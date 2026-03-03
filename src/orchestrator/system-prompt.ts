@@ -1,7 +1,7 @@
 /**
  * System prompt builder for Lil Dude.
  * Constructs the full system prompt string including identity, security rules,
- * available skills, and general instructions based on configuration.
+ * available waves, and general instructions based on configuration.
  * Pure function with no side effects.
  * See HLD Section S1.I.1.
  */
@@ -52,22 +52,44 @@ function buildSecuritySection(securityLevel: number): string {
 }
 
 /**
- * Build the skills/tools section listing active skills.
- * @param activeSkills - Array of skill names currently available.
- * @returns The skills section string, or empty string if no skills are active.
+ * Build the waves/tools section listing active waves.
+ * @param activeWaves - Array of wave names currently available.
+ * @returns The waves section string, or empty string if no waves are active.
  */
-function buildSkillsSection(activeSkills: string[]): string {
-  if (activeSkills.length === 0) {
-    return '## Available Skills\nNo skills currently active.';
+function buildWavesSection(activeWaves: string[]): string {
+  if (activeWaves.length === 0) {
+    return '## Available Waves\nNo waves currently active.';
   }
 
-  const skillLines = activeSkills.map((skill) => `- ${skill}`);
-  return ['## Available Skills', ...skillLines].join('\n');
+  const waveLines = activeWaves.map((wave) => `- ${wave}`);
+  return ['## Available Waves', ...waveLines].join('\n');
+}
+
+/** A lightweight user profile entry for prompt injection (no DB dependency). */
+export interface ProfileEntry {
+  key: string;
+  value: string;
+}
+
+/**
+ * Build the user profile section from learned preferences.
+ * Injects known user preferences and patterns into the system prompt
+ * so the assistant can personalize responses without re-querying.
+ * @param entries - Array of user profile key-value entries.
+ * @returns The user profile section string, or empty string if no entries.
+ */
+function buildUserProfileSection(entries: ProfileEntry[]): string {
+  if (entries.length === 0) {
+    return '';
+  }
+
+  const lines = entries.map((entry) => `- ${entry.key}: ${entry.value}`);
+  return ['## What I Know About You', ...lines].join('\n');
 }
 
 /**
  * Build the general instructions section.
- * These instructions apply regardless of security level or skills.
+ * These instructions apply regardless of security level or waves.
  * @returns The general instructions section string.
  */
 function buildInstructionsSection(): string {
@@ -83,28 +105,35 @@ function buildInstructionsSection(): string {
 
 /**
  * Build the full system prompt for Lil Dude.
- * Assembles identity, security rules, active skills, and general instructions
- * into a single prompt string ready for inclusion in an LLM context.
+ * Assembles identity, security rules, active waves, user profile,
+ * and general instructions into a single prompt string.
  *
  * @param userName - The name of the user Lil Dude is assisting.
  * @param securityLevel - The security level (1-5) controlling approval requirements.
- * @param activeSkills - Array of skill names currently available to the assistant.
+ * @param activeWaves - Array of wave names currently available to the assistant.
+ * @param userProfile - Optional array of learned user preference entries.
  * @returns The fully assembled system prompt string.
  */
 export function buildSystemPrompt(
   userName: string,
   securityLevel: number,
-  activeSkills: string[],
+  activeWaves: string[],
+  userProfile?: ProfileEntry[],
 ): string {
   const sections = [
     buildIdentitySection(userName),
     '',
     buildSecuritySection(securityLevel),
     '',
-    buildSkillsSection(activeSkills),
-    '',
-    buildInstructionsSection(),
+    buildWavesSection(activeWaves),
   ];
+
+  const profileSection = buildUserProfileSection(userProfile ?? []);
+  if (profileSection.length > 0) {
+    sections.push('', profileSection);
+  }
+
+  sections.push('', buildInstructionsSection());
 
   return sections.join('\n');
 }

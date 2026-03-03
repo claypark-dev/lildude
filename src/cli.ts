@@ -2,7 +2,7 @@
 
 /**
  * Lil Dude CLI entry point.
- * Registers commands: --version, doctor, start, onboard, skill.
+ * Registers commands: --version, doctor, start, onboard, wave.
  * See HLD Section 5 (Step 9).
  */
 
@@ -13,7 +13,7 @@ import { runOnboardingWizard } from './onboarding/wizard.js';
 import { startApp, startOnboardingMode, isOnboarded } from './index.js';
 import { loadConfig, homeDir } from './config/loader.js';
 import { createDatabase } from './persistence/db.js';
-import { installSkill, listSkills, uninstallSkill, searchSkills } from './skills/hub.js';
+import { installWave, listWaves, uninstallWave, searchWaves } from './waves/hub.js';
 import type { SecurityLevel } from './security/permissions.js';
 
 const program = new Command();
@@ -69,13 +69,13 @@ program
     }
   });
 
-const skillCmd = program
-  .command('skill')
-  .description('Manage skills: install, list, uninstall, search');
+const waveCmd = program
+  .command('wave')
+  .description('Manage waves: install, list, uninstall, search');
 
-skillCmd
+waveCmd
   .command('install <source>')
-  .description('Install a skill from GitHub (e.g. github:user/repo)')
+  .description('Install a wave from GitHub (e.g. github:user/repo)')
   .action(async (source: string) => {
     try {
       const config = await loadConfig();
@@ -84,20 +84,20 @@ skillCmd
       dbManager.runMigrations();
 
       const securityLevel = config.security.level as SecurityLevel;
-      const manifest = await installSkill(dbManager.db, source, securityLevel);
-      console.log(`Installed skill "${manifest.name}" v${manifest.version}`);
+      const manifest = await installWave(dbManager.db, source, securityLevel);
+      console.log(`Installed wave "${manifest.name}" v${manifest.version}`);
 
       dbManager.close();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Failed to install skill: ${message}`);
+      console.error(`Failed to install wave: ${message}`);
       process.exit(1);
     }
   });
 
-skillCmd
+waveCmd
   .command('list')
-  .description('List all installed and bundled skills')
+  .description('List all installed and bundled waves')
   .action(async () => {
     try {
       await loadConfig();
@@ -105,26 +105,26 @@ skillCmd
       const dbManager = createDatabase(dbPath);
       dbManager.runMigrations();
 
-      const skills = listSkills(dbManager.db);
-      if (skills.length === 0) {
-        console.log('No skills found.');
+      const waves = listWaves(dbManager.db);
+      if (waves.length === 0) {
+        console.log('No waves found.');
       } else {
-        for (const skill of skills) {
-          console.log(`  ${skill.name} v${skill.version} [${skill.source}] (${skill.status})`);
+        for (const wave of waves) {
+          console.log(`  ${wave.name} v${wave.version} [${wave.source}] (${wave.status})`);
         }
       }
 
       dbManager.close();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Failed to list skills: ${message}`);
+      console.error(`Failed to list waves: ${message}`);
       process.exit(1);
     }
   });
 
-skillCmd
+waveCmd
   .command('uninstall <name>')
-  .description('Uninstall an installed skill by name')
+  .description('Uninstall an installed wave by name')
   .action(async (name: string) => {
     try {
       await loadConfig();
@@ -132,35 +132,35 @@ skillCmd
       const dbManager = createDatabase(dbPath);
       dbManager.runMigrations();
 
-      await uninstallSkill(dbManager.db, name);
-      console.log(`Uninstalled skill "${name}"`);
+      await uninstallWave(dbManager.db, name);
+      console.log(`Uninstalled wave "${name}"`);
 
       dbManager.close();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Failed to uninstall skill: ${message}`);
+      console.error(`Failed to uninstall wave: ${message}`);
       process.exit(1);
     }
   });
 
-skillCmd
+waveCmd
   .command('search <query>')
-  .description('Search the skill registry')
+  .description('Search the wave registry')
   .action((query: string) => {
     try {
-      const results = searchSkills(query);
+      const results = searchWaves(query);
       if (results.length === 0) {
-        console.log(`No skills found matching "${query}".`);
+        console.log(`No waves found matching "${query}".`);
       } else {
-        console.log(`Found ${results.length} skill(s):`);
+        console.log(`Found ${results.length} wave(s):`);
         for (const entry of results) {
           console.log(`  ${entry.name} v${entry.version} — ${entry.description}`);
-          console.log(`    Install: lil-dude skill install ${entry.source}`);
+          console.log(`    Install: lil-dude wave install ${entry.source}`);
         }
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Failed to search skills: ${message}`);
+      console.error(`Failed to search waves: ${message}`);
       process.exit(1);
     }
   });

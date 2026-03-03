@@ -1,13 +1,13 @@
 /**
  * Tests for the daily briefing generator.
- * Validates briefing assembly from all data sources (skills, tasks, cron, costs).
+ * Validates briefing assembly from all data sources (waves, tasks, cron, costs).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { generateBriefing, type DailyBriefing } from '../../../src/orchestrator/briefing-generator.js';
-import { registerSkill, clearRegistry } from '../../../src/skills/registry.js';
-import type { Skill, SkillManifest, SkillPlan, ToolResult } from '../../../src/types/index.js';
+import { registerWave, clearRegistry } from '../../../src/waves/registry.js';
+import type { Wave, WaveManifest, WavePlan, ToolResult } from '../../../src/types/index.js';
 
 /** Create an in-memory SQLite database with the required tables. */
 function createTestDb(): Database.Database {
@@ -50,7 +50,7 @@ function createTestDb(): Database.Database {
       id TEXT PRIMARY KEY,
       schedule TEXT NOT NULL,
       task_description TEXT NOT NULL,
-      skill_id TEXT,
+      wave_id TEXT,
       uses_ai INTEGER NOT NULL DEFAULT 0,
       estimated_cost_per_run REAL NOT NULL DEFAULT 0,
       last_run_at TEXT,
@@ -64,12 +64,12 @@ function createTestDb(): Database.Database {
   return db;
 }
 
-/** Create a minimal Skill object for testing. */
-function createTestSkill(name: string, deterministic: boolean): Skill {
-  const manifest: SkillManifest = {
+/** Create a minimal Wave object for testing. */
+function createTestWave(name: string, deterministic: boolean): Wave {
+  const manifest: WaveManifest = {
     name,
     version: '1.0.0',
-    description: `${name} skill for testing`,
+    description: `${name} wave for testing`,
     author: 'test',
     permissions: {
       domains: [],
@@ -87,12 +87,12 @@ function createTestSkill(name: string, deterministic: boolean): Skill {
 
   return {
     manifest,
-    plan: async (_input: string, _ctx: Record<string, unknown>): Promise<SkillPlan> => ({
+    plan: async (_input: string, _ctx: Record<string, unknown>): Promise<WavePlan> => ({
       steps: [],
       estimatedCostUsd: 0,
       isDeterministic: deterministic,
     }),
-    execute: async (_plan: SkillPlan): Promise<ToolResult> => ({
+    execute: async (_plan: WavePlan): Promise<ToolResult> => ({
       success: true,
       output: 'test output',
     }),
@@ -126,7 +126,7 @@ describe('BriefingGenerator', () => {
       const briefing = generateBriefing(db);
 
       const sectionTitles = briefing.sections.map((s) => s.title);
-      expect(sectionTitles).toContain('Active Skills');
+      expect(sectionTitles).toContain('Active Waves');
       expect(sectionTitles).toContain('Recent Tasks');
       expect(sectionTitles).toContain('Scheduled Jobs');
       expect(sectionTitles).toContain('Cost Overview');
@@ -172,17 +172,17 @@ describe('BriefingGenerator', () => {
   });
 
   describe('summary', () => {
-    it('reports zero active skills when none registered', () => {
+    it('reports zero active waves when none registered', () => {
       const briefing = generateBriefing(db);
-      expect(briefing.summary.activeSkills).toBe(0);
+      expect(briefing.summary.activeWaves).toBe(0);
     });
 
-    it('counts registered skills', () => {
-      registerSkill('reminders', createTestSkill('reminders', true));
-      registerSkill('web-search', createTestSkill('web-search', false));
+    it('counts registered waves', () => {
+      registerWave('reminders', createTestWave('reminders', true));
+      registerWave('web-search', createTestWave('web-search', false));
 
       const briefing = generateBriefing(db);
-      expect(briefing.summary.activeSkills).toBe(2);
+      expect(briefing.summary.activeWaves).toBe(2);
     });
 
     it('counts scheduled jobs', () => {
@@ -224,30 +224,30 @@ describe('BriefingGenerator', () => {
     });
   });
 
-  describe('skills section', () => {
-    it('shows "no skills loaded" when registry is empty', () => {
+  describe('waves section', () => {
+    it('shows "no waves loaded" when registry is empty', () => {
       const briefing = generateBriefing(db);
-      const skillsSection = briefing.sections.find((s) => s.title === 'Active Skills');
+      const wavesSection = briefing.sections.find((s) => s.title === 'Active Waves');
 
-      expect(skillsSection).toBeDefined();
-      expect(skillsSection!.items).toHaveLength(1);
-      expect(skillsSection!.items[0].label).toBe('No skills loaded');
+      expect(wavesSection).toBeDefined();
+      expect(wavesSection!.items).toHaveLength(1);
+      expect(wavesSection!.items[0].label).toBe('No waves loaded');
     });
 
-    it('lists registered skills with descriptions', () => {
-      registerSkill('reminders', createTestSkill('reminders', true));
-      registerSkill('web-search', createTestSkill('web-search', false));
+    it('lists registered waves with descriptions', () => {
+      registerWave('reminders', createTestWave('reminders', true));
+      registerWave('web-search', createTestWave('web-search', false));
 
       const briefing = generateBriefing(db);
-      const skillsSection = briefing.sections.find((s) => s.title === 'Active Skills');
+      const wavesSection = briefing.sections.find((s) => s.title === 'Active Waves');
 
-      expect(skillsSection!.items).toHaveLength(2);
+      expect(wavesSection!.items).toHaveLength(2);
 
-      const reminderItem = skillsSection!.items.find((i) => i.label === 'reminders');
+      const reminderItem = wavesSection!.items.find((i) => i.label === 'reminders');
       expect(reminderItem).toBeDefined();
       expect(reminderItem!.status).toBe('good'); // deterministic
 
-      const searchItem = skillsSection!.items.find((i) => i.label === 'web-search');
+      const searchItem = wavesSection!.items.find((i) => i.label === 'web-search');
       expect(searchItem).toBeDefined();
       expect(searchItem!.status).toBe('info'); // non-deterministic
     });
@@ -270,7 +270,7 @@ describe('BriefingGenerator', () => {
 
       db.prepare(
         `INSERT INTO tasks (id, status, type, description, tokens_spent_usd) VALUES (?, ?, ?, ?, ?)`,
-      ).run('task-2', 'failed', 'skill', 'Search the web', 0.003);
+      ).run('task-2', 'failed', 'wave', 'Search the web', 0.003);
 
       const briefing = generateBriefing(db);
       const tasksSection = briefing.sections.find((s) => s.title === 'Recent Tasks');

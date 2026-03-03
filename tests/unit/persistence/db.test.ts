@@ -92,7 +92,13 @@ describe('DatabaseManager', () => {
       'cron_jobs',
       'security_log',
       'approval_queue',
-      'skills_registry',
+      'waves_registry',
+      'routing_history',
+      'user_profile',
+      'knowledge_embeddings',
+      'user_feedback',
+      'generated_waves',
+      'failure_patterns',
     ];
 
     const tables = manager.db

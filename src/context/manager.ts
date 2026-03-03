@@ -37,8 +37,8 @@ export interface BuildContextOptions {
   userName?: string;
   /** Security level (1-5). Defaults to 3 (Balanced). */
   securityLevel?: number;
-  /** List of active skill names. Defaults to empty array. */
-  activeSkills?: string[];
+  /** List of active wave names. Defaults to empty array. */
+  activeWaves?: string[];
 }
 
 /**
@@ -121,7 +121,7 @@ function trimMessagesToFit(messages: Message[], maxTokens: number): Message[] {
  * @param db - The database connection.
  * @param conversationId - The conversation ID to load history from (may not exist yet).
  * @param userMessage - The current user message text.
- * @param options - Optional configuration for budget, user info, and skills.
+ * @param options - Optional configuration for budget, user info, and waves.
  * @returns A ContextPayload with system prompt, messages, token count, and included knowledge keys.
  */
 export async function buildContext(
@@ -133,11 +133,11 @@ export async function buildContext(
   try {
     const userName = options?.userName ?? 'User';
     const securityLevel = options?.securityLevel ?? 3;
-    const activeSkills = options?.activeSkills ?? [];
+    const activeWaves = options?.activeWaves ?? [];
     const targetBudget = options?.targetTokenBudget ?? DEFAULT_TOKEN_BUDGET;
 
     // Step 1: Build system prompt
-    const systemPrompt = buildSystemPrompt(userName, securityLevel, activeSkills);
+    const systemPrompt = buildSystemPrompt(userName, securityLevel, activeWaves);
     const systemPromptTokens = countTokens(systemPrompt);
 
     // Step 2: Query knowledge base for relevant entries

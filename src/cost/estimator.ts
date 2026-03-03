@@ -22,7 +22,7 @@ interface TaskHeuristic {
  */
 const HEURISTICS: Record<string, TaskHeuristic> = {
   simple_chat: { avgRoundTrips: 1, avgInputTokens: 800, avgOutputTokens: 300 },
-  skill_execution: { avgRoundTrips: 2, avgInputTokens: 600, avgOutputTokens: 200 },
+  wave_execution: { avgRoundTrips: 2, avgInputTokens: 600, avgOutputTokens: 200 },
   browser_task: { avgRoundTrips: 4, avgInputTokens: 1500, avgOutputTokens: 500 },
   complex_analysis: { avgRoundTrips: 3, avgInputTokens: 3000, avgOutputTokens: 2000 },
   summarization: { avgRoundTrips: 1, avgInputTokens: 2000, avgOutputTokens: 500 },

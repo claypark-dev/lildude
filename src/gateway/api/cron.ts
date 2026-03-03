@@ -17,7 +17,7 @@ import {
 const CreateCronBodySchema = z.object({
   schedule: z.string().min(1),
   taskDescription: z.string().min(1),
-  skillId: z.string().optional(),
+  waveId: z.string().optional(),
   usesAi: z.boolean().optional(),
   estimatedCostPerRun: z.number().optional(),
 });

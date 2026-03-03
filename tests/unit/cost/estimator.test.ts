@@ -12,8 +12,8 @@ describe('estimateTaskCost', () => {
     expect(estimate.breakdown.model).toBe('gpt-4o-mini');
   });
 
-  it('returns a CostEstimate for skill_execution', () => {
-    const estimate = estimateTaskCost('skill_execution', 'claude-haiku-4-5-20251001');
+  it('returns a CostEstimate for wave_execution', () => {
+    const estimate = estimateTaskCost('wave_execution', 'claude-haiku-4-5-20251001');
     expect(estimate.estimatedCostUsd).toBeGreaterThan(0);
     expect(estimate.breakdown.roundTrips).toBe(2);
   });

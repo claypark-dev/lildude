@@ -45,7 +45,7 @@ describe('cron-jobs DAL', () => {
     expect(typeof job.id).toBe('string');
     expect(job.schedule).toBe('0 9 * * *');
     expect(job.taskDescription).toBe('Daily report');
-    expect(job.skillId).toBeNull();
+    expect(job.waveId).toBeNull();
     expect(job.usesAi).toBe(false);
     expect(job.estimatedCostPerRun).toBe(0);
     expect(job.lastRunAt).toBeNull();
@@ -60,13 +60,13 @@ describe('cron-jobs DAL', () => {
     const job = createCronJob(db, {
       schedule: '0 */6 * * *',
       taskDescription: 'Check emails',
-      skillId: 'email-checker',
+      waveId: 'email-checker',
       usesAi: true,
       estimatedCostPerRun: 0.05,
       nextRunAt: nextRun,
     });
 
-    expect(job.skillId).toBe('email-checker');
+    expect(job.waveId).toBe('email-checker');
     expect(job.usesAi).toBe(true);
     expect(job.estimatedCostPerRun).toBe(0.05);
     expect(job.nextRunAt).toBeInstanceOf(Date);
