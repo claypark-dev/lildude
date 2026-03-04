@@ -2,15 +2,21 @@
  * Voice synthesis REST API routes.
  * Provides endpoints for TTS from the web panel:
  *   - GET  /api/v1/voice/status     — check voice synthesis config
+ *   - GET  /api/v1/voice/voices     — list available voices
  *   - POST /api/v1/voice/synthesize — synthesize text to audio
  *
- * See Phase 4 of the onboarding sprint.
+ * Uses the TTS router which selects say/kokoro/elevenlabs backends.
  */
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Config } from '../../config/schema.js';
-import { synthesizeSpeech } from '../../voice/synthesizer.js';
+import type { InstallTier } from '../../types/index.js';
+import {
+  synthesizeSpeech,
+  listAvailableVoices,
+  isTtsAvailable,
+} from '../../voice/tts-router.js';
 import { createModuleLogger } from '../../utils/logger.js';
 
 const log = createModuleLogger('api-voice');
@@ -22,22 +28,50 @@ const SynthesizeRequestSchema = z.object({
 /**
  * Register voice API routes on the given Fastify instance.
  *
- * @param app - The Fastify server instance
- * @param config - The application configuration
+ * @param app - The Fastify server instance.
+ * @param config - The application configuration.
+ * @param getTier - Callback returning the current install tier.
  */
-export function registerVoiceRoutes(app: FastifyInstance, config: Config): void {
+export function registerVoiceRoutes(
+  app: FastifyInstance,
+  config: Config,
+  getTier: () => InstallTier,
+): void {
   /**
    * GET /api/v1/voice/status
    * Returns voice synthesis availability and backend configuration.
    */
   app.get('/api/v1/voice/status', async (_request, reply) => {
-    const synthesisConfig = config.voice.synthesis;
+    try {
+      const synthesisConfig = config.voice.synthesis;
+      const available = await isTtsAvailable(config);
 
-    return reply.send({
-      enabled: synthesisConfig.enabled,
-      backend: synthesisConfig.backend,
-      hasApiKey: Boolean(synthesisConfig.elevenLabsApiKey),
-    });
+      return reply.send({
+        enabled: synthesisConfig.enabled,
+        backend: synthesisConfig.backend,
+        available,
+        hasApiKey: Boolean(synthesisConfig.elevenLabsApiKey),
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error({ error: message }, 'Failed to check voice status');
+      return reply.status(500).send({ error: 'Failed to check voice status' } as never);
+    }
+  });
+
+  /**
+   * GET /api/v1/voice/voices
+   * List available voices for the configured TTS backend.
+   */
+  app.get('/api/v1/voice/voices', async (_request, reply) => {
+    try {
+      const voices = await listAvailableVoices(config);
+      return reply.send({ voices, backend: config.voice.synthesis.backend });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error({ error: message }, 'Failed to list voices');
+      return reply.status(500).send({ error: 'Failed to list voices' } as never);
+    }
   });
 
   /**
@@ -61,22 +95,21 @@ export function registerVoiceRoutes(app: FastifyInstance, config: Config): void 
     const { text } = parsed.data;
 
     try {
-      const result = await synthesizeSpeech(text, {
-        backend: config.voice.synthesis.backend,
-        apiKey: config.voice.synthesis.elevenLabsApiKey,
-        voiceId: config.voice.synthesis.voiceId,
-      });
+      const tier = getTier();
+      const result = await synthesizeSpeech(config, text, tier);
 
-      if (result.audioData.length === 0) {
+      if (result.audio.length === 0) {
         return reply.status(503).send({
           error: 'Voice synthesis backend returned no audio data. Check your configuration.',
         });
       }
 
+      const mimeType = result.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+
       return reply
-        .header('Content-Type', result.mimeType)
-        .header('Content-Length', result.audioData.length)
-        .send(result.audioData);
+        .header('Content-Type', mimeType)
+        .header('Content-Length', result.audio.length)
+        .send(result.audio);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       log.error({ error: message }, 'Voice synthesis failed');

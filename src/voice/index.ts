@@ -1,43 +1,27 @@
 /**
  * Voice module coordinator for Lil Dude.
- * Creates a VoiceProcessor that delegates to the transcriber and synthesizer,
- * gated behind hardware capability checks.
+ * Creates a VoiceProcessor that delegates to the transcriber and TTS router,
+ * gated behind hardware capability checks and install tier.
  * See S4.T.2 for voice input/output feature.
  */
 
 import { transcribeAudio } from './transcriber.js';
 import type { TranscribeResult } from './transcriber.js';
-import { synthesizeSpeech } from './synthesizer.js';
-import type { SynthesizeResult } from './synthesizer.js';
-import type { Attachment, HardwareProfile } from '../types/index.js';
+import { synthesizeSpeech } from './tts-router.js';
+import type { TtsSynthesizeResult } from './types.js';
+import type { Attachment, HardwareProfile, InstallTier } from '../types/index.js';
+import type { Config } from '../config/schema.js';
 import { createModuleLogger, securityLogger } from '../utils/logger.js';
 import { ProviderError } from '../errors.js';
 
 const log = createModuleLogger('voice');
-
-/** Configuration for the voice module */
-export interface VoiceConfig {
-  enabled: boolean;
-  transcription: {
-    backend: 'groq' | 'local';
-    apiKey?: string;
-    language?: string;
-  };
-  synthesis: {
-    enabled: boolean;
-    backend: 'elevenlabs' | 'local';
-    apiKey?: string;
-    voiceId?: string;
-    model?: string;
-  };
-}
 
 /** Voice processor that handles audio transcription and speech synthesis */
 export interface VoiceProcessor {
   /** Transcribe an audio attachment to text */
   processAudioAttachment(attachment: Attachment): Promise<TranscribeResult>;
   /** Generate an audio response from text, or null if synthesis is disabled */
-  generateAudioResponse(text: string): Promise<SynthesizeResult | null>;
+  generateAudioResponse(text: string): Promise<TtsSynthesizeResult | null>;
   /** Check whether voice processing is enabled */
   isEnabled(): boolean;
 }
@@ -46,15 +30,15 @@ export interface VoiceProcessor {
  * Determine whether voice features should be enabled based on hardware and config.
  * Voice is enabled if the user explicitly enables it OR if hardware supports it.
  *
- * @param config - The voice configuration
- * @param hardwareFeatures - Optional hardware feature flags
- * @returns True if voice processing should be enabled
+ * @param config - The application configuration.
+ * @param hardwareFeatures - Optional hardware feature flags.
+ * @returns True if voice processing should be enabled.
  */
 function shouldEnableVoice(
-  config: VoiceConfig,
+  config: Config,
   hardwareFeatures?: HardwareProfile['features'],
 ): boolean {
-  if (config.enabled) {
+  if (config.voice.enabled) {
     return true;
   }
 
@@ -67,22 +51,28 @@ function shouldEnableVoice(
 
 /**
  * Create a VoiceProcessor configured with the given options.
- * The processor delegates transcription and synthesis to the respective modules,
- * and is gated behind hardware capability checks.
+ * The processor delegates transcription to the transcriber module
+ * and synthesis to the TTS router (say/kokoro/elevenlabs backends).
  *
- * @param config - Voice configuration specifying backends and API keys
- * @param hardwareFeatures - Optional hardware features for capability gating
- * @returns A VoiceProcessor instance
+ * @param config - The application configuration.
+ * @param tier - The current install tier.
+ * @param hardwareFeatures - Optional hardware features for capability gating.
+ * @returns A VoiceProcessor instance.
  */
 export function createVoiceProcessor(
-  config: VoiceConfig,
+  config: Config,
+  tier: InstallTier,
   hardwareFeatures?: HardwareProfile['features'],
 ): VoiceProcessor {
   const enabled = shouldEnableVoice(config, hardwareFeatures);
 
   if (enabled) {
     log.info(
-      { transcriptionBackend: config.transcription.backend, synthesisEnabled: config.synthesis.enabled },
+      {
+        transcriptionBackend: config.voice.transcription.backend,
+        synthesisBackend: config.voice.synthesis.backend,
+        synthesisEnabled: config.voice.synthesis.enabled,
+      },
       'Voice processor initialized',
     );
   } else {
@@ -119,9 +109,9 @@ export function createVoiceProcessor(
         );
 
         return await transcribeAudio(audioData, {
-          backend: config.transcription.backend,
-          apiKey: config.transcription.apiKey,
-          language: config.transcription.language,
+          backend: config.voice.transcription.backend,
+          apiKey: config.voice.transcription.groqApiKey,
+          language: config.voice.transcription.language,
         }, attachment.mimeType);
       } catch (error: unknown) {
         if (error instanceof ProviderError) {
@@ -136,12 +126,12 @@ export function createVoiceProcessor(
       }
     },
 
-    async generateAudioResponse(text: string): Promise<SynthesizeResult | null> {
+    async generateAudioResponse(text: string): Promise<TtsSynthesizeResult | null> {
       if (!enabled) {
         return null;
       }
 
-      if (!config.synthesis.enabled) {
+      if (!config.voice.synthesis.enabled) {
         return null;
       }
 
@@ -150,17 +140,12 @@ export function createVoiceProcessor(
           {
             action: 'voice_generate_response',
             textLength: text.length,
-            backend: config.synthesis.backend,
+            backend: config.voice.synthesis.backend,
           },
           'Generating audio response',
         );
 
-        return await synthesizeSpeech(text, {
-          backend: config.synthesis.backend,
-          apiKey: config.synthesis.apiKey,
-          voiceId: config.synthesis.voiceId,
-          model: config.synthesis.model,
-        });
+        return await synthesizeSpeech(config, text, tier);
       } catch (error: unknown) {
         if (error instanceof ProviderError) {
           throw error;
@@ -183,5 +168,5 @@ export function createVoiceProcessor(
 // Re-export types and functions for convenience
 export type { TranscribeOptions, TranscribeResult } from './transcriber.js';
 export { transcribeAudio, calculateTranscriptionCost } from './transcriber.js';
-export type { SynthesizeOptions, SynthesizeResult } from './synthesizer.js';
-export { synthesizeSpeech } from './synthesizer.js';
+export type { TtsSynthesizeOptions, TtsSynthesizeResult, TtsBackend, TtsVoiceInfo } from './types.js';
+export { synthesizeSpeech, listAvailableVoices, isTtsAvailable, resetTtsCache } from './tts-router.js';

@@ -1,13 +1,23 @@
 /**
  * Unit tests for the voice module coordinator (VoiceProcessor).
  * Tests creation, delegation, enablement, and hardware gating.
+ * Updated for the new TTS router API (say/kokoro/elevenlabs backends).
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createVoiceProcessor } from '../../../src/voice/index.js';
-import type { VoiceConfig } from '../../../src/voice/index.js';
+import type { Config } from '../../../src/config/schema.js';
+import { ConfigSchema } from '../../../src/config/schema.js';
 import { ProviderError } from '../../../src/errors.js';
-import type { Attachment, HardwareProfile } from '../../../src/types/index.js';
+import type { Attachment, HardwareProfile, InstallTier } from '../../../src/types/index.js';
+
+// Mock the TTS router so we don't need real TTS backends
+vi.mock('../../../src/voice/tts-router.js', () => ({
+  synthesizeSpeech: vi.fn(),
+  listAvailableVoices: vi.fn(),
+  isTtsAvailable: vi.fn(),
+  resetTtsCache: vi.fn(),
+}));
 
 let originalFetch: typeof globalThis.fetch;
 
@@ -20,26 +30,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Build a default VoiceConfig for testing */
-function buildTestConfig(overrides?: Partial<VoiceConfig>): VoiceConfig {
-  return {
-    enabled: true,
-    transcription: {
-      backend: 'groq',
-      apiKey: 'test-groq-key',
-      language: 'en',
+/** Build a default Config for testing with voice enabled. */
+function buildTestConfig(overrides?: Partial<{
+  voiceEnabled: boolean;
+  synthesisEnabled: boolean;
+  backend: 'say' | 'kokoro' | 'elevenlabs';
+}>): Config {
+  return ConfigSchema.parse({
+    voice: {
+      enabled: overrides?.voiceEnabled ?? true,
+      transcription: {
+        backend: 'groq',
+        groqApiKey: 'test-groq-key',
+        language: 'en',
+      },
+      synthesis: {
+        enabled: overrides?.synthesisEnabled ?? true,
+        backend: overrides?.backend ?? 'say',
+      },
     },
-    synthesis: {
-      enabled: true,
-      backend: 'elevenlabs',
-      apiKey: 'test-elevenlabs-key',
-      voiceId: 'pNInz6obpgDQGcFmaJgB',
-    },
-    ...overrides,
-  };
+  });
 }
 
-/** Build a test audio attachment */
+/** Build a test audio attachment. */
 function buildTestAttachment(overrides?: Partial<Attachment>): Attachment {
   return {
     type: 'audio',
@@ -65,29 +78,31 @@ const voiceIncapableHardware: HardwareProfile['features'] = {
   voice: false,
 };
 
+const defaultTier: InstallTier = 'full';
+
 describe('createVoiceProcessor', () => {
   describe('isEnabled', () => {
-    it('returns true when config.enabled is true', () => {
-      const config = buildTestConfig({ enabled: true });
-      const processor = createVoiceProcessor(config);
+    it('returns true when config.voice.enabled is true', () => {
+      const config = buildTestConfig({ voiceEnabled: true });
+      const processor = createVoiceProcessor(config, defaultTier);
       expect(processor.isEnabled()).toBe(true);
     });
 
-    it('returns false when config.enabled is false and hardware does not support voice', () => {
-      const config = buildTestConfig({ enabled: false });
-      const processor = createVoiceProcessor(config, voiceIncapableHardware);
+    it('returns false when config.voice.enabled is false and hardware does not support voice', () => {
+      const config = buildTestConfig({ voiceEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier, voiceIncapableHardware);
       expect(processor.isEnabled()).toBe(false);
     });
 
-    it('returns true when config.enabled is false but hardware supports voice', () => {
-      const config = buildTestConfig({ enabled: false });
-      const processor = createVoiceProcessor(config, voiceCapableHardware);
+    it('returns true when config.voice.enabled is false but hardware supports voice', () => {
+      const config = buildTestConfig({ voiceEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier, voiceCapableHardware);
       expect(processor.isEnabled()).toBe(true);
     });
 
-    it('returns false when config.enabled is false and no hardware info provided', () => {
-      const config = buildTestConfig({ enabled: false });
-      const processor = createVoiceProcessor(config);
+    it('returns false when config.voice.enabled is false and no hardware info provided', () => {
+      const config = buildTestConfig({ voiceEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier);
       expect(processor.isEnabled()).toBe(false);
     });
   });
@@ -102,7 +117,7 @@ describe('createVoiceProcessor', () => {
       });
 
       const config = buildTestConfig();
-      const processor = createVoiceProcessor(config);
+      const processor = createVoiceProcessor(config, defaultTier);
       const attachment = buildTestAttachment();
 
       const result = await processor.processAudioAttachment(attachment);
@@ -113,8 +128,8 @@ describe('createVoiceProcessor', () => {
     });
 
     it('throws ProviderError when voice is not enabled', async () => {
-      const config = buildTestConfig({ enabled: false });
-      const processor = createVoiceProcessor(config, voiceIncapableHardware);
+      const config = buildTestConfig({ voiceEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier, voiceIncapableHardware);
       const attachment = buildTestAttachment();
 
       try {
@@ -129,7 +144,7 @@ describe('createVoiceProcessor', () => {
 
     it('throws ProviderError when attachment has no data', async () => {
       const config = buildTestConfig();
-      const processor = createVoiceProcessor(config);
+      const processor = createVoiceProcessor(config, defaultTier);
       const attachment = buildTestAttachment({ data: undefined });
 
       try {
@@ -144,60 +159,86 @@ describe('createVoiceProcessor', () => {
   });
 
   describe('generateAudioResponse', () => {
-    it('delegates synthesis to synthesizer and returns result', async () => {
-      const testAudio = new ArrayBuffer(2048);
-
-      vi.stubGlobal('fetch', async () => {
-        return new Response(testAudio, {
-          status: 200,
-          headers: { 'Content-Type': 'audio/mpeg' },
-        });
-      });
+    it('delegates synthesis to TTS router and returns result', async () => {
+      const { synthesizeSpeech } = await import('../../../src/voice/tts-router.js');
+      const mockResult = {
+        audio: Buffer.alloc(2048),
+        format: 'wav' as const,
+        durationSec: 1.5,
+        backend: 'say' as const,
+      };
+      vi.mocked(synthesizeSpeech).mockResolvedValue(mockResult);
 
       const config = buildTestConfig();
-      const processor = createVoiceProcessor(config);
+      const processor = createVoiceProcessor(config, defaultTier);
 
       const result = await processor.generateAudioResponse('Hello world');
 
       expect(result).not.toBeNull();
-      expect(result!.audioData).toBeInstanceOf(Buffer);
-      expect(result!.backend).toBe('elevenlabs');
-      expect(result!.mimeType).toBe('audio/mpeg');
+      expect(result!.audio).toBeInstanceOf(Buffer);
+      expect(result!.backend).toBe('say');
+      expect(result!.format).toBe('wav');
     });
 
     it('returns null when voice is not enabled', async () => {
-      const config = buildTestConfig({ enabled: false });
-      const processor = createVoiceProcessor(config, voiceIncapableHardware);
+      const config = buildTestConfig({ voiceEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier, voiceIncapableHardware);
 
       const result = await processor.generateAudioResponse('Hello');
       expect(result).toBeNull();
     });
 
     it('returns null when synthesis is disabled', async () => {
-      const config = buildTestConfig({
-        synthesis: {
-          enabled: false,
-          backend: 'elevenlabs',
-          apiKey: 'test-key',
-        },
-      });
-      const processor = createVoiceProcessor(config);
+      const config = buildTestConfig({ synthesisEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier);
 
       const result = await processor.generateAudioResponse('Hello');
       expect(result).toBeNull();
     });
+
+    it('wraps non-ProviderError in ProviderError', async () => {
+      const { synthesizeSpeech } = await import('../../../src/voice/tts-router.js');
+      vi.mocked(synthesizeSpeech).mockRejectedValue(new Error('TTS backend exploded'));
+
+      const config = buildTestConfig();
+      const processor = createVoiceProcessor(config, defaultTier);
+
+      try {
+        await processor.generateAudioResponse('Hello');
+        expect.fail('Should have thrown');
+      } catch (error: unknown) {
+        expect(error).toBeInstanceOf(ProviderError);
+        expect((error as ProviderError).message).toContain('TTS backend exploded');
+      }
+    });
+
+    it('re-throws ProviderError as-is', async () => {
+      const { synthesizeSpeech } = await import('../../../src/voice/tts-router.js');
+      const providerErr = new ProviderError('Tier gating failure', 'tts-router', false);
+      vi.mocked(synthesizeSpeech).mockRejectedValue(providerErr);
+
+      const config = buildTestConfig();
+      const processor = createVoiceProcessor(config, defaultTier);
+
+      try {
+        await processor.generateAudioResponse('Hello');
+        expect.fail('Should have thrown');
+      } catch (error: unknown) {
+        expect(error).toBe(providerErr);
+      }
+    });
   });
 
   describe('hardware gating', () => {
-    it('enables voice when hardware meets requirements even if config.enabled is false', () => {
-      const config = buildTestConfig({ enabled: false });
-      const processor = createVoiceProcessor(config, voiceCapableHardware);
+    it('enables voice when hardware meets requirements even if config.voice.enabled is false', () => {
+      const config = buildTestConfig({ voiceEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier, voiceCapableHardware);
       expect(processor.isEnabled()).toBe(true);
     });
 
-    it('disables voice when hardware does not meet requirements and config.enabled is false', () => {
-      const config = buildTestConfig({ enabled: false });
-      const processor = createVoiceProcessor(config, voiceIncapableHardware);
+    it('disables voice when hardware does not meet requirements and config.voice.enabled is false', () => {
+      const config = buildTestConfig({ voiceEnabled: false });
+      const processor = createVoiceProcessor(config, defaultTier, voiceIncapableHardware);
       expect(processor.isEnabled()).toBe(false);
     });
   });

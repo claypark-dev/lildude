@@ -118,9 +118,17 @@ export const ConfigSchema = z.object({
     }).default({}),
     synthesis: z.object({
       enabled: z.boolean().default(false),
-      backend: z.enum(['elevenlabs', 'local']).default('elevenlabs'),
+      backend: z.enum(['say', 'kokoro', 'elevenlabs']).default('say'),
       elevenLabsApiKey: z.string().optional(),
       voiceId: z.string().default('pNInz6obpgDQGcFmaJgB'),
+      /** OS voice name for say.js backend (e.g., 'Samantha', 'Daniel'). */
+      sayVoice: z.string().optional(),
+      /** Speaking rate for say.js backend (0.5 = slow, 1.0 = normal, 2.0 = fast). */
+      sayRate: z.number().min(0.1).max(3.0).default(1.0),
+      /** Kokoro model ID (e.g., 'kokoro-en-v0_19'). */
+      kokoroModelId: z.string().default('kokoro-en-v0_19'),
+      /** Kokoro speaker voice. */
+      kokoroSpeaker: z.string().default('af_heart'),
     }).default({}),
   }).default({}),
 });

@@ -43,6 +43,7 @@ import { registerContactRoutes } from './api/contacts.js';
 import { registerActivityRoutes } from './api/activity.js';
 import { registerPartyWaveRoutes } from './api/party-waves.js';
 import { registerHubWavesRoutes } from './api/hub-waves.js';
+import { registerTierRoutes } from './api/tiers.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const log = gatewayLogger;
@@ -155,7 +156,9 @@ export function createGatewayServer(
   registerRoutingHistoryRoutes(app, db);
   registerOnboardingRoutes(app);
   registerOllamaRoutes(app, wsManager);
-  registerVoiceRoutes(app, config);
+  const getTier = () => config.installTier;
+  registerTierRoutes(app, getTier);
+  registerVoiceRoutes(app, config, getTier);
   registerShorebreakRoutes(app, db);
   registerFeedbackRoutes(app, db);
   registerHubRoutes(app, db);
