@@ -21,6 +21,7 @@ const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
 /** Route prefixes that are exempt from authentication. */
 const PUBLIC_PREFIXES: readonly string[] = [
   '/api/v1/onboarding',
+  '/api/v1/ollama',
 ];
 
 /**

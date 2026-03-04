@@ -34,6 +34,7 @@ describe('auth middleware', () => {
     app.get('/api/v1/protected', async () => ({ data: 'secret' }));
     app.post('/api/v1/protected', async () => ({ created: true }));
     app.get('/api/v1/onboarding/status', async () => ({ onboarded: false }));
+    app.get('/api/v1/ollama/status', async () => ({ running: true }));
     app.get('/api/v1/oauth/callback', async () => ({ ok: true }));
     app.get('/not-api', async () => ({ page: 'html' }));
 
@@ -64,6 +65,12 @@ describe('auth middleware', () => {
 
     it('allows /api/v1/onboarding/* without auth', async () => {
       const response = await app.inject({ method: 'GET', url: '/api/v1/onboarding/status' });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('allows /api/v1/ollama/* without auth', async () => {
+      const response = await app.inject({ method: 'GET', url: '/api/v1/ollama/status' });
 
       expect(response.statusCode).toBe(200);
     });
