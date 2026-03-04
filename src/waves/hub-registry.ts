@@ -17,6 +17,34 @@ import { listWaves } from './hub.js';
 
 const registryLogger = createModuleLogger('hub-registry');
 
+// ── In-memory request coalescing ─────────────────────────────────────────
+// When the hub page loads, it fires multiple API calls (featured, browse,
+// categories, stats) all of which call fetchRegistry(). This cache prevents
+// redundant SQLite reads and network fetches within a short window.
+
+/** In-memory cache entry. */
+interface MemoryCacheEntry {
+  waves: WaveRegistryEntry[];
+  expiresAt: number;
+}
+
+/** In-memory cache TTL in milliseconds (5 seconds — short enough to stay fresh). */
+const MEMORY_CACHE_TTL_MS = 5_000;
+
+/** In-memory cache keyed by registry URL. */
+const memoryCache = new Map<string, MemoryCacheEntry>();
+
+/** Pending fetch promises for request coalescing (deduplicates concurrent calls). */
+const pendingFetches = new Map<string, Promise<WaveRegistryEntry[]>>();
+
+/**
+ * Clear the in-memory registry cache. Useful for testing.
+ */
+export function clearRegistryMemoryCache(): void {
+  memoryCache.clear();
+  pendingFetches.clear();
+}
+
 /** Default registry URL (GitHub raw JSON). */
 const DEFAULT_REGISTRY_URL =
   'https://raw.githubusercontent.com/lildude-community/wave-registry/main/registry.json';
@@ -76,12 +104,17 @@ const FALLBACK_REGISTRY: WaveRegistryEntry[] = [
 ];
 
 /**
- * Fetch the wave registry, using cached data if available and fresh.
- * Falls back to hardcoded registry on failure.
+ * Fetch the wave registry with three cache layers:
+ * 1. In-memory cache (5s TTL) — avoids repeated reads during a single page load
+ * 2. SQLite cache (24h TTL) — persists across server restarts
+ * 3. Remote fetch with ETag — only downloads when content changes
+ *
+ * Concurrent calls to the same URL are coalesced (only one fetch runs).
+ * Falls back to hardcoded registry on all failures.
  *
  * @param db - The database instance.
  * @param registryUrl - The registry URL to fetch from.
- * @param cacheTtlHours - Cache TTL in hours.
+ * @param cacheTtlHours - SQLite cache TTL in hours.
  * @returns Array of wave registry entries.
  */
 export async function fetchRegistry(
@@ -89,11 +122,53 @@ export async function fetchRegistry(
   registryUrl = DEFAULT_REGISTRY_URL,
   cacheTtlHours = DEFAULT_CACHE_TTL_HOURS,
 ): Promise<WaveRegistryEntry[]> {
-  // Check cache first
+  // Layer 1: In-memory cache (ultra-fast, short-lived)
+  const memoryCached = memoryCache.get(registryUrl);
+  if (memoryCached && Date.now() < memoryCached.expiresAt) {
+    registryLogger.debug({ registryUrl }, 'Using in-memory cached registry');
+    return memoryCached.waves;
+  }
+
+  // Request coalescing: if another call is already fetching, piggyback on it
+  const pending = pendingFetches.get(registryUrl);
+  if (pending) {
+    registryLogger.debug({ registryUrl }, 'Coalescing registry request');
+    return pending;
+  }
+
+  // Start the actual fetch and register it for coalescing
+  const fetchPromise = fetchRegistryInternal(db, registryUrl, cacheTtlHours);
+  pendingFetches.set(registryUrl, fetchPromise);
+
+  try {
+    const waves = await fetchPromise;
+
+    // Store in memory cache
+    memoryCache.set(registryUrl, {
+      waves,
+      expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
+    });
+
+    return waves;
+  } finally {
+    pendingFetches.delete(registryUrl);
+  }
+}
+
+/**
+ * Internal registry fetch — handles SQLite cache and remote fetch.
+ * Called by fetchRegistry() after memory cache miss.
+ */
+async function fetchRegistryInternal(
+  db: BetterSqlite3.Database,
+  registryUrl: string,
+  cacheTtlHours: number,
+): Promise<WaveRegistryEntry[]> {
+  // Layer 2: SQLite cache
   try {
     const cached = getCachedRegistry(db, registryUrl);
     if (cached) {
-      registryLogger.debug({ registryUrl }, 'Using cached registry');
+      registryLogger.debug({ registryUrl }, 'Using SQLite cached registry');
       const parsed = JSON.parse(cached.data) as RegistryJson;
       return parseRegistryPayload(parsed);
     }
@@ -102,7 +177,7 @@ export async function fetchRegistry(
     registryLogger.warn({ error: message }, 'Failed to read registry cache');
   }
 
-  // Fetch from remote
+  // Layer 3: Remote fetch
   try {
     const headers: Record<string, string> = {
       'Accept': 'application/json',

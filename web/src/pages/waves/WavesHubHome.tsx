@@ -1,6 +1,6 @@
 /**
- * Waves Hub home page.
- * Hero area, featured waves, category overview, and quick stats.
+ * Skills Hub home page.
+ * Hero area, featured skills, category overview, and quick stats.
  */
 
 import { useState, useCallback } from 'react';
@@ -87,15 +87,15 @@ export function WavesHubHome() {
     <div className="space-y-8">
       {/* Hero / search area */}
       <div className="bg-gradient-to-r from-blue-600/10 to-cyan-600/10 rounded-2xl p-8 border border-blue-500/10">
-        <h2 className="text-2xl font-bold text-white mb-2">Waves Hub</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Skills Hub</h2>
         <p className="text-[#a0a0a0] mb-4">
-          Discover, install, and manage waves to extend your assistant.
+          Discover, install, and manage skills to extend your assistant.
         </p>
         <div className="flex gap-2 max-w-lg">
           <input
             type="text"
             className="flex-1 bg-[#0a0a0a] border border-[#333] rounded-lg px-4 py-2.5 text-white text-sm placeholder-[#666] focus:outline-none focus:border-blue-500"
-            placeholder="Search waves…"
+            placeholder="Search skills…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -115,7 +115,7 @@ export function WavesHubHome() {
       {/* Quick stats */}
       {stats.data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Registry Waves" value={stats.data.stats.registryCount} />
+          <StatCard label="Available Skills" value={stats.data.stats.registryCount} />
           <StatCard label="Installed" value={stats.data.stats.installedCount} />
           <StatCard label="Categories" value={stats.data.stats.categoryCount} />
           <StatCard label="Featured" value={stats.data.stats.featuredCount} />
@@ -173,7 +173,7 @@ export function WavesHubHome() {
               <h3 className="text-lg font-semibold text-white capitalize">
                 {cat}
                 <span className="text-xs text-[#888] font-normal ml-2">
-                  ({waves.length} waves)
+                  ({waves.length} skills)
                 </span>
               </h3>
               <button
@@ -202,7 +202,7 @@ export function WavesHubHome() {
 
       {/* Loading states */}
       {(allWaves.loading || featured.loading) && (
-        <p className="text-[#a0a0a0] text-sm text-center">Loading waves…</p>
+        <p className="text-[#a0a0a0] text-sm text-center">Loading skills…</p>
       )}
 
       {/* Detail modal */}

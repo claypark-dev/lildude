@@ -1,6 +1,6 @@
 /**
- * Installed Waves page for the Waves Hub.
- * Shows all locally installed waves with management actions.
+ * Installed Skills page for the Skills Hub.
+ * Shows all locally installed skills with management actions.
  */
 
 import { useState, useCallback } from 'react';
@@ -79,9 +79,9 @@ export function InstalledWaves() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">Installed Waves</h2>
+        <h2 className="text-lg font-bold text-white">Installed Skills</h2>
         <span className="text-xs text-[#888]">
-          {installedData.data?.waves.length ?? 0} waves
+          {installedData.data?.waves.length ?? 0} skills
         </span>
       </div>
 
@@ -118,15 +118,15 @@ export function InstalledWaves() {
         </p>
       )}
 
-      {isLoading && <p className="text-[#a0a0a0] text-sm">Loading installed waves…</p>}
+      {isLoading && <p className="text-[#a0a0a0] text-sm">Loading installed skills…</p>}
       {hasError && <p className="text-red-400 text-sm">{installedData.error ?? browseData.error}</p>}
 
       {/* Installed wave cards */}
       {!isLoading && installedCards.length === 0 && localOnlyWaves.length === 0 && (
         <div className="bg-[#111] rounded-xl p-8 border border-[#222] text-center">
-          <p className="text-[#a0a0a0]">No waves installed yet.</p>
+          <p className="text-[#a0a0a0]">No skills installed yet.</p>
           <p className="text-xs text-[#666] mt-2">
-            Browse the hub to discover and install waves, or enter a GitHub source above.
+            Browse the hub to discover and install skills, or enter a GitHub source above.
           </p>
         </div>
       )}

@@ -1,7 +1,7 @@
 /**
- * Waves Hub main layout.
- * Provides nested routing for the hub home, category pages, and installed waves.
- * Replaces the old basic WaveHub page.
+ * Skills Hub main layout.
+ * Provides nested routing for the hub home, category pages, and installed skills.
+ * "Skill" is the user-facing term; "wave" remains the internal term.
  */
 
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
@@ -12,7 +12,7 @@ const HUB_TABS = [
   { label: 'Installed', path: '/hub/installed' },
 ] as const;
 
-/** Waves Hub layout with tabbed navigation and nested content. */
+/** Skills Hub layout with tabbed navigation and nested content. */
 export function WavesHub() {
   const location = useLocation();
 

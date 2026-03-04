@@ -13,7 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Chat', path: '/chat', icon: '\u2709' },
   { label: 'Tasks', path: '/tasks', icon: '\u2611' },
   { label: 'Approvals', path: '/shorebreak', icon: '\u2714' },
-  { label: 'Waves Hub', path: '/hub', icon: '\u2B50' },
+  { label: 'Skills Hub', path: '/hub', icon: '\u2B50' },
   { label: 'Party Waves', path: '/party-waves', icon: '\uD83C\uDF0A' },
   { label: 'Settings', path: '/settings', icon: '\u2699' },
 ];
