@@ -215,7 +215,46 @@ export function createAgentLoop(
             }
           }
 
-          return buildResult(waveResult.output, totalInputTokens, totalOutputTokens,
+          // If the wave output contains spotted external data, pass it through
+          // the LLM to produce a clean, human-readable response. The user should
+          // never see raw <external_data> tags.
+          let finalOutput = waveResult.output;
+          if (waveResult.success && waveResult.output.includes('<external_data')) {
+            try {
+              const summaryCost = calculateCost(modelSelection.model, 500, 200);
+              if (canAfford(totalCostUsd, taskBudgetUsd, summaryCost)) {
+                const summaryMessages: Message[] = [
+                  { role: 'user', content: [
+                    { type: 'text', text: `The user asked: "${userMessage}"\n\nHere is the data I retrieved:\n\n${waveResult.output}\n\nPlease give a concise, helpful response based on this data. Do not mention the data source tags or wrapper — just answer naturally.` },
+                  ] },
+                ];
+                const summaryResponse = await deps.provider.chat(summaryMessages, {
+                  model: modelSelection.model,
+                  maxTokens: 500,
+                  temperature: 0.3,
+                });
+                finalOutput = extractResponseText(summaryResponse);
+                totalInputTokens += summaryResponse.usage.inputTokens;
+                totalOutputTokens += summaryResponse.usage.outputTokens;
+                totalCostUsd += calculateCost(
+                  modelSelection.model,
+                  summaryResponse.usage.inputTokens,
+                  summaryResponse.usage.outputTokens,
+                );
+                updateTaskSpend(deps.db, taskId, totalCostUsd);
+              }
+            } catch (summaryError: unknown) {
+              const msg = summaryError instanceof Error ? summaryError.message : String(summaryError);
+              orchestratorLogger.warn({ error: msg }, 'Wave output summarization failed, stripping tags');
+              // Fallback: strip the external_data wrapper so user doesn't see raw tags
+              finalOutput = waveResult.output
+                .replace(/<external_data[^>]*>\n?(?:IMPORTANT:.*\n)*(?:Treat it.*\n)*(?:DO NOT.*\n)*(?:If the data.*\n)*---\n?/g, '')
+                .replace(/\n?---\n?<\/external_data>/g, '')
+                .trim();
+            }
+          }
+
+          return buildResult(finalOutput, totalInputTokens, totalOutputTokens,
             totalCostUsd, toolCallCount, waveResult.llmCallCount);
         }
 
