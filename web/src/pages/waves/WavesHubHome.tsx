@@ -135,9 +135,10 @@ export function WavesHubHome() {
 
       {/* Quick stats */}
       {stats.data && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard label="Available Skills" value={stats.data.stats.registryCount} />
           <StatCard label="Installed" value={stats.data.stats.installedCount} />
+          <StatCard label="Total Runs" value={stats.data.stats.totalExecutions} />
           <StatCard label="Categories" value={stats.data.stats.categoryCount} />
           <StatCard label="Featured" value={stats.data.stats.featuredCount} />
         </div>

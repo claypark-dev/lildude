@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { WaveCard as WaveCardData, WaveReview } from './wave-hub-api.ts';
+import type { WaveCard as WaveCardData, WaveReview, WaveExecutionStats } from './wave-hub-api.ts';
 import { fetchWaveDetail, submitReview } from './wave-hub-api.ts';
 
 /** Props for the WaveDetailModal component. */
@@ -55,6 +55,7 @@ export function WaveDetailModal({
 }: WaveDetailModalProps) {
   const [wave, setWave] = useState<WaveCardData | null>(null);
   const [reviews, setReviews] = useState<WaveReview[]>([]);
+  const [executionStats, setExecutionStats] = useState<WaveExecutionStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +73,7 @@ export function WaveDetailModal({
       const data = await fetchWaveDetail(waveName);
       setWave(data.wave);
       setReviews(data.reviews);
+      setExecutionStats(data.executionStats);
     } catch (fetchError: unknown) {
       const message = fetchError instanceof Error ? fetchError.message : 'Failed to load wave detail';
       setError(message);
@@ -184,6 +186,26 @@ export function WaveDetailModal({
                 </p>
                 <p className="text-[10px] text-[#888]">installs</p>
               </div>
+              {executionStats && executionStats.totalExecutions > 0 && (
+                <div className="text-center">
+                  <p className="text-lg font-bold text-white">
+                    {executionStats.totalExecutions.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-[#888]">executions</p>
+                </div>
+              )}
+              {executionStats && executionStats.totalExecutions > 0 && (
+                <div className="text-center">
+                  <p className={`text-lg font-bold ${
+                    executionStats.successRate >= 0.9 ? 'text-green-400' :
+                    executionStats.successRate >= 0.7 ? 'text-amber-400' :
+                    'text-red-400'
+                  }`}>
+                    {Math.round(executionStats.successRate * 100)}%
+                  </p>
+                  <p className="text-[10px] text-[#888]">success rate</p>
+                </div>
+              )}
               <div className="text-center">
                 <p className="text-sm font-medium text-white capitalize">{wave.safetyTier}</p>
                 <p className="text-[10px] text-[#888]">safety tier</p>
@@ -230,6 +252,36 @@ export function WaveDetailModal({
                     {tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {/* Execution analytics */}
+            {executionStats && executionStats.totalExecutions > 0 && (
+              <div className="bg-[#111] rounded-lg p-4 border border-[#222]">
+                <h4 className="text-sm font-medium text-white mb-3">Execution Analytics</h4>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-sm font-bold text-green-400">{executionStats.successCount}</p>
+                    <p className="text-[10px] text-[#888]">Succeeded</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-red-400">{executionStats.failureCount}</p>
+                    <p className="text-[10px] text-[#888]">Failed</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">
+                      {executionStats.avgExecutionTimeMs
+                        ? `${(executionStats.avgExecutionTimeMs / 1000).toFixed(1)}s`
+                        : '—'}
+                    </p>
+                    <p className="text-[10px] text-[#888]">Avg Time</p>
+                  </div>
+                </div>
+                {executionStats.lastExecutedAt && (
+                  <p className="text-[10px] text-[#666] mt-2 text-center">
+                    Last run: {new Date(executionStats.lastExecutedAt).toLocaleDateString()}
+                  </p>
+                )}
               </div>
             )}
 

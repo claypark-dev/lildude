@@ -126,6 +126,37 @@ describe('wave-card-mapper', () => {
       const card = registryEntryToWaveCard(SAMPLE_ENTRY);
       expect(card.iconUrl).toBeNull();
     });
+
+    it('defaults execution fields to zero/null when no local data', () => {
+      const card = registryEntryToWaveCard(SAMPLE_ENTRY);
+      expect(card.executionCount).toBe(0);
+      expect(card.successRate).toBe(0);
+      expect(card.lastExecutedAt).toBeNull();
+    });
+
+    it('includes execution data from local data', () => {
+      const localData: LocalWaveData = {
+        installed: true,
+        executionCount: 42,
+        successRate: 0.95,
+        lastExecutedAt: '2026-03-04T12:00:00Z',
+      };
+      const card = registryEntryToWaveCard(SAMPLE_ENTRY, localData);
+      expect(card.executionCount).toBe(42);
+      expect(card.successRate).toBe(0.95);
+      expect(card.lastExecutedAt).toBe('2026-03-04T12:00:00Z');
+    });
+
+    it('handles partial execution data', () => {
+      const localData: LocalWaveData = {
+        installed: true,
+        executionCount: 5,
+      };
+      const card = registryEntryToWaveCard(SAMPLE_ENTRY, localData);
+      expect(card.executionCount).toBe(5);
+      expect(card.successRate).toBe(0);
+      expect(card.lastExecutedAt).toBeNull();
+    });
   });
 
   describe('listedWaveToWaveCard', () => {
@@ -178,6 +209,14 @@ describe('wave-card-mapper', () => {
       expect(card.tags).toEqual([]);
       expect(card.featured).toBe(false);
       expect(card.iconUrl).toBeNull();
+    });
+
+    it('defaults execution fields to zero/null', () => {
+      const card = listedWaveToWaveCard(SAMPLE_LISTED_WAVE);
+
+      expect(card.executionCount).toBe(0);
+      expect(card.successRate).toBe(0);
+      expect(card.lastExecutedAt).toBeNull();
     });
   });
 

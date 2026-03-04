@@ -11,6 +11,7 @@ import { storeApiKey } from '../../../src/persistence/api-keys.js';
 import { featureWave } from '../../../src/persistence/featured-waves.js';
 import { addReview } from '../../../src/persistence/wave-reviews.js';
 import { incrementInstallCount } from '../../../src/persistence/wave-install-counts.js';
+import { recordExecution } from '../../../src/persistence/wave-executions.js';
 import { createGatewayServer, type GatewayServer } from '../../../src/gateway/server.js';
 import { ConfigSchema } from '../../../src/config/schema.js';
 import type { InjectOptions } from 'fastify';
@@ -389,6 +390,107 @@ describe('Hub Waves API (Skills Hub)', () => {
       );
       expect(weatherEntry).toBeDefined();
       expect(weatherEntry.installCount).toBe(3);
+    });
+
+    it('includes execution analytics in stats', async () => {
+      const response = await authedInject({
+        method: 'GET',
+        url: '/api/v1/hub/stats',
+      });
+
+      const body = response.json();
+      expect(body.stats).toHaveProperty('totalExecutions');
+      expect(body.stats).toHaveProperty('executionsBySource');
+      expect(body.stats).toHaveProperty('topExecuted');
+      expect(body.stats.executionsBySource).toHaveProperty('bundled');
+      expect(body.stats.executionsBySource).toHaveProperty('installed');
+      expect(body.stats.executionsBySource).toHaveProperty('generated');
+    });
+
+    it('reflects wave executions in stats', async () => {
+      recordExecution(dbManager.db, { waveName: 'email-reader', waveSource: 'bundled', success: true });
+      recordExecution(dbManager.db, { waveName: 'email-reader', waveSource: 'bundled', success: true });
+      recordExecution(dbManager.db, { waveName: 'web-search', waveSource: 'bundled', success: false });
+
+      const response = await authedInject({
+        method: 'GET',
+        url: '/api/v1/hub/stats',
+      });
+
+      const body = response.json();
+      expect(body.stats.totalExecutions).toBe(3);
+      expect(body.stats.executionsBySource.bundled).toBe(3);
+      expect(body.stats.topExecuted.length).toBeGreaterThanOrEqual(1);
+
+      const emailEntry = body.stats.topExecuted.find(
+        (t: { waveName: string }) => t.waveName === 'email-reader',
+      );
+      expect(emailEntry).toBeDefined();
+      expect(emailEntry.executionCount).toBe(2);
+      expect(emailEntry.successRate).toBe(1);
+    });
+  });
+
+  // ── Wave Detail with Execution Stats ───────────────────────────────
+
+  describe('GET /api/v1/hub/waves/:name/detail (execution stats)', () => {
+    it('returns null executionStats when no executions exist', async () => {
+      const response = await authedInject({
+        method: 'GET',
+        url: '/api/v1/hub/waves/weather-checker/detail',
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      expect(body).toHaveProperty('executionStats');
+      expect(body.executionStats).toBeNull();
+    });
+
+    it('returns execution stats when executions exist', async () => {
+      recordExecution(dbManager.db, {
+        waveName: 'weather-checker',
+        waveSource: 'bundled',
+        success: true,
+        executionTimeMs: 500,
+      });
+      recordExecution(dbManager.db, {
+        waveName: 'weather-checker',
+        waveSource: 'bundled',
+        success: false,
+        executionTimeMs: 200,
+        errorMessage: 'API error',
+      });
+
+      const response = await authedInject({
+        method: 'GET',
+        url: '/api/v1/hub/waves/weather-checker/detail',
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      expect(body.executionStats).not.toBeNull();
+      expect(body.executionStats.totalExecutions).toBe(2);
+      expect(body.executionStats.successCount).toBe(1);
+      expect(body.executionStats.failureCount).toBe(1);
+      expect(body.executionStats.successRate).toBe(0.5);
+      expect(body.executionStats.avgExecutionTimeMs).toBe(350);
+      expect(body.executionStats.lastExecutedAt).toBeDefined();
+    });
+
+    it('includes execution count in wave card data', async () => {
+      recordExecution(dbManager.db, { waveName: 'weather-checker', waveSource: 'bundled', success: true });
+      recordExecution(dbManager.db, { waveName: 'weather-checker', waveSource: 'bundled', success: true });
+
+      const response = await authedInject({
+        method: 'GET',
+        url: '/api/v1/hub/waves/weather-checker/detail',
+      });
+
+      const body = response.json();
+      expect(body.wave.executionCount).toBe(2);
+      expect(body.wave.successRate).toBe(1);
     });
   });
 });

@@ -40,6 +40,9 @@ export interface WaveCard {
   installed: boolean;
   source: string;
   iconUrl: string | null;
+  executionCount: number;
+  successRate: number;
+  lastExecutedAt: string | null;
 }
 
 /** Category with wave count. */
@@ -68,8 +71,11 @@ export interface HubStats {
   installedCount: number;
   categoryCount: number;
   featuredCount: number;
+  totalExecutions: number;
+  executionsBySource: { bundled: number; installed: number; generated: number };
   topInstalled: Array<{ waveName: string; installCount: number }>;
   topRated: Array<{ waveName: string; averageRating: number; ratingCount: number }>;
+  topExecuted: Array<{ waveName: string; executionCount: number; successRate: number }>;
 }
 
 /** Listed wave (basic installed wave info). */
@@ -120,10 +126,21 @@ export async function fetchBrowse(params: {
   return res.json();
 }
 
-/** Fetch full wave detail with reviews. */
+/** Execution stats returned with wave detail. */
+export interface WaveExecutionStats {
+  totalExecutions: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  avgExecutionTimeMs: number | null;
+  lastExecutedAt: string | null;
+}
+
+/** Fetch full wave detail with reviews and execution stats. */
 export async function fetchWaveDetail(name: string): Promise<{
   wave: WaveCard;
   reviews: WaveReview[];
+  executionStats: WaveExecutionStats | null;
 }> {
   const res = await hubFetch(`/api/v1/hub/waves/${encodeURIComponent(name)}/detail`);
   if (!res.ok) throw new Error(`Failed to fetch wave "${name}"`);

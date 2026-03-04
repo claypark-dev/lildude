@@ -16,6 +16,11 @@ import {
   type LocalWaveData,
 } from '../../waves/wave-card-mapper.js';
 import { listWaves } from '../../waves/hub.js';
+import {
+  getExecutionStats,
+  getTopExecutedWaves,
+  getExecutionCountsBySource,
+} from '../../persistence/wave-executions.js';
 import { createModuleLogger } from '../../utils/logger.js';
 
 const hubWavesLogger = createModuleLogger('hub-waves-api');
@@ -170,14 +175,30 @@ export function registerHubWavesRoutes(
       const ratingAggregate = getAverageRating(db, name);
       const reviews = getReviews(db, name, 10);
 
+      const execStats = getExecutionStats(db, name);
+
       const card = registryEntryToWaveCard(entry, {
         installed: isInstalled,
         localInstallCount: installCount,
         localAverageRating: ratingAggregate?.averageRating,
         localRatingCount: ratingAggregate?.ratingCount,
+        executionCount: execStats?.totalExecutions,
+        successRate: execStats?.successRate,
+        lastExecutedAt: execStats?.lastExecutedAt,
       });
 
-      return reply.send({ wave: card, reviews });
+      return reply.send({
+        wave: card,
+        reviews,
+        executionStats: execStats ? {
+          totalExecutions: execStats.totalExecutions,
+          successCount: execStats.successCount,
+          failureCount: execStats.failureCount,
+          successRate: execStats.successRate,
+          avgExecutionTimeMs: execStats.avgExecutionTimeMs,
+          lastExecutedAt: execStats.lastExecutedAt,
+        } : null,
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       return reply.status(500).send({ error: message } as never);
@@ -244,6 +265,11 @@ export function registerHubWavesRoutes(
       const allRatings = getAllAverageRatings(db);
       const categories = listCategories(db);
       const featured = getFeaturedWaves(db);
+      const topExecuted = getTopExecutedWaves(db, 5);
+      const executionsBySource = getExecutionCountsBySource(db);
+      const totalExecutions = executionsBySource.bundled
+        + executionsBySource.installed
+        + executionsBySource.generated;
 
       return reply.send({
         stats: {
@@ -251,6 +277,8 @@ export function registerHubWavesRoutes(
           installedCount: localWaves.length,
           categoryCount: categories.length,
           featuredCount: featured.length,
+          totalExecutions,
+          executionsBySource,
           topInstalled: topInstalled.map((t) => ({
             waveName: t.waveName,
             installCount: t.installCount,
@@ -259,6 +287,11 @@ export function registerHubWavesRoutes(
             waveName: r.waveName,
             averageRating: r.averageRating,
             ratingCount: r.ratingCount,
+          })),
+          topExecuted: topExecuted.map((t) => ({
+            waveName: t.waveName,
+            executionCount: t.executionCount,
+            successRate: t.successRate,
           })),
         },
       });

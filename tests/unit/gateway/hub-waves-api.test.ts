@@ -68,6 +68,7 @@ function runMigrations(db: Database.Database): void {
     '003_waves_foundation.sql',
     '007_wave_hub.sql',
     '014_waves_hub_enhanced.sql',
+    '017_wave_executions.sql',
   ];
   for (const file of files) {
     const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf-8');

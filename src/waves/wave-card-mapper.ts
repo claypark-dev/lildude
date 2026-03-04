@@ -44,6 +44,12 @@ export interface WaveCard {
   source: string;
   /** Optional icon URL. */
   iconUrl: string | null;
+  /** Total execution count (from local tracking). */
+  executionCount: number;
+  /** Success rate (0–1) across all executions. */
+  successRate: number;
+  /** Timestamp of last execution (ISO string or null). */
+  lastExecutedAt: string | null;
 }
 
 /** Local data to merge into a wave card. */
@@ -53,6 +59,12 @@ export interface LocalWaveData {
   localAverageRating?: number;
   localRatingCount?: number;
   featured?: boolean;
+  /** Total local execution count. */
+  executionCount?: number;
+  /** Local execution success rate (0–1). */
+  successRate?: number;
+  /** Last execution timestamp. */
+  lastExecutedAt?: string | null;
 }
 
 /**
@@ -99,6 +111,9 @@ export function registryEntryToWaveCard(
     installed: localData.installed,
     source: entry.source,
     iconUrl: entry.iconUrl ?? null,
+    executionCount: localData.executionCount ?? 0,
+    successRate: localData.successRate ?? 0,
+    lastExecutedAt: localData.lastExecutedAt ?? null,
   };
 }
 
@@ -129,6 +144,9 @@ export function listedWaveToWaveCard(listedWave: ListedWave): WaveCard {
     installed: true,
     source: listedWave.source,
     iconUrl: null,
+    executionCount: 0,
+    successRate: 0,
+    lastExecutedAt: null,
   };
 }
 
