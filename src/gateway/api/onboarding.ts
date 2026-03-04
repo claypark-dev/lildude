@@ -56,6 +56,7 @@ export function registerOnboardingRoutes(app: FastifyInstance): void {
           diskFreeGb: hardware.diskFreeGb,
           hasGpu: hardware.hasGpu,
           features: hardware.features,
+          recommendedTier: hardware.recommendedTier,
         },
       });
     } catch (error: unknown) {

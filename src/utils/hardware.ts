@@ -7,7 +7,7 @@
 
 import os from 'node:os';
 import { execSync } from 'node:child_process';
-import type { HardwareProfile } from '../types/index.js';
+import type { HardwareProfile, InstallTier } from '../types/index.js';
 import { createModuleLogger } from './logger.js';
 
 const log = createModuleLogger('hardware');
@@ -124,9 +124,29 @@ export function calculateFeatureFlags(ramGb: number, hasGpu: boolean): HardwareP
 }
 
 /**
+ * Recommend an install tier based on hardware capabilities.
+ * - full: 32GB+ RAM with GPU
+ * - standard: 16GB+ RAM
+ * - lite: everything else
+ *
+ * @param ramGb - Detected RAM in gigabytes.
+ * @param hasGpu - Whether a GPU is available.
+ * @returns The recommended InstallTier.
+ */
+export function recommendTier(ramGb: number, hasGpu: boolean): InstallTier {
+  if (ramGb >= 32 && hasGpu) {
+    return 'full';
+  }
+  if (ramGb >= 16) {
+    return 'standard';
+  }
+  return 'lite';
+}
+
+/**
  * Detect hardware profile of the current machine.
  * Returns a complete HardwareProfile including OS, architecture,
- * RAM, CPU cores, disk space, GPU availability, and feature flags.
+ * RAM, CPU cores, disk space, GPU availability, feature flags, and recommended tier.
  */
 export function detectHardware(): HardwareProfile {
   const detectedOs = os.platform();
@@ -137,6 +157,7 @@ export function detectHardware(): HardwareProfile {
   const hasGpu = detectGpu();
 
   const features = calculateFeatureFlags(ramGb, hasGpu);
+  const recommended = recommendTier(ramGb, hasGpu);
 
   const profile: HardwareProfile = {
     os: detectedOs,
@@ -146,6 +167,7 @@ export function detectHardware(): HardwareProfile {
     diskFreeGb,
     hasGpu,
     features,
+    recommendedTier: recommended,
   };
 
   log.info(

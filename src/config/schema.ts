@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 export const ConfigSchema = z.object({
   version: z.number().default(1),
+  installTier: z.enum(['lite', 'standard', 'full']).default('standard'),
   user: z.object({
     name: z.string().default('Friend'),
     timezone: z.string().default('America/New_York'),

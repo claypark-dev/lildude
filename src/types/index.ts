@@ -375,6 +375,14 @@ export interface TokenUsageRecord {
 
 // === Hardware ===
 
+/**
+ * Install tier determines which features are enabled.
+ * - lite: Core agent, webchat, 2 channels, basic waves (4-8GB RAM)
+ * - standard: Full agent, all channels, browser automation, all waves (16GB RAM)
+ * - full: Everything + local models, voice, TTS (32GB+ RAM with GPU)
+ */
+export type InstallTier = 'lite' | 'standard' | 'full';
+
 export interface HardwareProfile {
   os: string;
   arch: string;
@@ -387,6 +395,8 @@ export interface HardwareProfile {
     localModels: boolean;
     voice: boolean;
   };
+  /** The tier recommended based on detected hardware. */
+  recommendedTier: InstallTier;
 }
 
 // === WebSocket Protocol ===
