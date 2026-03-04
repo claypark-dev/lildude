@@ -310,5 +310,37 @@ describe('Onboarding API', () => {
 
       expect(body1.apiKey).not.toBe(body2.apiKey);
     });
+
+    it('replaces old web-panel key on re-onboarding (no UNIQUE violation)', async () => {
+      const inject = () =>
+        app.inject({
+          method: 'POST',
+          url: '/api/v1/onboarding/complete',
+          payload: {
+            config: {
+              version: 1,
+              user: { name: 'Test User' },
+            },
+          },
+        });
+
+      // First onboarding
+      const response1 = await inject();
+      expect(response1.statusCode).toBe(200);
+
+      // Re-onboarding should not fail with UNIQUE constraint
+      const response2 = await inject();
+      expect(response2.statusCode).toBe(200);
+
+      const body2 = JSON.parse(response2.body) as { ok: boolean; apiKey: string };
+      expect(body2.ok).toBe(true);
+      expect(body2.apiKey).toMatch(/^ld_/);
+
+      // Only one web-panel key should exist in the database
+      const rows = dbManager.db.prepare(
+        "SELECT id FROM api_keys WHERE label = 'web-panel'",
+      ).all();
+      expect(rows).toHaveLength(1);
+    });
   });
 });

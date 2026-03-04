@@ -137,9 +137,13 @@ export function registerOnboardingRoutes(app: FastifyInstance, db?: BetterSqlite
 
       log.info('Onboarding completed successfully');
 
-      // Generate an API key for the web panel so the frontend can authenticate
+      // Generate an API key for the web panel so the frontend can authenticate.
+      // Remove any existing web-panel key first (handles re-onboarding).
       let apiKey: string | undefined;
       if (db) {
+        db.prepare(
+          "DELETE FROM api_keys WHERE label = 'web-panel'",
+        ).run();
         apiKey = generateApiKey();
         storeApiKey(db, apiKey, 'web-panel');
         log.info('Web panel API key generated during onboarding');
