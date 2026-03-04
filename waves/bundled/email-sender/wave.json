@@ -32,5 +32,6 @@
   ],
   "minTier": "standard",
   "entryPoint": "index.js",
-  "safetyTier": "create"
+  "safetyTier": "create",
+  "category": "communication"
 }

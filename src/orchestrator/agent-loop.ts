@@ -29,6 +29,7 @@ import { createTask, updateTaskStatus, updateTaskSpend } from '../persistence/ta
 import { recordRoutingDecision } from '../persistence/routing-history.js';
 import { recordFailurePattern } from '../persistence/failure-patterns.js';
 import { recordWaveExecution } from '../persistence/wave-effectiveness.js';
+import { recordExecution, getWaveSource } from '../persistence/wave-executions.js';
 import { orchestratorLogger } from '../utils/logger.js';
 import { matchWave } from '../waves/registry.js';
 import { executeWave } from '../waves/executor.js';
@@ -197,8 +198,22 @@ export function createAgentLoop(
           updateTaskStatus(deps.db, taskId, waveResult.success ? 'completed' : 'failed',
             waveResult.success ? undefined : waveResult.output);
 
-          // Track wave effectiveness for self-improvement
+          // Track wave effectiveness for self-improvement (generated waves only)
           recordWaveExecution(deps.db, waveMatch.wave.manifest.name, waveResult.success);
+
+          // Track comprehensive execution stats (all wave sources)
+          try {
+            const waveSource = getWaveSource(deps.db, waveMatch.wave.manifest.name);
+            recordExecution(deps.db, {
+              waveName: waveMatch.wave.manifest.name,
+              waveSource,
+              waveCategory: waveMatch.wave.manifest.category,
+              success: waveResult.success,
+              errorMessage: waveResult.success ? undefined : waveResult.output.slice(0, 500),
+            });
+          } catch {
+            // Non-critical — don't fail the request
+          }
 
           // Record failure pattern if wave execution failed
           if (!waveResult.success) {

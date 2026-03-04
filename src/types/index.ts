@@ -283,6 +283,8 @@ export interface WaveManifest {
   safetyTier?: WaveSafetyTier;
   /** Whether this is a personal wave (owner only) or party wave (external contacts). */
   waveCategory?: WaveCategory;
+  /** Skills Hub category for browsing (e.g., "communication", "productivity", "finance"). */
+  category?: string;
 }
 
 /**

@@ -54,6 +54,8 @@ export interface ListedWave {
   source: ListedWaveSource;
   status: 'enabled' | 'disabled';
   waveCategory: WaveCategory;
+  /** Skills Hub category (e.g., "communication", "productivity"). */
+  category?: string;
 }
 
 /**
@@ -358,8 +360,9 @@ export function scanWaveDirectory(dirPath: string, source: ListedWaveSource): Li
       const version = typeof parsed['version'] === 'string' ? parsed['version'] : 'unknown';
       const waveCategory: WaveCategory =
         parsed['waveCategory'] === 'party' ? 'party' : 'personal';
+      const category = typeof parsed['category'] === 'string' ? parsed['category'] : undefined;
 
-      waves.push({ name, version, source, status: 'enabled', waveCategory });
+      waves.push({ name, version, source, status: 'enabled', waveCategory, category });
     } catch {
       waves.push({ name: entry, version: 'unknown', source, status: 'disabled', waveCategory: 'personal' });
     }

@@ -25,5 +25,6 @@
   ],
   "minTier": "standard",
   "entryPoint": "index.js",
-  "safetyTier": "observe"
+  "safetyTier": "observe",
+  "category": "utilities"
 }

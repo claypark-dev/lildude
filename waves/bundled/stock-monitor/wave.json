@@ -32,5 +32,6 @@
   ],
   "minTier": "basic",
   "entryPoint": "index.js",
-  "safetyTier": "observe"
+  "safetyTier": "observe",
+  "category": "finance"
 }

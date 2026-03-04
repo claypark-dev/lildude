@@ -181,6 +181,36 @@ export async function installWave(source: string): Promise<{ name: string; versi
   return data;
 }
 
+/** Wave update info returned by the updates API. */
+export interface WaveUpdateInfo {
+  name: string;
+  currentVersion: string;
+  latestVersion: string;
+  source: string;
+  description: string;
+}
+
+/** Fetch available updates for installed waves. */
+export async function fetchUpdates(): Promise<{ updates: WaveUpdateInfo[]; total: number }> {
+  const res = await hubFetch('/api/v1/hub/updates');
+  if (!res.ok) throw new Error('Failed to check for updates');
+  return res.json();
+}
+
+/** Update an installed wave to its latest version. */
+export async function updateWave(
+  name: string,
+  source: string,
+): Promise<{ name: string; version: string }> {
+  const res = await hubFetch(`/api/v1/hub/update/${encodeURIComponent(name)}`, {
+    method: 'POST',
+    body: JSON.stringify({ source }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Update failed');
+  return data;
+}
+
 /** Uninstall a wave by name. */
 export async function uninstallWave(name: string): Promise<void> {
   const res = await hubFetch(`/api/v1/hub/waves/${encodeURIComponent(name)}`, {

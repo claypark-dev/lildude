@@ -26,5 +26,6 @@
   "minTier": "basic",
   "entryPoint": "index.js",
   "safetyTier": "observe",
-  "waveCategory": "party"
+  "waveCategory": "party",
+  "category": "party"
 }

@@ -24,5 +24,6 @@
   ],
   "minTier": "basic",
   "entryPoint": "index.js",
-  "safetyTier": "create"
+  "safetyTier": "create",
+  "category": "productivity"
 }

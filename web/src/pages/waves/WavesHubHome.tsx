@@ -11,9 +11,12 @@ import {
   fetchBrowse,
   fetchCategories,
   fetchHubStats,
+  fetchUpdates,
   installWave,
   uninstallWave,
+  updateWave,
   type WaveCard as WaveCardData,
+  type WaveUpdateInfo,
 } from './wave-hub-api.ts';
 import { WaveCard } from './WaveCard.tsx';
 import { CategoryNav } from './CategoryNav.tsx';
@@ -27,8 +30,10 @@ export function WavesHubHome() {
   const categories = useApi(useCallback(() => fetchCategories(), []));
   const allWaves = useApi(useCallback(() => fetchBrowse({ sort: 'popular', limit: 12 }), []));
   const stats = useApi(useCallback(() => fetchHubStats(), []));
+  const updates = useApi(useCallback(() => fetchUpdates(), []));
 
   const [installing, setInstalling] = useState(false);
+  const [updating, setUpdating] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [selectedWave, setSelectedWave] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,6 +64,22 @@ export function WavesHubHome() {
     } catch (uninstallError: unknown) {
       const message = uninstallError instanceof Error ? uninstallError.message : 'Uninstall failed';
       setActionMessage({ text: message, isError: true });
+    }
+  }
+
+  async function handleUpdate(update: WaveUpdateInfo) {
+    setUpdating(update.name);
+    setActionMessage(null);
+    try {
+      const result = await updateWave(update.name, update.source);
+      setActionMessage({ text: `Updated "${result.name}" to v${result.version}`, isError: false });
+      updates.refetch();
+      allWaves.refetch();
+    } catch (updateError: unknown) {
+      const message = updateError instanceof Error ? updateError.message : 'Update failed';
+      setActionMessage({ text: message, isError: true });
+    } finally {
+      setUpdating(null);
     }
   }
 
@@ -139,6 +160,31 @@ export function WavesHubHome() {
         }`}>
           {actionMessage.text}
         </p>
+      )}
+
+      {/* Updates available */}
+      {updates.data && updates.data.updates.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-blue-400">🔄</span>
+            <h3 className="text-lg font-semibold text-white">
+              Updates Available
+              <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-normal">
+                {updates.data.updates.length}
+              </span>
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {updates.data.updates.map((update) => (
+              <UpdateCard
+                key={update.name}
+                update={update}
+                onUpdate={handleUpdate}
+                updating={updating === update.name}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Featured section */}
@@ -223,6 +269,41 @@ function StatCard({ label, value }: { label: string; value: number }) {
     <div className="bg-[#111] rounded-xl p-4 border border-[#222] text-center">
       <p className="text-2xl font-bold text-white">{value}</p>
       <p className="text-xs text-[#888] mt-1">{label}</p>
+    </div>
+  );
+}
+
+/** Update card for a wave with available update. */
+function UpdateCard({
+  update,
+  onUpdate,
+  updating,
+}: {
+  update: WaveUpdateInfo;
+  onUpdate: (update: WaveUpdateInfo) => void;
+  updating: boolean;
+}) {
+  return (
+    <div className="bg-[#111] rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-colors">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h4 className="text-sm font-medium text-white truncate">{update.name}</h4>
+          <p className="text-xs text-[#888] mt-1 line-clamp-2">{update.description}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-3">
+        <span className="text-xs text-[#666]">
+          v{update.currentVersion} → v{update.latestVersion}
+        </span>
+        <button
+          type="button"
+          className="px-3 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => onUpdate(update)}
+          disabled={updating}
+        >
+          {updating ? 'Updating…' : 'Update'}
+        </button>
+      </div>
     </div>
   );
 }
