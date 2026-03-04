@@ -31,6 +31,7 @@ import {
   runStartupResume,
   updateLastActiveTimestamp,
 } from './orchestrator/startup.js';
+import { loadWaves } from './waves/loader.js';
 import {
   isOllamaManagedByUs,
   stopOllamaProcess,
@@ -206,6 +207,10 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
   // Step 7: Initialize channel adapters
   const channelManager = createChannelManager();
   await initializeChannels(channelManager, config);
+
+  // Step 7.5: Load bundled + installed waves into in-memory registry
+  const loadedWaveCount = await loadWaves(dbManager.db);
+  log.info({ loadedWaveCount }, 'Waves loaded into registry');
 
   // Step 8: Create the agent loop
   const agentLoop = createAgentLoop(

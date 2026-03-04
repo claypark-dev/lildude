@@ -59,14 +59,48 @@ const BASE_TIER_PREFERENCES: Record<ModelTier, Array<{ model: string; provider: 
 /** The configured Ollama model name, set at app startup. */
 let configuredOllamaModel: string | undefined;
 
+/** The configured Ollama model's parameter size in billions (e.g. 70 for 70B). */
+let configuredOllamaModelSizeB: number | undefined;
+
+/** Minimum parameter size (billions) for an Ollama model to be eligible for medium tier. */
+const OLLAMA_MEDIUM_TIER_MIN_B = 30;
+
 /**
  * Set the configured Ollama model so the router can include it in tier preferences.
  * Called during app startup when the Ollama provider is initialized.
  *
  * @param model - The Ollama model name from config (e.g. 'phi3', 'mistral')
+ * @param parameterSizeB - Optional model size in billions of parameters
  */
-export function setConfiguredOllamaModel(model: string | undefined): void {
+export function setConfiguredOllamaModel(model: string | undefined, parameterSizeB?: number): void {
   configuredOllamaModel = model;
+  configuredOllamaModelSizeB = parameterSizeB ?? estimateModelSizeFromName(model);
+}
+
+/**
+ * Estimate model size in billions from the model name or tag.
+ * Parses common patterns like 'llama3.2:70b', 'qwen2.5:32b', 'mixtral-8x7b'.
+ *
+ * @param model - The Ollama model name/tag
+ * @returns Estimated size in billions, or undefined if not parseable
+ */
+export function estimateModelSizeFromName(model: string | undefined): number | undefined {
+  if (!model) return undefined;
+  const lower = model.toLowerCase();
+
+  // Match patterns like ':70b', ':32b', ':4b', '-70b', '-8b'
+  const sizeMatch = lower.match(/[:\-_](\d+(?:\.\d+)?)b\b/);
+  if (sizeMatch) {
+    return parseFloat(sizeMatch[1]);
+  }
+
+  // Match 'NxMb' patterns for mixture-of-experts (e.g., '8x7b' = 56B effective)
+  const moeMatch = lower.match(/(\d+)x(\d+(?:\.\d+)?)b/);
+  if (moeMatch) {
+    return parseInt(moeMatch[1], 10) * parseFloat(moeMatch[2]);
+  }
+
+  return undefined;
 }
 
 /**
@@ -74,6 +108,11 @@ export function setConfiguredOllamaModel(model: string | undefined): void {
  * Replaces all hardcoded Ollama entries with the single configured model,
  * preventing the router from selecting an Ollama model that isn't installed.
  * If no Ollama model is configured, strips Ollama entries entirely.
+ *
+ * Ollama tier eligibility:
+ * - small: always eligible
+ * - medium: eligible if model is >= 30B parameters
+ * - large: never eligible (use cloud providers)
  *
  * @param tier - The model tier to get preferences for
  * @returns Array of model/provider pairs for the tier
@@ -88,14 +127,19 @@ function getTierPreferences(tier: ModelTier): Array<{ model: string; provider: s
     return withoutOllama;
   }
 
-  // Only the small tier gets Ollama models (local models aren't suited for large tasks)
-  if (tier !== 'small') {
-    return withoutOllama;
+  const ollamaModelId = `ollama/${configuredOllamaModel}`;
+  const sizeB = configuredOllamaModelSizeB ?? 0;
+
+  if (tier === 'small') {
+    return [...withoutOllama, { model: ollamaModelId, provider: 'ollama' }];
   }
 
-  // Append the single configured Ollama model
-  const ollamaModelId = `ollama/${configuredOllamaModel}`;
-  return [...withoutOllama, { model: ollamaModelId, provider: 'ollama' }];
+  if (tier === 'medium' && sizeB >= OLLAMA_MEDIUM_TIER_MIN_B) {
+    return [...withoutOllama, { model: ollamaModelId, provider: 'ollama' }];
+  }
+
+  // Large tier: Ollama never eligible
+  return withoutOllama;
 }
 
 /**

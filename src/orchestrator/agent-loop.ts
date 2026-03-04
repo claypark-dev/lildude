@@ -186,6 +186,7 @@ export function createAgentLoop(
           const waveResult = await executeWave(waveMatch.wave, userMessage, {
             db: deps.db, provider: deps.provider,
             taskBudgetUsd, taskSpentUsd: totalCostUsd, enabledProviders,
+            securityLevel: deps.securityLevel,
             getAccessToken: deps.getAccessToken,
           });
           totalInputTokens += waveResult.tokensUsed.input;

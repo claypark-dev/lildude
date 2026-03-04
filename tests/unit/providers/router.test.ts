@@ -2,8 +2,8 @@
  * Unit tests for the model router: complexity classification and model selection.
  */
 
-import { describe, it, expect } from 'vitest';
-import { classifyComplexity, selectModel } from '../../../src/providers/router.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { classifyComplexity, selectModel, setConfiguredOllamaModel, estimateModelSizeFromName } from '../../../src/providers/router.js';
 
 describe('classifyComplexity', () => {
   describe('small tier classification', () => {
@@ -227,5 +227,96 @@ describe('selectModel', () => {
       const largeSelection = selectModel('large', ['anthropic', 'openai']);
       expect(largeSelection.provider).toBe('anthropic');
     });
+  });
+
+  describe('Ollama tier routing', () => {
+    beforeEach(() => {
+      // Reset Ollama config between tests
+      setConfiguredOllamaModel(undefined);
+    });
+
+    it('small Ollama model is available for small tier', () => {
+      setConfiguredOllamaModel('qwen3.5:4b', 4);
+      const selection = selectModel('small', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+      expect(selection.model).toBe('ollama/qwen3.5:4b');
+    });
+
+    it('small Ollama model is NOT available for medium tier', () => {
+      setConfiguredOllamaModel('qwen3.5:4b', 4);
+      expect(() => selectModel('medium', ['ollama'])).toThrow(
+        /No model available for tier "medium"/,
+      );
+    });
+
+    it('30B+ Ollama model IS available for medium tier', () => {
+      setConfiguredOllamaModel('llama3.2:70b', 70);
+      const selection = selectModel('medium', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+      expect(selection.model).toBe('ollama/llama3.2:70b');
+    });
+
+    it('exactly 30B model qualifies for medium tier', () => {
+      setConfiguredOllamaModel('codellama:34b', 34);
+      const selection = selectModel('medium', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+    });
+
+    it('29B model does NOT qualify for medium tier', () => {
+      setConfiguredOllamaModel('some-model:29b', 29);
+      expect(() => selectModel('medium', ['ollama'])).toThrow(
+        /No model available for tier "medium"/,
+      );
+    });
+
+    it('Ollama model is never available for large tier regardless of size', () => {
+      setConfiguredOllamaModel('llama3.2:70b', 70);
+      expect(() => selectModel('large', ['ollama'])).toThrow(
+        /No model available for tier "large"/,
+      );
+    });
+
+    it('size from name is used when no explicit size is provided', () => {
+      setConfiguredOllamaModel('llama3.2:70b');
+      const selection = selectModel('medium', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+    });
+
+    it('no size info defaults to small-only', () => {
+      setConfiguredOllamaModel('mistral');
+      expect(() => selectModel('medium', ['ollama'])).toThrow(
+        /No model available for tier "medium"/,
+      );
+    });
+  });
+});
+
+describe('estimateModelSizeFromName', () => {
+  it('parses colon-separated size tag (e.g. llama3.2:70b)', () => {
+    expect(estimateModelSizeFromName('llama3.2:70b')).toBe(70);
+  });
+
+  it('parses dash-separated size (e.g. codellama-34b)', () => {
+    expect(estimateModelSizeFromName('codellama-34b')).toBe(34);
+  });
+
+  it('parses underscore-separated size (e.g. model_8b)', () => {
+    expect(estimateModelSizeFromName('model_8b')).toBe(8);
+  });
+
+  it('parses decimal sizes (e.g. qwen3.5:4b → 4)', () => {
+    expect(estimateModelSizeFromName('qwen3.5:4b')).toBe(4);
+  });
+
+  it('parses MoE patterns (e.g. mixtral-8x7b → 56)', () => {
+    expect(estimateModelSizeFromName('mixtral-8x7b')).toBe(56);
+  });
+
+  it('returns undefined for no size hint (e.g. mistral)', () => {
+    expect(estimateModelSizeFromName('mistral')).toBeUndefined();
+  });
+
+  it('returns undefined for undefined input', () => {
+    expect(estimateModelSizeFromName(undefined)).toBeUndefined();
   });
 });

@@ -83,6 +83,55 @@ export function clearOllamaManagedFlag(): void {
   }
 }
 
+/** Response shape from Ollama's /api/show endpoint. */
+interface OllamaShowResponse {
+  details?: {
+    parameter_size?: string;
+    family?: string;
+    quantization_level?: string;
+  };
+}
+
+/**
+ * Query the Ollama API for a model's parameter size in billions.
+ * Calls /api/show and parses the details.parameter_size field (e.g. "70.6B").
+ *
+ * @param modelName - The Ollama model name (e.g. 'llama3.2:70b')
+ * @returns The parameter size in billions, or undefined if unavailable
+ */
+export async function queryOllamaModelSize(modelName: string): Promise<number | undefined> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch('http://localhost:11434/api/show', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: modelName }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return undefined;
+    }
+
+    const data = await response.json() as OllamaShowResponse;
+    const paramSize = data.details?.parameter_size;
+    if (!paramSize) return undefined;
+
+    // Parse "70.6B" or "4.7B" → number
+    const match = paramSize.match(/^(\d+(?:\.\d+)?)\s*[Bb]/);
+    if (match) {
+      return parseFloat(match[1]);
+    }
+
+    return undefined;
+  } catch {
+    log.debug({ modelName }, 'Could not query Ollama model size');
+    return undefined;
+  }
+}
+
 /**
  * Stop the Ollama process using platform-appropriate commands.
  * On macOS/Linux uses `pkill -f ollama`, on Windows uses `taskkill`.

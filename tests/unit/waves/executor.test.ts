@@ -10,8 +10,9 @@ import type {
   ChatOptions,
   StreamChunk,
 } from '../../../src/types/index.js';
-import { executeWave } from '../../../src/waves/executor.js';
+import { executeWave, getRequiredTierForNonDeterministic } from '../../../src/waves/executor.js';
 import type { WaveExecutorDeps } from '../../../src/waves/executor.js';
+import { setConfiguredOllamaModel } from '../../../src/providers/router.js';
 
 // ─── Mock Helpers ────────────────────────────────────────────────────────────
 
@@ -144,13 +145,16 @@ function createMockDeps(overrides: Partial<{
   provider: LLMProvider;
   taskBudgetUsd: number;
   taskSpentUsd: number;
+  securityLevel: number;
+  enabledProviders: string[];
 }> = {}): WaveExecutorDeps {
   return {
     db: {} as WaveExecutorDeps['db'],
     provider: overrides.provider ?? createMockProvider(),
     taskBudgetUsd: overrides.taskBudgetUsd ?? 1.00,
     taskSpentUsd: overrides.taskSpentUsd ?? 0,
-    enabledProviders: ['anthropic'],
+    enabledProviders: overrides.enabledProviders ?? ['anthropic'],
+    securityLevel: overrides.securityLevel,
   };
 }
 
@@ -513,6 +517,82 @@ describe('wave executor', () => {
       expect(result.costUsd).toBe(0);
       expect(result.tokensUsed.input).toBe(0);
       expect(result.tokensUsed.output).toBe(0);
+    });
+  });
+
+  describe('security-level model tier gating', () => {
+    beforeEach(() => {
+      setConfiguredOllamaModel(undefined);
+    });
+
+    it('getRequiredTierForNonDeterministic returns small at security level 5', () => {
+      expect(getRequiredTierForNonDeterministic(5)).toBe('small');
+    });
+
+    it('getRequiredTierForNonDeterministic returns small at security level 4', () => {
+      expect(getRequiredTierForNonDeterministic(4)).toBe('small');
+    });
+
+    it('getRequiredTierForNonDeterministic returns medium at security level 3', () => {
+      expect(getRequiredTierForNonDeterministic(3)).toBe('medium');
+    });
+
+    it('getRequiredTierForNonDeterministic returns medium at security level 2', () => {
+      expect(getRequiredTierForNonDeterministic(2)).toBe('medium');
+    });
+
+    it('getRequiredTierForNonDeterministic returns medium at security level 1', () => {
+      expect(getRequiredTierForNonDeterministic(1)).toBe('medium');
+    });
+
+    it('non-deterministic wave succeeds with small Ollama at security level 4', async () => {
+      setConfiguredOllamaModel('qwen3.5:4b', 4);
+      const wave = createNonDeterministicWave();
+      const deps = createMockDeps({
+        securityLevel: 4,
+        enabledProviders: ['ollama'],
+      });
+
+      const result = await executeWave(wave, 'search the web for AI news', deps);
+      expect(result.success).toBe(true);
+      expect(result.wasDeterministic).toBe(false);
+    });
+
+    it('non-deterministic wave fails with small Ollama at security level 3', async () => {
+      setConfiguredOllamaModel('qwen3.5:4b', 4);
+      const wave = createNonDeterministicWave();
+      const deps = createMockDeps({
+        securityLevel: 3,
+        enabledProviders: ['ollama'],
+      });
+
+      const result = await executeWave(wave, 'search the web for AI news', deps);
+      expect(result.success).toBe(false);
+      expect(result.output).toContain('execution failed');
+    });
+
+    it('non-deterministic wave succeeds with 70B Ollama at security level 3', async () => {
+      setConfiguredOllamaModel('llama3.2:70b', 70);
+      const wave = createNonDeterministicWave();
+      const deps = createMockDeps({
+        securityLevel: 3,
+        enabledProviders: ['ollama'],
+      });
+
+      const result = await executeWave(wave, 'search the web for AI news', deps);
+      expect(result.success).toBe(true);
+    });
+
+    it('defaults to security level 3 when not provided', async () => {
+      setConfiguredOllamaModel('qwen3.5:4b', 4);
+      const wave = createNonDeterministicWave();
+      const deps = createMockDeps({
+        enabledProviders: ['ollama'],
+      });
+
+      // Default security level 3 → medium tier → small Ollama blocked
+      const result = await executeWave(wave, 'search the web for AI news', deps);
+      expect(result.success).toBe(false);
     });
   });
 });

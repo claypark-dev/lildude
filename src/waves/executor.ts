@@ -9,6 +9,7 @@
 import type {
   Wave,
   WavePlan,
+  ModelTier,
 } from '../types/index.js';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { LLMProvider } from '../types/index.js';
@@ -44,6 +45,8 @@ export interface WaveExecutorDeps {
   taskBudgetUsd: number;
   taskSpentUsd: number;
   enabledProviders: string[];
+  /** User's security level (1-5). Affects model tier requirements for non-deterministic waves. */
+  securityLevel?: number;
   /** OAuth access token getter — returns a valid token for a given provider, or null. */
   getAccessToken?: (provider: string) => Promise<string | null>;
   /** External contact triggering the wave (set for party wave execution). */
@@ -202,8 +205,26 @@ async function executeDeterministic(
 }
 
 /**
- * Execute a non-deterministic wave: use MEDIUM model for full planning
- * via wave.plan(), then execute with wave.execute().
+ * Determine the required model tier for a non-deterministic wave based on security level.
+ * Higher security levels demand larger, more capable models.
+ *
+ * - Security 1-2 (strict): Require medium-tier model (no fallback to undersized models).
+ * - Security 3 (standard): Require medium-tier (Ollama-only fallback allowed by the router).
+ * - Security 4-5 (permissive): Any model can attempt it (small tier is fine).
+ *
+ * @param securityLevel - The user's security level (1-5).
+ * @returns The minimum ModelTier required.
+ */
+export function getRequiredTierForNonDeterministic(securityLevel: number): ModelTier {
+  if (securityLevel >= 4) {
+    return 'small';
+  }
+  return 'medium';
+}
+
+/**
+ * Execute a non-deterministic wave: model tier depends on security level.
+ * Higher security requires larger models; lower security allows any model.
  *
  * @param wave - The non-deterministic wave to execute.
  * @param userMessage - The raw user message.
@@ -216,9 +237,15 @@ async function executeNonDeterministic(
   deps: WaveExecutorDeps,
 ): Promise<WaveExecutionResult> {
   const waveName = wave.manifest.name;
+  const securityLevel = deps.securityLevel ?? 3;
 
-  // Step 1: Select MEDIUM model for planning
-  const modelSelection = selectModel('medium', deps.enabledProviders);
+  // Step 1: Select model — tier depends on security level
+  const requiredTier = getRequiredTierForNonDeterministic(securityLevel);
+  executorLogger.info(
+    { waveName, securityLevel, requiredTier },
+    'Non-deterministic wave tier selection',
+  );
+  const modelSelection = selectModel(requiredTier, deps.enabledProviders);
 
   // Step 2: Budget check before planning LLM call
   const estimatedPlanCost = calculateCost(modelSelection.model, 1000, 500);

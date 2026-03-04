@@ -11,7 +11,8 @@ import { AnthropicProvider } from './anthropic.js';
 import { OpenAIProvider } from './openai.js';
 import { GeminiProvider } from './gemini.js';
 import { OllamaProvider } from './ollama.js';
-import { classifyComplexity, selectModel, setConfiguredOllamaModel } from './router.js';
+import { classifyComplexity, selectModel, setConfiguredOllamaModel, estimateModelSizeFromName } from './router.js';
+import { queryOllamaModelSize } from './ollama-lifecycle.js';
 import { providerLogger } from '../utils/logger.js';
 
 export { AnthropicProvider } from './anthropic.js';
@@ -115,8 +116,25 @@ export function createProviderManager(
     providerMap.set('ollama', provider);
     enabledNames.push('ollama');
 
-    // Register configured model with router so it can route to the actual installed model
-    setConfiguredOllamaModel(ollamaCfg.model);
+    // Register configured model with router so it can route to the actual installed model.
+    // Try to detect model size for tier eligibility (30B+ → medium tier).
+    const nameBasedSize = estimateModelSizeFromName(ollamaCfg.model);
+    setConfiguredOllamaModel(ollamaCfg.model, nameBasedSize);
+
+    // Query Ollama API for accurate size (async, updates router in background)
+    if (!nameBasedSize && ollamaCfg.model) {
+      queryOllamaModelSize(ollamaCfg.model).then((apiSize) => {
+        if (apiSize) {
+          setConfiguredOllamaModel(ollamaCfg.model, apiSize);
+          providerLogger.info(
+            { model: ollamaCfg.model, parameterSizeB: apiSize },
+            'Ollama model size detected from API',
+          );
+        }
+      }).catch(() => {
+        // Silent — name-based estimate or no size is fine
+      });
+    }
   }
 
   return {
