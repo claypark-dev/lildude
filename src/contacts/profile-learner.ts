@@ -183,20 +183,23 @@ export function learnFromConversation(
       facts.push({ key: 'message_style', value: 'detailed', confidence: 0.5 });
     }
 
-    // Store all extracted facts
-    for (const fact of facts) {
-      upsertContactFact(db, contactId, fact.key, fact.value, 'inferred', fact.confidence);
-    }
+    // Store all extracted facts in a single transaction to avoid N+1 writes
+    const storeFacts = db.transaction(() => {
+      for (const fact of facts) {
+        upsertContactFact(db, contactId, fact.key, fact.value, 'inferred', fact.confidence);
+      }
 
-    // Update interaction count
-    upsertContactFact(
-      db,
-      contactId,
-      'interaction_count',
-      String(getInteractionCount(db, contactId) + 1),
-      'system',
-      1.0,
-    );
+      // Update interaction count within the same transaction
+      upsertContactFact(
+        db,
+        contactId,
+        'interaction_count',
+        String(getInteractionCount(db, contactId) + 1),
+        'system',
+        1.0,
+      );
+    });
+    storeFacts();
 
     if (facts.length > 0) {
       orchestratorLogger.debug(

@@ -183,7 +183,9 @@ export function updateContactGroup(
       return getContactGroup(db, id);
     }
 
-    fields.push('updated_at = datetime(\'now\')');
+    fields.push("updated_at = datetime('now')");
+    // SAFETY: All field names above are hardcoded strings, never from user input.
+    // Values use parameterized queries — no SQL injection risk.
     values.push(id);
     db.prepare(`UPDATE contact_groups SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 

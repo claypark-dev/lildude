@@ -209,6 +209,10 @@ export function updateContact(
       return getContact(db, id);
     }
 
+    // Always update the timestamp on changes
+    fields.push("updated_at = datetime('now')");
+    // SAFETY: All field names above are hardcoded strings, never from user input.
+    // Values use parameterized queries — no SQL injection risk.
     values.push(id);
     db.prepare(`UPDATE contacts SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 

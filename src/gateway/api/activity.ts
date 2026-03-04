@@ -23,6 +23,9 @@ import {
   getGroupsForContact,
 } from '../../persistence/contact-groups.js';
 import { getContact } from '../../persistence/contacts.js';
+import { createModuleLogger } from '../../utils/logger.js';
+
+const activityApiLogger = createModuleLogger('activity-api');
 
 /**
  * Register activity, groups, and notification REST API routes.
@@ -36,22 +39,33 @@ export function registerActivityRoutes(app: FastifyInstance, db: BetterSqlite3.D
   app.get<{
     Params: { id: string };
   }>('/api/v1/contacts/:id/activity', async (request, reply) => {
-    const contact = getContact(db, request.params.id);
-    if (!contact) {
-      reply.status(404).send({ error: 'Contact not found' });
-      return;
+    try {
+      const contact = getContact(db, request.params.id);
+      if (!contact) {
+        return reply.status(404).send({ error: 'Contact not found' });
+      }
+      const activity = getContactActivity(db, request.params.id);
+      return reply.send(activity);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to get contact activity');
+      return reply.status(500).send({ error: 'Failed to get contact activity' } as never);
     }
-    const activity = getContactActivity(db, request.params.id);
-    reply.send(activity);
   });
 
   /** Get external activity summary for the dashboard. */
   app.get<{
     Querystring: { limit?: string };
   }>('/api/v1/activity/external', async (request, reply) => {
-    const limit = request.query.limit ? parseInt(request.query.limit, 10) : 20;
-    const summary = getExternalActivitySummary(db, limit);
-    reply.send(summary);
+    try {
+      const limit = request.query.limit ? parseInt(request.query.limit, 10) : 20;
+      const summary = getExternalActivitySummary(db, limit);
+      return reply.send(summary);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to get external activity summary');
+      return reply.status(500).send({ error: 'Failed to get external activity summary' } as never);
+    }
   });
 
   // ── Contact Groups ────────────────────────────────────────────────────
@@ -60,35 +74,51 @@ export function registerActivityRoutes(app: FastifyInstance, db: BetterSqlite3.D
   app.get<{
     Querystring: { limit?: string; offset?: string };
   }>('/api/v1/groups', async (request, reply) => {
-    const limit = request.query.limit ? parseInt(request.query.limit, 10) : 100;
-    const offset = request.query.offset ? parseInt(request.query.offset, 10) : 0;
-    const groups = listContactGroups(db, limit, offset);
-    reply.send({ groups });
+    try {
+      const limit = request.query.limit ? parseInt(request.query.limit, 10) : 100;
+      const offset = request.query.offset ? parseInt(request.query.offset, 10) : 0;
+      const groups = listContactGroups(db, limit, offset);
+      return reply.send({ groups });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to list contact groups');
+      return reply.status(500).send({ error: 'Failed to list contact groups' } as never);
+    }
   });
 
   /** Get a single contact group. */
   app.get<{
     Params: { id: string };
   }>('/api/v1/groups/:id', async (request, reply) => {
-    const group = getContactGroup(db, request.params.id);
-    if (!group) {
-      reply.status(404).send({ error: 'Group not found' });
-      return;
+    try {
+      const group = getContactGroup(db, request.params.id);
+      if (!group) {
+        return reply.status(404).send({ error: 'Group not found' });
+      }
+      return reply.send(group);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to get contact group');
+      return reply.status(500).send({ error: 'Failed to get contact group' } as never);
     }
-    reply.send(group);
   });
 
   /** Create a new contact group. */
   app.post<{
     Body: { name: string; description?: string; contactIds?: string[]; color?: string };
   }>('/api/v1/groups', async (request, reply) => {
-    const { name, description, contactIds, color } = request.body;
-    if (!name || name.trim().length === 0) {
-      reply.status(400).send({ error: 'Group name is required' });
-      return;
+    try {
+      const { name, description, contactIds, color } = request.body;
+      if (!name || name.trim().length === 0) {
+        return reply.status(400).send({ error: 'Group name is required' });
+      }
+      const group = createContactGroup(db, { name: name.trim(), description, contactIds, color });
+      return reply.status(201).send(group);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to create contact group');
+      return reply.status(500).send({ error: 'Failed to create contact group' } as never);
     }
-    const group = createContactGroup(db, { name: name.trim(), description, contactIds, color });
-    reply.status(201).send(group);
   });
 
   /** Update a contact group. */
@@ -96,26 +126,36 @@ export function registerActivityRoutes(app: FastifyInstance, db: BetterSqlite3.D
     Params: { id: string };
     Body: { name?: string; description?: string; contactIds?: string[]; color?: string };
   }>('/api/v1/groups/:id', async (request, reply) => {
-    const existing = getContactGroup(db, request.params.id);
-    if (!existing) {
-      reply.status(404).send({ error: 'Group not found' });
-      return;
+    try {
+      const existing = getContactGroup(db, request.params.id);
+      if (!existing) {
+        return reply.status(404).send({ error: 'Group not found' });
+      }
+      const updated = updateContactGroup(db, request.params.id, request.body);
+      return reply.send(updated);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to update contact group');
+      return reply.status(500).send({ error: 'Failed to update contact group' } as never);
     }
-    const updated = updateContactGroup(db, request.params.id, request.body);
-    reply.send(updated);
   });
 
   /** Delete a contact group. */
   app.delete<{
     Params: { id: string };
   }>('/api/v1/groups/:id', async (request, reply) => {
-    const existing = getContactGroup(db, request.params.id);
-    if (!existing) {
-      reply.status(404).send({ error: 'Group not found' });
-      return;
+    try {
+      const existing = getContactGroup(db, request.params.id);
+      if (!existing) {
+        return reply.status(404).send({ error: 'Group not found' });
+      }
+      deleteContactGroup(db, request.params.id);
+      return reply.status(204).send();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to delete contact group');
+      return reply.status(500).send({ error: 'Failed to delete contact group' } as never);
     }
-    deleteContactGroup(db, request.params.id);
-    reply.status(204).send();
   });
 
   /** Add a contact to a group. */
@@ -123,42 +163,56 @@ export function registerActivityRoutes(app: FastifyInstance, db: BetterSqlite3.D
     Params: { id: string };
     Body: { contactId: string };
   }>('/api/v1/groups/:id/contacts', async (request, reply) => {
-    const { contactId } = request.body;
-    if (!contactId) {
-      reply.status(400).send({ error: 'contactId is required' });
-      return;
+    try {
+      const { contactId } = request.body;
+      if (!contactId) {
+        return reply.status(400).send({ error: 'contactId is required' });
+      }
+      const group = addContactToGroup(db, request.params.id, contactId);
+      if (!group) {
+        return reply.status(404).send({ error: 'Group not found' });
+      }
+      return reply.send(group);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to add contact to group');
+      return reply.status(500).send({ error: 'Failed to add contact to group' } as never);
     }
-    const group = addContactToGroup(db, request.params.id, contactId);
-    if (!group) {
-      reply.status(404).send({ error: 'Group not found' });
-      return;
-    }
-    reply.send(group);
   });
 
   /** Remove a contact from a group. */
   app.delete<{
     Params: { id: string; contactId: string };
   }>('/api/v1/groups/:id/contacts/:contactId', async (request, reply) => {
-    const group = removeContactFromGroup(db, request.params.id, request.params.contactId);
-    if (!group) {
-      reply.status(404).send({ error: 'Group not found' });
-      return;
+    try {
+      const group = removeContactFromGroup(db, request.params.id, request.params.contactId);
+      if (!group) {
+        return reply.status(404).send({ error: 'Group not found' });
+      }
+      return reply.send(group);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to remove contact from group');
+      return reply.status(500).send({ error: 'Failed to remove contact from group' } as never);
     }
-    reply.send(group);
   });
 
   /** Get all groups a contact belongs to. */
   app.get<{
     Params: { id: string };
   }>('/api/v1/contacts/:id/groups', async (request, reply) => {
-    const contact = getContact(db, request.params.id);
-    if (!contact) {
-      reply.status(404).send({ error: 'Contact not found' });
-      return;
+    try {
+      const contact = getContact(db, request.params.id);
+      if (!contact) {
+        return reply.status(404).send({ error: 'Contact not found' });
+      }
+      const groups = getGroupsForContact(db, request.params.id);
+      return reply.send({ groups });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to get groups for contact');
+      return reply.status(500).send({ error: 'Failed to get groups for contact' } as never);
     }
-    const groups = getGroupsForContact(db, request.params.id);
-    reply.send({ groups });
   });
 
   // ── Notification Preferences ──────────────────────────────────────────
@@ -167,13 +221,18 @@ export function registerActivityRoutes(app: FastifyInstance, db: BetterSqlite3.D
   app.get<{
     Params: { id: string };
   }>('/api/v1/contacts/:id/notifications', async (request, reply) => {
-    const contact = getContact(db, request.params.id);
-    if (!contact) {
-      reply.status(404).send({ error: 'Contact not found' });
-      return;
+    try {
+      const contact = getContact(db, request.params.id);
+      if (!contact) {
+        return reply.status(404).send({ error: 'Contact not found' });
+      }
+      const prefs = getNotificationPrefs(db, request.params.id);
+      return reply.send(prefs);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to get notification preferences');
+      return reply.status(500).send({ error: 'Failed to get notification preferences' } as never);
     }
-    const prefs = getNotificationPrefs(db, request.params.id);
-    reply.send(prefs);
   });
 
   /** Update notification preferences for a contact. */
@@ -181,18 +240,29 @@ export function registerActivityRoutes(app: FastifyInstance, db: BetterSqlite3.D
     Params: { id: string };
     Body: UpdateNotificationPrefsInput;
   }>('/api/v1/contacts/:id/notifications', async (request, reply) => {
-    const contact = getContact(db, request.params.id);
-    if (!contact) {
-      reply.status(404).send({ error: 'Contact not found' });
-      return;
+    try {
+      const contact = getContact(db, request.params.id);
+      if (!contact) {
+        return reply.status(404).send({ error: 'Contact not found' });
+      }
+      const prefs = updateNotificationPrefs(db, request.params.id, request.body);
+      return reply.send(prefs);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to update notification preferences');
+      return reply.status(500).send({ error: 'Failed to update notification preferences' } as never);
     }
-    const prefs = updateNotificationPrefs(db, request.params.id, request.body);
-    reply.send(prefs);
   });
 
   /** List all contacts with custom notification preferences. */
   app.get('/api/v1/notifications', async (_request, reply) => {
-    const prefs = listCustomNotificationPrefs(db);
-    reply.send({ notifications: prefs });
+    try {
+      const prefs = listCustomNotificationPrefs(db);
+      return reply.send({ notifications: prefs });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      activityApiLogger.error({ error: message }, 'Failed to list notification preferences');
+      return reply.status(500).send({ error: 'Failed to list notification preferences' } as never);
+    }
   });
 }
