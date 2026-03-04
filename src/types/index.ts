@@ -59,6 +59,20 @@ export interface SendOptions {
   buttons?: Array<{ label: string; id: string }>;
   silent?: boolean;
   parseMode?: 'markdown' | 'html' | 'plain';
+  /** Optional audio attachment to send alongside or instead of text. */
+  audioAttachment?: AudioAttachment;
+}
+
+/** Audio data to send through a channel. */
+export interface AudioAttachment {
+  /** Raw audio buffer. */
+  data: Buffer;
+  /** Audio format (wav, mp3, pcm). */
+  format: 'wav' | 'mp3' | 'pcm';
+  /** Duration in seconds (optional, for display). */
+  durationSec?: number;
+  /** MIME type (e.g., 'audio/wav'). */
+  mimeType: string;
 }
 
 export interface ChannelAdapter {

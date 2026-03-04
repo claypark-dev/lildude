@@ -277,6 +277,26 @@ export function createTelegramAdapter(): ChannelAdapter {
           }
 
           await bot.telegram.sendMessage(channelId, chunks[chunkIndex], extra);
+
+          // Send audio as a separate voice message after the last text chunk
+          if (chunkIndex === chunks.length - 1 && options?.audioAttachment) {
+            await throttle();
+            try {
+              await bot.telegram.sendVoice(channelId, {
+                source: options.audioAttachment.data,
+                filename: `response.${options.audioAttachment.format === 'mp3' ? 'mp3' : 'wav'}`,
+              }, {
+                duration: options.audioAttachment.durationSec
+                  ? Math.round(options.audioAttachment.durationSec)
+                  : undefined,
+              });
+            } catch (audioError: unknown) {
+              log.warn(
+                { channelId, error: audioError },
+                'Failed to send audio voice message — text was delivered',
+              );
+            }
+          }
         } catch (error: unknown) {
           log.error(
             { channelId, chunkIndex, error },

@@ -13,8 +13,12 @@ import {
   createSlackAdapter,
 } from './channels/index.js';
 import type { AgentLoop } from './orchestrator/agent-loop.js';
-import type { ChannelMessage, LLMProvider } from './types/index.js';
+import type { ChannelMessage, InstallTier, LLMProvider } from './types/index.js';
 import type { ProviderManager } from './providers/index.js';
+import {
+  processInboundVoice,
+  generateOutboundVoice,
+} from './voice/voice-middleware.js';
 import { createModuleLogger } from './utils/logger.js';
 
 /** The version string, kept in sync with package.json. */
@@ -122,25 +126,45 @@ export async function initializeChannels(
 
 /**
  * Wire all connected channel adapters to route messages through the agent loop.
+ * Integrates voice middleware for audio transcription and TTS synthesis.
  *
  * @param channelManager - The channel manager with registered adapters.
  * @param agentLoop - The agent loop to process messages.
+ * @param config - The application configuration (for voice settings).
+ * @param getTier - Callback returning the current install tier.
  */
 export function wireChannelsToAgentLoop(
   channelManager: ChannelManager,
   agentLoop: AgentLoop,
+  config: Config,
+  getTier: () => InstallTier,
 ): void {
   const connectedAdapters = channelManager.getConnectedAdapters();
 
   for (const adapter of connectedAdapters) {
     adapter.onMessage(async (msg: ChannelMessage) => {
       try {
+        // Voice inbound: transcribe audio attachments to text
+        const tier = getTier();
+        const voiceIn = await processInboundVoice(msg, config, tier);
+
         const result = await agentLoop.processMessage(
           msg.channelId,
-          msg.text,
+          voiceIn.text,
           msg.channelType,
         );
-        await adapter.send(msg.channelId, result.responseText);
+
+        // Voice outbound: generate TTS if the original was audio
+        const voiceOut = await generateOutboundVoice(
+          result.responseText,
+          voiceIn.hadAudio,
+          config,
+          tier,
+        );
+
+        await adapter.send(msg.channelId, result.responseText, {
+          audioAttachment: voiceOut.audioAttachment ?? undefined,
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         log.error(

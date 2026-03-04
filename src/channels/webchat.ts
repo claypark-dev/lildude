@@ -82,15 +82,27 @@ export function createWebChatAdapter(): WebChatAdapter {
         return;
       }
 
+      // Build payload with optional audio (base64-encoded for WebSocket transport)
+      const payload: Record<string, unknown> = {
+        id: nanoid(),
+        text,
+        replyToMessageId: options?.replyToMessageId,
+        buttons: options?.buttons,
+        parseMode: options?.parseMode,
+      };
+
+      if (options?.audioAttachment) {
+        payload.audio = {
+          data: options.audioAttachment.data.toString('base64'),
+          format: options.audioAttachment.format,
+          mimeType: options.audioAttachment.mimeType,
+          durationSec: options.audioAttachment.durationSec,
+        };
+      }
+
       const outbound: WSMessage = {
         type: 'chat.message',
-        payload: {
-          id: nanoid(),
-          text,
-          replyToMessageId: options?.replyToMessageId,
-          buttons: options?.buttons,
-          parseMode: options?.parseMode,
-        },
+        payload,
         timestamp: new Date().toISOString(),
       };
 

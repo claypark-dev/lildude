@@ -331,6 +331,15 @@ export function createDiscordAdapter(): DiscordAdapter {
             messagePayload.components = [buildButtonRow(options.buttons)];
           }
 
+          // Attach audio file to the last chunk if provided
+          if (isLastChunk && options?.audioAttachment) {
+            const ext = options.audioAttachment.format === 'mp3' ? 'mp3' : 'wav';
+            messagePayload.files = [{
+              attachment: options.audioAttachment.data,
+              name: `response.${ext}`,
+            }];
+          }
+
           await sendableChannel.send(messagePayload);
         }
 

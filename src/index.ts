@@ -222,7 +222,7 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
   log.info('Agent loop created');
 
   // Step 9: Wire channel messages to the agent loop
-  wireChannelsToAgentLoop(channelManager, agentLoop);
+  wireChannelsToAgentLoop(channelManager, agentLoop, config, () => config.installTier);
 
   // Step 9.5: Run startup resume check
   const resumeResult = await runStartupResume(dbManager.db);
