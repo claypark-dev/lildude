@@ -10,7 +10,7 @@ import {
   getBlockedContextKeys,
 } from '../../../src/waves/party-wave-context.js';
 
-/** All 15 blocked context keys that must never reach party waves. */
+/** All 18 blocked context keys that must never reach party waves. */
 const ALL_BLOCKED_KEYS = [
   'ownerPreferences',
   'ownerSchedule',
@@ -27,6 +27,9 @@ const ALL_BLOCKED_KEYS = [
   'providerKeys',
   'tokenUsage',
   'budgetDetails',
+  'knowledgeContext',
+  'userProfile',
+  'conversationSummary',
 ] as const;
 
 interface Contact {
@@ -317,10 +320,10 @@ describe('PartyWaveContext', () => {
   // ─── getBlockedContextKeys ─────────────────────────────────────────────
 
   describe('getBlockedContextKeys', () => {
-    it('returns a set with all 15 blocked keys', () => {
+    it('returns a set with all 18 blocked keys', () => {
       const blockedKeys = getBlockedContextKeys();
 
-      expect(blockedKeys.size).toBe(15);
+      expect(blockedKeys.size).toBe(18);
       for (const key of ALL_BLOCKED_KEYS) {
         expect(blockedKeys.has(key)).toBe(true);
       }

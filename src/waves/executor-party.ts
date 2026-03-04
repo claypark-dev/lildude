@@ -25,7 +25,9 @@ import {
 import {
   buildPartyWaveContext,
   sanitizePartyWaveOutput,
+  validateExtractedParams,
 } from './party-wave-context.js';
+import { createPartyWaveDbProxy } from './party-wave-db-proxy.js';
 
 const partyExecutorLogger = createModuleLogger('party-wave-executor');
 
@@ -138,12 +140,14 @@ async function executePartyDeterministic(
     extractionResponse.usage.cacheReadTokens ?? 0,
   );
 
-  // Step 4: Parse extracted parameters
-  const extractedParams = parseExtractedParams(extractionResponse);
+  // Step 4: Parse extracted parameters and VALIDATE for data leakage
+  const rawParams = parseExtractedParams(extractionResponse);
+  const extractedParams = validateExtractedParams(rawParams, waveName);
 
-  // Step 5: Build SANITIZED context (party wave safety)
+  // Step 5: Build SANITIZED context with DB proxy (party wave safety)
+  const dbProxy = createPartyWaveDbProxy(deps.db, waveName, deps.externalContact!.id);
   const waveDeps = {
-    db: deps.db,
+    db: dbProxy,
     getAccessToken: deps.getAccessToken,
   };
 
@@ -214,9 +218,10 @@ async function executePartyNonDeterministic(
   const estimatedPlanCost = calculateCost(modelSelection.model, 1000, 500);
   assertCanAfford(deps, estimatedPlanCost);
 
-  // Step 3: Build SANITIZED context and plan
+  // Step 3: Build SANITIZED context with DB proxy and plan
+  const dbProxy = createPartyWaveDbProxy(deps.db, waveName, deps.externalContact!.id);
   const waveDeps = {
-    db: deps.db,
+    db: dbProxy,
     getAccessToken: deps.getAccessToken,
   };
 
