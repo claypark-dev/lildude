@@ -472,6 +472,110 @@ describe('wave executor', () => {
     });
   });
 
+  describe('plan-first regex extraction', () => {
+    it('skips LLM when wave.plan() returns useful params', async () => {
+      const mockProvider = createMockProvider();
+      const wave = createDeterministicWave();
+      // Override plan to return useful params (simulates regex extraction)
+      (wave.plan as ReturnType<typeof vi.fn>).mockResolvedValue({
+        steps: [],
+        estimatedCostUsd: 0,
+        isDeterministic: true,
+        extractedParams: { symbol: 'CRM' },
+      });
+      const deps = createMockDeps({ provider: mockProvider });
+
+      const result = await executeWave(wave, 'stock price for CRM', deps);
+
+      expect(result.success).toBe(true);
+      expect(result.llmCallCount).toBe(0);
+      expect(mockProvider.chat).not.toHaveBeenCalled();
+      expect(result.tokensUsed.input).toBe(0);
+      expect(result.tokensUsed.output).toBe(0);
+    });
+
+    it('falls back to LLM when wave.plan() returns empty params', async () => {
+      const mockProvider = createMockProvider();
+      const wave = createDeterministicWave();
+      // Default mock plan returns extractedParams: {} → triggers LLM fallback
+      const deps = createMockDeps({ provider: mockProvider });
+
+      const result = await executeWave(wave, 'check stock AAPL', deps);
+
+      expect(result.llmCallCount).toBe(1);
+      expect(mockProvider.chat).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to LLM when wave.plan() throws', async () => {
+      const mockProvider = createMockProvider();
+      const wave = createDeterministicWave();
+      (wave.plan as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('regex fail'));
+      const deps = createMockDeps({ provider: mockProvider });
+
+      const result = await executeWave(wave, 'check stock AAPL', deps);
+
+      expect(result.llmCallCount).toBe(1);
+      expect(mockProvider.chat).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+    });
+
+    it('ignores params where all values are undefined/null/empty', async () => {
+      const mockProvider = createMockProvider();
+      const wave = createDeterministicWave();
+      (wave.plan as ReturnType<typeof vi.fn>).mockResolvedValue({
+        steps: [],
+        estimatedCostUsd: 0,
+        isDeterministic: true,
+        extractedParams: { symbol: undefined, condition: null, price: '' },
+      });
+      const deps = createMockDeps({ provider: mockProvider });
+
+      const result = await executeWave(wave, 'check stock AAPL', deps);
+
+      // All values empty → falls back to LLM
+      expect(result.llmCallCount).toBe(1);
+      expect(mockProvider.chat).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('think tag stripping', () => {
+    it('strips <think> tags from LLM response and extracts JSON', async () => {
+      const mockProvider = createMockProvider({
+        chatResponse: {
+          content: [{ type: 'text', text: '<think>\nThe user wants CRM stock.\nI should return the symbol.\n</think>\n{"symbol": "CRM"}' }],
+          model: 'ollama/qwen3.5:4b',
+          usage: { inputTokens: 100, outputTokens: 50 },
+          stopReason: 'end_turn',
+        },
+      });
+      const wave = createDeterministicWave();
+      const deps = createMockDeps({ provider: mockProvider });
+
+      await executeWave(wave, 'stock price for CRM', deps);
+
+      const planArg = (wave.execute as ReturnType<typeof vi.fn>).mock.calls[0][0] as WavePlan;
+      expect(planArg.extractedParams).toEqual(expect.objectContaining({ symbol: 'CRM' }));
+    });
+
+    it('handles response that is only <think> tags with no JSON after', async () => {
+      const mockProvider = createMockProvider({
+        chatResponse: {
+          content: [{ type: 'text', text: '<think>\nThinking about this...\nBut ran out of tokens before finishing\n</think>' }],
+          model: 'ollama/qwen3.5:4b',
+          usage: { inputTokens: 100, outputTokens: 128 },
+          stopReason: 'max_tokens',
+        },
+      });
+      const wave = createDeterministicWave();
+      const deps = createMockDeps({ provider: mockProvider });
+
+      const result = await executeWave(wave, 'stock price for CRM', deps);
+
+      // Should still succeed with empty params (graceful fallback)
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('token usage tracking', () => {
     it('reports correct token usage for deterministic execution', async () => {
       const mockProvider = createMockProvider({

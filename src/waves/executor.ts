@@ -129,45 +129,77 @@ async function executeDeterministic(
 ): Promise<WaveExecutionResult> {
   const waveName = wave.manifest.name;
 
-  // Step 1: Select SMALL model for parameter extraction
-  const modelSelection = selectModel('small', deps.enabledProviders);
-
-  // Step 2: Budget check before LLM call
-  const estimatedCost = calculateCost(modelSelection.model, 500, 200);
-  assertCanAfford(deps, estimatedCost);
-
-  // Step 3: Extract parameters with a single LLM call
-  const extractionResponse = await callLLMForParamExtraction(
-    deps.provider,
-    modelSelection.model,
-    wave,
-    userMessage,
-  );
-
-  const extractionCost = calculateCost(
-    modelSelection.model,
-    extractionResponse.usage.inputTokens,
-    extractionResponse.usage.outputTokens,
-    extractionResponse.usage.cacheReadTokens ?? 0,
-  );
-
-  const totalInputTokens = extractionResponse.usage.inputTokens;
-  const totalOutputTokens = extractionResponse.usage.outputTokens;
-
-  // Step 4: Parse extracted parameters from LLM response
-  const extractedParams = parseExtractedParams(extractionResponse);
-
-  executorLogger.debug(
-    { waveName, extractedParams },
-    'Parameters extracted for deterministic wave',
-  );
-
-  // Step 5: Build a WavePlan with the extracted params + injected deps
   const waveDeps = {
     db: deps.db,
     getAccessToken: deps.getAccessToken,
   };
 
+  // Step 1: Try the wave's own plan() for regex-based param extraction first.
+  // Many deterministic waves already have regex extractors that work without LLM.
+  let extractedParams: Record<string, unknown> = {};
+  let llmCallCount = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let extractionCost = 0;
+
+  if (wave.plan) {
+    try {
+      const regexPlan = await wave.plan(userMessage, {});
+      const regexParams = regexPlan.extractedParams;
+      const hasUsefulParams = regexParams
+        && Object.keys(regexParams).some((key) => {
+          const val = regexParams[key];
+          return val !== undefined && val !== null && val !== '';
+        });
+
+      if (hasUsefulParams) {
+        extractedParams = regexParams;
+        executorLogger.debug(
+          { waveName, extractedParams },
+          'Parameters extracted via wave plan() regex — skipping LLM call',
+        );
+      }
+    } catch (planError: unknown) {
+      const planErrMsg = planError instanceof Error ? planError.message : String(planError);
+      executorLogger.debug(
+        { waveName, error: planErrMsg },
+        'Wave plan() regex extraction failed, falling back to LLM',
+      );
+    }
+  }
+
+  // Step 2: Fall back to LLM param extraction if regex didn't yield params
+  if (Object.keys(extractedParams).length === 0) {
+    const modelSelection = selectModel('small', deps.enabledProviders);
+    const estimatedCost = calculateCost(modelSelection.model, 500, 200);
+    assertCanAfford(deps, estimatedCost);
+
+    const extractionResponse = await callLLMForParamExtraction(
+      deps.provider,
+      modelSelection.model,
+      wave,
+      userMessage,
+    );
+
+    extractionCost = calculateCost(
+      modelSelection.model,
+      extractionResponse.usage.inputTokens,
+      extractionResponse.usage.outputTokens,
+      extractionResponse.usage.cacheReadTokens ?? 0,
+    );
+
+    totalInputTokens = extractionResponse.usage.inputTokens;
+    totalOutputTokens = extractionResponse.usage.outputTokens;
+    extractedParams = parseExtractedParams(extractionResponse);
+    llmCallCount = 1;
+
+    executorLogger.debug(
+      { waveName, extractedParams },
+      'Parameters extracted via LLM for deterministic wave',
+    );
+  }
+
+  // Step 3: Build a WavePlan with the extracted params + injected deps
   const plan: WavePlan = {
     steps: wave.manifest.tools.map((tool) => ({
       type: 'api_call' as const,
@@ -179,10 +211,10 @@ async function executeDeterministic(
     extractedParams: { ...extractedParams, _deps: waveDeps },
   };
 
-  // Step 6: Execute the wave directly (no LLM call)
+  // Step 4: Execute the wave directly (no LLM call)
   const toolResult = await wave.execute(plan);
 
-  // Step 7: Optionally validate the result
+  // Step 5: Optionally validate the result
   const validationResult = await runValidationIfPresent(wave, toolResult);
 
   const outputText = validationResult.valid
@@ -190,7 +222,7 @@ async function executeDeterministic(
     : `${toolResult.output}\n[Validation feedback: ${validationResult.feedback ?? 'unknown issue'}]`;
 
   executorLogger.info(
-    { waveName, success: toolResult.success, llmCalls: 1 },
+    { waveName, success: toolResult.success, llmCallCount },
     'Deterministic wave execution complete',
   );
 
@@ -199,7 +231,7 @@ async function executeDeterministic(
     output: outputText,
     tokensUsed: { input: totalInputTokens, output: totalOutputTokens },
     costUsd: extractionCost,
-    llmCallCount: 1,
+    llmCallCount,
     wasDeterministic: true,
   };
 }

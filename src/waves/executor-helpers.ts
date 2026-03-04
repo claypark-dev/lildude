@@ -50,16 +50,17 @@ export async function callLLMForParamExtraction(
     'Extract the parameters from the user message for this wave.',
     'Return ONLY a valid JSON object with the extracted parameters.',
     'Do NOT include any explanation, markdown, or text outside the JSON.',
+    'Do NOT use <think> tags or any reasoning. Output the JSON immediately.',
     'If no parameters can be extracted, return an empty JSON object: {}',
   ].join('\n');
 
   const messages: Message[] = [
-    { role: 'user', content: userMessage },
+    { role: 'user', content: `/no_think\n${userMessage}` },
   ];
 
   return provider.chat(messages, {
     model,
-    maxTokens: 512,
+    maxTokens: 128,
     temperature: 0,
     systemPrompt,
   });
@@ -74,12 +75,14 @@ export async function callLLMForParamExtraction(
  * @returns A record of extracted parameters.
  */
 export function parseExtractedParams(response: ChatResponse): Record<string, unknown> {
-  const responseText = response.content
+  const rawText = response.content
     .filter((block) => block.type === 'text' && block.text)
     .map((block) => block.text ?? '')
     .join('');
 
-  const trimmed = responseText.trim();
+  // Strip <think>...</think> blocks from models with thinking mode (qwen, deepseek-r1, etc.)
+  const withoutThinking = rawText.replace(/<think>[\s\S]*?<\/think>/g, '');
+  const trimmed = withoutThinking.trim();
 
   try {
     const parsed: unknown = JSON.parse(trimmed);
