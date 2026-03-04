@@ -11,9 +11,9 @@ function createTestDb() {
 }
 
 const MOCK_REGISTRY: WaveRegistryEntry[] = [
-  { name: 'weather-checker', description: 'Check weather forecasts', author: 'community', source: 'github:community/weather', triggers: ['weather', 'forecast'], version: '1.0.0' },
-  { name: 'email-reader', description: 'Read and summarize emails', author: 'community', source: 'github:community/email', triggers: ['email', 'inbox'], version: '2.0.0' },
-  { name: 'code-reviewer', description: 'Review pull requests', author: 'community', source: 'github:community/code-review', triggers: ['review', 'PR'], version: '1.5.0' },
+  { name: 'weather-checker', description: 'Check weather forecasts', author: 'community', source: 'github:claypark-dev/weather', triggers: ['weather', 'forecast'], version: '1.0.0' },
+  { name: 'email-reader', description: 'Read and summarize emails', author: 'community', source: 'github:claypark-dev/email', triggers: ['email', 'inbox'], version: '2.0.0' },
+  { name: 'code-reviewer', description: 'Review pull requests', author: 'community', source: 'github:claypark-dev/code-review', triggers: ['review', 'PR'], version: '1.5.0' },
 ];
 
 describe('hub-registry', () => {

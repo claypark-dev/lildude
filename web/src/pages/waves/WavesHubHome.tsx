@@ -29,7 +29,7 @@ export function WavesHubHome() {
   const stats = useApi(useCallback(() => fetchHubStats(), []));
 
   const [installing, setInstalling] = useState(false);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [selectedWave, setSelectedWave] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -38,12 +38,12 @@ export function WavesHubHome() {
     setActionMessage(null);
     try {
       const result = await installWave(source);
-      setActionMessage(`Installed "${result.name}" v${result.version}`);
+      setActionMessage({ text: `Installed "${result.name}" v${result.version}`, isError: false });
       allWaves.refetch();
       featured.refetch();
     } catch (installError: unknown) {
       const message = installError instanceof Error ? installError.message : 'Installation failed';
-      setActionMessage(message);
+      setActionMessage({ text: message, isError: true });
     } finally {
       setInstalling(false);
     }
@@ -53,12 +53,12 @@ export function WavesHubHome() {
     setActionMessage(null);
     try {
       await uninstallWave(name);
-      setActionMessage(`Uninstalled "${name}"`);
+      setActionMessage({ text: `Uninstalled "${name}"`, isError: false });
       allWaves.refetch();
       featured.refetch();
     } catch (uninstallError: unknown) {
       const message = uninstallError instanceof Error ? uninstallError.message : 'Uninstall failed';
-      setActionMessage(message);
+      setActionMessage({ text: message, isError: true });
     }
   }
 
@@ -132,8 +132,12 @@ export function WavesHubHome() {
       )}
 
       {actionMessage && (
-        <p className="text-sm text-blue-400 bg-blue-500/10 px-4 py-2 rounded-lg">
-          {actionMessage}
+        <p className={`text-sm px-4 py-2 rounded-lg ${
+          actionMessage.isError
+            ? 'text-red-400 bg-red-500/10 border border-red-500/20'
+            : 'text-green-400 bg-green-500/10 border border-green-500/20'
+        }`}>
+          {actionMessage.text}
         </p>
       )}
 

@@ -24,10 +24,10 @@ vi.mock('../../../src/persistence/wave-hub-cache.js', () => ({
     data: JSON.stringify({
       version: '1',
       waves: [
-        { name: 'weather-checker', description: 'Check weather', author: 'community', source: 'github:community/weather-checker', triggers: ['weather'], version: '1.2.0' },
-        { name: 'note-taker', description: 'Take notes', author: 'community', source: 'github:community/note-taker', triggers: ['note'], version: '1.0.0' },
-        { name: 'email-reader', description: 'Read emails', author: 'community', source: 'github:community/email-reader', triggers: ['email'], version: '2.0.0' },
-        { name: 'new-wave', description: 'Brand new', author: 'community', source: 'github:community/new-wave', triggers: ['new'], version: '1.0.0' },
+        { name: 'weather-checker', description: 'Check weather', author: 'community', source: 'github:claypark-dev/weather-checker', triggers: ['weather'], version: '1.2.0' },
+        { name: 'note-taker', description: 'Take notes', author: 'community', source: 'github:claypark-dev/note-taker', triggers: ['note'], version: '1.0.0' },
+        { name: 'email-reader', description: 'Read emails', author: 'community', source: 'github:claypark-dev/email-reader', triggers: ['email'], version: '2.0.0' },
+        { name: 'new-wave', description: 'Brand new', author: 'community', source: 'github:claypark-dev/new-wave', triggers: ['new'], version: '1.0.0' },
       ],
     }),
     etag: null,
@@ -112,9 +112,9 @@ describe('checkForUpdates', () => {
 
 describe('searchRegistry', () => {
   const waves = [
-    { name: 'weather-checker', description: 'Check weather forecasts', author: 'community', source: 'github:community/weather-checker', triggers: ['weather', 'forecast'], version: '1.0.0' },
-    { name: 'note-taker', description: 'Take and organize notes', author: 'community', source: 'github:community/note-taker', triggers: ['note', 'notes'], version: '1.0.0' },
-    { name: 'email-summarizer', description: 'Summarize emails', author: 'community', source: 'github:community/email-summarizer', triggers: ['email', 'inbox'], version: '1.0.0' },
+    { name: 'weather-checker', description: 'Check weather forecasts', author: 'community', source: 'github:claypark-dev/weather-checker', triggers: ['weather', 'forecast'], version: '1.0.0' },
+    { name: 'note-taker', description: 'Take and organize notes', author: 'community', source: 'github:claypark-dev/note-taker', triggers: ['note', 'notes'], version: '1.0.0' },
+    { name: 'email-summarizer', description: 'Summarize emails', author: 'community', source: 'github:claypark-dev/email-summarizer', triggers: ['email', 'inbox'], version: '1.0.0' },
   ];
 
   it('matches by name', () => {

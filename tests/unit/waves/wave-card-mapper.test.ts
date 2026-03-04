@@ -12,7 +12,7 @@ const SAMPLE_ENTRY: WaveRegistryEntry = {
   name: 'weather-checker',
   description: 'Check weather',
   author: 'community',
-  source: 'github:community/weather-checker',
+  source: 'github:claypark-dev/weather-checker',
   triggers: ['weather'],
   version: '1.0.0',
   category: 'utilities',
@@ -66,7 +66,7 @@ describe('wave-card-mapper', () => {
       expect(card.description).toBe('Check weather');
       expect(card.author).toBe('community');
       expect(card.version).toBe('1.0.0');
-      expect(card.source).toBe('github:community/weather-checker');
+      expect(card.source).toBe('github:claypark-dev/weather-checker');
     });
 
     it('maps optional hub marketplace fields correctly', () => {

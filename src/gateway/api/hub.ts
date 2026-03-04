@@ -88,10 +88,22 @@ export function registerHubRoutes(
         version: manifest.version,
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      hubApiLogger.error({ error: message }, 'Failed to install wave');
-      const statusCode = message.includes('SecurityError') ? 403 : 400;
-      return reply.status(statusCode).send({ error: message } as never);
+      const rawMessage = error instanceof Error ? error.message : String(error);
+      hubApiLogger.error({ error: rawMessage }, 'Failed to install wave');
+
+      // Provide a concise, user-friendly error message
+      const reqSource = request.body?.source ?? 'unknown';
+      let userMessage = rawMessage;
+      if (rawMessage.includes('Repository not found')) {
+        const repoMatch = rawMessage.match(/repository (https:\/\/\S+)/i);
+        const repoUrl = repoMatch?.[1]?.replace(/\.git\/?'?$/, '') ?? reqSource;
+        userMessage = `Repository not found: ${repoUrl}. The wave may not be published yet.`;
+      } else if (rawMessage.includes('Failed to clone')) {
+        userMessage = `Failed to download wave from ${reqSource}. Check your network and the source URL.`;
+      }
+
+      const statusCode = rawMessage.includes('SecurityError') ? 403 : 400;
+      return reply.status(statusCode).send({ error: userMessage } as never);
     }
   });
 
