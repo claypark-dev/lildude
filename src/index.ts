@@ -109,11 +109,6 @@ export async function startOnboardingMode(): Promise<OnboardingContext> {
 
   // Create gateway with default config (serves web panel + onboarding API)
   const gateway = createGatewayServer(dbManager, config);
-  await gateway.start(config.gateway.httpPort, config.gateway.host);
-  log.info(
-    { port: config.gateway.httpPort, host: config.gateway.host },
-    'Onboarding gateway started',
-  );
 
   // Register shutdown handlers
   const shutdownHandler = createShutdownHandler();
@@ -124,8 +119,15 @@ export async function startOnboardingMode(): Promise<OnboardingContext> {
     dbManager.close();
   });
 
-  // Register restart endpoint (only available during onboarding mode)
+  // Register restart endpoint BEFORE starting the gateway
+  // (Fastify does not allow adding routes after listen())
   registerRestartRoute(gateway.app, shutdownHandler);
+
+  await gateway.start(config.gateway.httpPort, config.gateway.host);
+  log.info(
+    { port: config.gateway.httpPort, host: config.gateway.host },
+    'Onboarding gateway started',
+  );
 
   console.log('');
   console.log('  Lil Dude — Onboarding Mode');
