@@ -20,13 +20,41 @@ import type {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:18421';
 
-/** Generic fetch wrapper with error handling */
+/** localStorage key for the web panel API key. */
+const API_KEY_STORAGE_KEY = 'lildude_api_key';
+
+/**
+ * Retrieve the stored API key from localStorage.
+ * @returns The raw API key or null if not stored.
+ */
+export function getStoredApiKey(): string | null {
+  return localStorage.getItem(API_KEY_STORAGE_KEY);
+}
+
+/**
+ * Store an API key in localStorage for authenticated requests.
+ * @param key - The raw API key.
+ */
+export function setStoredApiKey(key: string): void {
+  localStorage.setItem(API_KEY_STORAGE_KEY, key);
+}
+
+/** Generic fetch wrapper with error handling and automatic auth. */
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const apiKey = getStoredApiKey();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> | undefined),
+  };
+
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
   const response = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
     ...options,
+    headers,
   });
 
   if (!response.ok) {
@@ -116,13 +144,23 @@ export function verifyProviderKey(
 }
 
 /** Complete onboarding by saving the config */
-export function completeOnboarding(
+export async function completeOnboarding(
   config: Record<string, unknown>,
-): Promise<{ ok: boolean; restartRequired: boolean; message: string }> {
-  return request('/api/v1/onboarding/complete', {
-    method: 'POST',
-    body: JSON.stringify({ config }),
-  });
+): Promise<{ ok: boolean; restartRequired: boolean; message: string; apiKey?: string }> {
+  const result = await request<{ ok: boolean; restartRequired: boolean; message: string; apiKey?: string }>(
+    '/api/v1/onboarding/complete',
+    {
+      method: 'POST',
+      body: JSON.stringify({ config }),
+    },
+  );
+
+  // Store the API key for future authenticated requests
+  if (result.apiKey) {
+    setStoredApiKey(result.apiKey);
+  }
+
+  return result;
 }
 
 /** Reset onboarding by deleting the existing config */
@@ -200,9 +238,17 @@ export function fetchVoiceStatus(): Promise<VoiceStatus> {
 
 /** Synthesize speech from text — returns audio blob */
 export async function synthesizeSpeech(text: string): Promise<Blob> {
+  const apiKey = getStoredApiKey();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
   const response = await fetch(`${BASE_URL}/api/v1/voice/synthesize`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ text }),
   });
 

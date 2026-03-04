@@ -154,7 +154,7 @@ export function createGatewayServer(
   registerUsageRoutes(app, db);
   registerBriefingRoutes(app, db);
   registerRoutingHistoryRoutes(app, db);
-  registerOnboardingRoutes(app);
+  registerOnboardingRoutes(app, db);
   registerOllamaRoutes(app, wsManager);
   const getTier = () => config.installTier;
   registerTierRoutes(app, getTier);

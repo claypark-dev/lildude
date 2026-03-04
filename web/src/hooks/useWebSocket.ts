@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { WsIncomingMessage, WsOutgoingMessage } from '../lib/types.ts';
+import { getStoredApiKey } from '../lib/api.ts';
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:18421/ws';
 const RECONNECT_DELAY_MS = 3000;
@@ -26,6 +27,11 @@ export function useWebSocket(): UseWebSocketResult {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        // Authenticate first — WS server requires auth as the first message
+        const apiKey = getStoredApiKey();
+        if (apiKey) {
+          ws.send(JSON.stringify({ type: 'auth', token: apiKey }));
+        }
         setConnected(true);
         ws.send(JSON.stringify({ type: 'subscribe', payload: { topics: ['tasks', 'messages', '*'] } }));
       };

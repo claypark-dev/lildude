@@ -10,12 +10,14 @@
  */
 
 import type { FastifyInstance } from 'fastify';
+import type BetterSqlite3 from 'better-sqlite3';
 import { z } from 'zod';
 import { isOnboarded } from '../../index.js';
 import { detectHardware } from '../../utils/hardware.js';
 import { verifyApiKey, type OnboardingProvider } from '../../onboarding/verify-provider.js';
 import { saveConfig, deleteConfig } from '../../config/loader.js';
 import { ConfigSchema } from '../../config/schema.js';
+import { generateApiKey, storeApiKey } from '../../persistence/api-keys.js';
 import { createModuleLogger, securityLogger } from '../../utils/logger.js';
 
 const log = createModuleLogger('api-onboarding');
@@ -34,9 +36,10 @@ const CompleteOnboardingSchema = z.object({
 /**
  * Register onboarding API routes on the given Fastify instance.
  *
- * @param app - The Fastify server instance
+ * @param app - The Fastify server instance.
+ * @param db - The SQLite database for API key generation.
  */
-export function registerOnboardingRoutes(app: FastifyInstance): void {
+export function registerOnboardingRoutes(app: FastifyInstance, db?: BetterSqlite3.Database): void {
   /**
    * GET /api/v1/onboarding/status
    * Returns onboarding state and hardware profile.
@@ -134,10 +137,19 @@ export function registerOnboardingRoutes(app: FastifyInstance): void {
 
       log.info('Onboarding completed successfully');
 
+      // Generate an API key for the web panel so the frontend can authenticate
+      let apiKey: string | undefined;
+      if (db) {
+        apiKey = generateApiKey();
+        storeApiKey(db, apiKey, 'web-panel');
+        log.info('Web panel API key generated during onboarding');
+      }
+
       return reply.send({
         ok: true,
         restartRequired: true,
         message: 'Configuration saved. Restart Lil Dude to apply your settings.',
+        apiKey,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
