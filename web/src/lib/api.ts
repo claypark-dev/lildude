@@ -18,7 +18,8 @@ import type {
   ProposalActionResponse,
 } from './types.ts';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:18421';
+/** Use relative URLs when served from the same origin (avoids 127.0.0.1 vs localhost CORS mismatch). */
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 /** localStorage key for the web panel API key. */
 const API_KEY_STORAGE_KEY = 'lildude_api_key';

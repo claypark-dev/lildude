@@ -227,9 +227,10 @@ export function Onboarding() {
       }
     }
     if (ollamaStatus.running) {
-      // Use user-selected model, first installed model, or fall back to schema default
+      // Use user-selected model, first installed model, or fall back to schema default.
+      // Keep full tag (e.g. "qwen3.5:4b") — Ollama can't resolve short names for non-latest tags.
       const modelName = selectedOllamaModel
-        ?? (ollamaModels.length > 0 ? ollamaModels[0].name.split(':')[0] : undefined);
+        ?? (ollamaModels.length > 0 ? ollamaModels[0].name : undefined);
 
       providerConfig.ollama = {
         enabled: true,

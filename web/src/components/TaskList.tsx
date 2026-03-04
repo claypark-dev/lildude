@@ -36,7 +36,7 @@ export function TaskList({ tasks }: TaskListProps) {
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <span className="text-xs text-slate-400">
-              ${task.costUsd.toFixed(4)}
+              ${(task.costUsd ?? 0).toFixed(4)}
             </span>
             <span
               className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[task.status]}`}

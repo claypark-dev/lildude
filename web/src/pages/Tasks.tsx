@@ -7,7 +7,7 @@ import { fetchTasks } from '../lib/api.ts';
 export function Tasks() {
   const tasks = useApi(useCallback(() => fetchTasks(50), []));
 
-  const totalCost = tasks.data?.tasks.reduce((sum, t) => sum + t.costUsd, 0) ?? 0;
+  const totalCost = tasks.data?.tasks.reduce((sum, t) => sum + (t.costUsd ?? 0), 0) ?? 0;
   const taskCount = tasks.data?.tasks.length ?? 0;
 
   return (

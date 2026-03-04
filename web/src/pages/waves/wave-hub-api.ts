@@ -3,7 +3,22 @@
  * Centralizes all fetch calls for the enhanced Waves Hub frontend.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:18421';
+import { getStoredApiKey } from '../../lib/api.ts';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+
+/** Authenticated fetch wrapper for hub API calls. */
+async function hubFetch(path: string, options?: RequestInit): Promise<Response> {
+  const apiKey = getStoredApiKey();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> | undefined),
+  };
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+  return fetch(`${BASE_URL}${path}`, { ...options, headers });
+}
 
 /** Display-ready wave card from the API. */
 export interface WaveCard {
@@ -67,14 +82,14 @@ export interface ListedWave {
 
 /** Fetch categories with wave counts. */
 export async function fetchCategories(): Promise<{ categories: WaveCategory[] }> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/categories`);
+  const res = await hubFetch('/api/v1/hub/categories');
   if (!res.ok) throw new Error('Failed to fetch categories');
   return res.json();
 }
 
 /** Fetch featured waves as WaveCards. */
 export async function fetchFeatured(): Promise<{ featured: WaveCard[] }> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/featured`);
+  const res = await hubFetch('/api/v1/hub/featured');
   if (!res.ok) throw new Error('Failed to fetch featured waves');
   return res.json();
 }
@@ -99,8 +114,8 @@ export async function fetchBrowse(params: {
   if (params.offset) searchParams.set('offset', String(params.offset));
 
   const qs = searchParams.toString();
-  const url = qs ? `${BASE_URL}/api/v1/hub/browse?${qs}` : `${BASE_URL}/api/v1/hub/browse`;
-  const res = await fetch(url);
+  const url = qs ? `/api/v1/hub/browse?${qs}` : '/api/v1/hub/browse';
+  const res = await hubFetch(url);
   if (!res.ok) throw new Error('Failed to browse waves');
   return res.json();
 }
@@ -110,7 +125,7 @@ export async function fetchWaveDetail(name: string): Promise<{
   wave: WaveCard;
   reviews: WaveReview[];
 }> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/waves/${encodeURIComponent(name)}/detail`);
+  const res = await hubFetch(`/api/v1/hub/waves/${encodeURIComponent(name)}/detail`);
   if (!res.ok) throw new Error(`Failed to fetch wave "${name}"`);
   return res.json();
 }
@@ -122,14 +137,14 @@ export async function fetchWaveReviews(name: string, limit?: number): Promise<{
   ratingCount: number;
 }> {
   const qs = limit ? `?limit=${limit}` : '';
-  const res = await fetch(`${BASE_URL}/api/v1/hub/waves/${encodeURIComponent(name)}/reviews${qs}`);
+  const res = await hubFetch(`/api/v1/hub/waves/${encodeURIComponent(name)}/reviews${qs}`);
   if (!res.ok) throw new Error('Failed to fetch reviews');
   return res.json();
 }
 
 /** Submit a review for a wave. */
 export async function submitReview(name: string, rating: number, comment?: string): Promise<WaveReview> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/waves/${encodeURIComponent(name)}/reviews`, {
+  const res = await hubFetch(`/api/v1/hub/waves/${encodeURIComponent(name)}/reviews`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rating, comment }),
@@ -143,23 +158,22 @@ export async function submitReview(name: string, rating: number, comment?: strin
 
 /** Fetch aggregate hub stats. */
 export async function fetchHubStats(): Promise<{ stats: HubStats }> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/stats`);
+  const res = await hubFetch('/api/v1/hub/stats');
   if (!res.ok) throw new Error('Failed to fetch hub stats');
   return res.json();
 }
 
 /** Fetch installed waves (basic listing). */
 export async function fetchInstalledWaves(): Promise<{ waves: ListedWave[] }> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/waves`);
+  const res = await hubFetch('/api/v1/hub/waves');
   if (!res.ok) throw new Error('Failed to fetch installed waves');
   return res.json();
 }
 
 /** Install a wave from source. */
 export async function installWave(source: string): Promise<{ name: string; version: string }> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/install`, {
+  const res = await hubFetch('/api/v1/hub/install', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ source }),
   });
   const data = await res.json();
@@ -169,7 +183,7 @@ export async function installWave(source: string): Promise<{ name: string; versi
 
 /** Uninstall a wave by name. */
 export async function uninstallWave(name: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/api/v1/hub/waves/${encodeURIComponent(name)}`, {
+  const res = await hubFetch(`/api/v1/hub/waves/${encodeURIComponent(name)}`, {
     method: 'DELETE',
   });
   if (!res.ok) {

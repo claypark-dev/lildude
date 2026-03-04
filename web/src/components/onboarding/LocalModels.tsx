@@ -141,13 +141,13 @@ export function LocalModels({
                 <div className="mt-3 pt-3 border-t border-[#222]">
                   <label className="block text-xs text-[#a0a0a0] mb-1">Default model</label>
                   <select
-                    value={selectedModel ?? ollamaModels[0].name.split(':')[0]}
+                    value={selectedModel ?? ollamaModels[0].name}
                     onChange={(e) => onSelectModel(e.target.value)}
                     className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
                                focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     {ollamaModels.map((m) => (
-                      <option key={m.digest} value={m.name.split(':')[0]}>
+                      <option key={m.digest} value={m.name}>
                         {m.name}
                       </option>
                     ))}

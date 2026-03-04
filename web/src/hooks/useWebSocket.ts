@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { WsIncomingMessage, WsOutgoingMessage } from '../lib/types.ts';
 import { getStoredApiKey } from '../lib/api.ts';
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:18421/ws';
+/** Derive WS URL from the current page origin to avoid cross-origin issues. */
+const WS_URL = import.meta.env.VITE_WS_URL
+  ?? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 const RECONNECT_DELAY_MS = 3000;
 
 interface UseWebSocketResult {

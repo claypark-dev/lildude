@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getStoredApiKey } from '../lib/api.ts';
 
 interface FeedbackButtonsProps {
   /** Task ID to associate feedback with. */
@@ -21,10 +22,13 @@ export function FeedbackButtons({ taskId, onFeedback }: FeedbackButtonsProps) {
     setLoading(true);
     try {
       if (taskId) {
-        const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:18421';
+        const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+        const apiKey = getStoredApiKey();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
         await fetch(`${BASE_URL}/api/v1/feedback`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ taskId, rating }),
         });
       }
