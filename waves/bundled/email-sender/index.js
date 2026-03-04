@@ -24,12 +24,16 @@ const EmailSendParamsSchema = z.object({
 
 /**
  * Plan an email send action by interpreting extracted parameters.
+ * Attempts regex-based extraction of to, subject, and body fields
+ * before falling back to LLM extraction.
  *
  * @param {string} userInput - The raw user message.
  * @param {Record<string, unknown>} _context - Additional context (unused).
  * @returns {Promise<import('../../../src/types/index.js').WavePlan>}
  */
 export async function plan(userInput, _context) {
+  const extracted = extractEmailParams(userInput);
+
   return {
     steps: [
       {
@@ -40,8 +44,46 @@ export async function plan(userInput, _context) {
     ],
     estimatedCostUsd: 0,
     isDeterministic: true,
-    extractedParams: { rawInput: userInput },
+    extractedParams: extracted,
   };
+}
+
+/**
+ * Attempt regex-based extraction of email parameters from natural language.
+ * Looks for patterns like:
+ *   - "send email to john@example.com"
+ *   - "subject: Meeting tomorrow"
+ *   - "saying ..." or "body: ..." or text after subject
+ *
+ * @param {string} input - The raw user input.
+ * @returns {Record<string, string>} Extracted parameters (may be partial).
+ */
+function extractEmailParams(input) {
+  const params = {};
+
+  // Extract email address (to)
+  const emailMatch = input.match(/(?:to\s+)?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+  if (emailMatch) {
+    params.to = emailMatch[1];
+  }
+
+  // Extract subject (various patterns) — stops before body markers like "saying", "body:", "message:"
+  const subjectMatch = input.match(
+    /(?:subject(?:\s*[:=]\s*|\s+(?:is|of)\s+)|(?:about|regarding|re)\s*[:=]?\s+)"?([^".\n]+?)(?:\s+(?:saying|body\s*[:=]|message\s*[:=]|that says)\s|"|\s*$)/i,
+  );
+  if (subjectMatch) {
+    params.subject = subjectMatch[1].trim();
+  }
+
+  // Extract body (various patterns)
+  const bodyMatch = input.match(
+    /(?:saying|body(?:\s*[:=]\s*)|message(?:\s*[:=]\s*)|that says)\s*"?([^"]+)"?\s*$/i,
+  );
+  if (bodyMatch) {
+    params.body = bodyMatch[1].trim();
+  }
+
+  return params;
 }
 
 /**

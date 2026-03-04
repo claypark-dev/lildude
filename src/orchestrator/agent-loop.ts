@@ -7,6 +7,7 @@
  */
 
 import type { ChatResponse, Message, ChannelType, ModelSelection } from '../types/index.js';
+import { stripThinkTags, prependNoThink } from '../utils/think-strip.js';
 import type { EmbeddingResult } from '../memory/embeddings.js';
 import { extractAndStorePreferences } from '../memory/preference-extractor.js';
 import { checkForInjection } from '../security/injection.js';
@@ -225,15 +226,15 @@ export function createAgentLoop(
               if (canAfford(totalCostUsd, taskBudgetUsd, summaryCost)) {
                 const summaryMessages: Message[] = [
                   { role: 'user', content: [
-                    { type: 'text', text: `The user asked: "${userMessage}"\n\nHere is the data I retrieved:\n\n${waveResult.output}\n\nPlease give a concise, helpful response based on this data. Do not mention the data source tags or wrapper — just answer naturally.` },
+                    { type: 'text', text: prependNoThink(`The user asked: "${userMessage}"\n\nHere is the data I retrieved:\n\n${waveResult.output}\n\nPlease give a concise, helpful response based on this data. Do not mention the data source tags or wrapper — just answer naturally.`) },
                   ] },
                 ];
                 const summaryResponse = await deps.provider.chat(summaryMessages, {
                   model: modelSelection.model,
-                  maxTokens: 500,
+                  maxTokens: 300,
                   temperature: 0.3,
                 });
-                finalOutput = extractResponseText(summaryResponse);
+                finalOutput = stripThinkTags(extractResponseText(summaryResponse));
                 totalInputTokens += summaryResponse.usage.inputTokens;
                 totalOutputTokens += summaryResponse.usage.outputTokens;
                 totalCostUsd += calculateCost(

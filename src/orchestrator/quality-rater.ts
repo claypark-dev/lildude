@@ -20,6 +20,7 @@ import { canAfford } from '../cost/budget.js';
 import { calculateCost } from '../cost/pricing.js';
 import { recordQualityFeedback } from '../persistence/routing-history.js';
 import { orchestratorLogger } from '../utils/logger.js';
+import { stripThinkTags } from '../utils/think-strip.js';
 
 /**
  * Create a quality rater configured with the given dependencies.
@@ -94,11 +95,13 @@ export function createQualityRater(deps: QualityRaterDeps): QualityRater {
         );
         totalSpentUsd += actualCost;
 
-        // Extract text from response
-        const responseText = response.content
-          .filter((block) => block.type === 'text' && block.text)
-          .map((block) => block.text ?? '')
-          .join('');
+        // Extract text from response and strip thinking tags
+        const responseText = stripThinkTags(
+          response.content
+            .filter((block) => block.type === 'text' && block.text)
+            .map((block) => block.text ?? '')
+            .join(''),
+        );
 
         // Parse the rating
         const { score, feedback } = parseRatingResponse(responseText);

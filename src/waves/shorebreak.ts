@@ -33,6 +33,7 @@ import {
   buildTemplateCompositionPrompt,
   buildFreeFormGenerationPrompt,
 } from './shorebreak-prompts.js';
+import { stripThinkTags, prependNoThink } from '../utils/think-strip.js';
 
 const shorebreakLogger = createModuleLogger('shorebreak');
 
@@ -120,20 +121,22 @@ export async function detectGap(
 
   try {
     const messages: Message[] = [
-      { role: 'user', content: `User asked: "${userMessage}"\n\nAssistant responded: "${agentResponse}"` },
+      { role: 'user', content: prependNoThink(`User asked: "${userMessage}"\n\nAssistant responded: "${agentResponse}"`) },
     ];
 
     const response = await deps.provider.chat(messages, {
       model: modelSelection.model,
-      maxTokens: 512,
+      maxTokens: 256,
       temperature: 0,
       systemPrompt: buildGapDetectionPrompt(),
     });
 
-    const responseText = response.content
-      .filter((block) => block.type === 'text' && block.text)
-      .map((block) => block.text ?? '')
-      .join('');
+    const responseText = stripThinkTags(
+      response.content
+        .filter((block) => block.type === 'text' && block.text)
+        .map((block) => block.text ?? '')
+        .join(''),
+    );
 
     const parsed = parseGapDetectionResponse(responseText);
 

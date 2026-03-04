@@ -1,0 +1,25 @@
+{
+  "name": "dad-jokes",
+  "version": "1.0.0",
+  "description": "Fetch a random dad joke from the internet",
+  "author": "lildude-examples",
+  "permissions": {
+    "domains": ["icanhazdadjoke.com"],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["joke", "dad joke", "funny", "tell me a joke", "make me laugh"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "get_joke",
+      "description": "Fetch a random dad joke",
+      "parameters": {}
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe"
+}

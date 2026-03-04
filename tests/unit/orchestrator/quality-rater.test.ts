@@ -108,6 +108,25 @@ describe('Quality Rater Helpers', () => {
     });
   });
 
+  describe('anti-thinking integration', () => {
+    it('buildRatingPrompt includes anti-thinking instruction', () => {
+      const prompt = buildRatingPrompt('What is 2+2?', 'The answer is 4.');
+      expect(prompt.toLowerCase()).toContain('think');
+      expect(prompt.toLowerCase()).toContain('immediately');
+    });
+
+    it('parseRatingResponse handles <think> tags wrapping JSON', () => {
+      const input = '<think>\nLet me evaluate this response...\n</think>\n{"score": 0.85, "feedback": "Good answer"}';
+      // parseRatingResponse doesn't strip think tags directly — quality-rater.ts does
+      // But the regex extraction should still find JSON after the tags
+      const jsonMatch = input.match(/\{[^}]*"score"\s*:\s*[\d.]+[^}]*\}/);
+      expect(jsonMatch).not.toBeNull();
+      const result = parseRatingResponse(jsonMatch![0]);
+      expect(result.score).toBe(0.85);
+      expect(result.feedback).toBe('Good answer');
+    });
+  });
+
   describe('constants', () => {
     it('RETRY_THRESHOLD is 0.4', () => {
       expect(RETRY_THRESHOLD).toBe(0.4);
@@ -252,6 +271,23 @@ describe('Quality Rater', () => {
       expect(result.score).toBe(0.5);
       expect(result.feedback).toContain('Rating failed');
       expect(result.ratingModel).toBe('none');
+    });
+
+    it('strips <think> tags from response before parsing rating', async () => {
+      const thinkingResponse = '<think>\nThe response looks decent, I would rate it...\n</think>\n{"score": 0.72, "feedback": "Adequate response"}';
+      const provider = createMockProvider(thinkingResponse);
+      const rater = createQualityRater({ db, provider, costBudgetUsd: 1.0 });
+
+      const result = await rater.rateOutput({
+        taskId,
+        userMessage: 'What is TypeScript?',
+        assistantResponse: 'TypeScript is a typed superset of JavaScript.',
+        model: 'ollama/qwen3.5:4b',
+        tier: 'small',
+      });
+
+      expect(result.score).toBe(0.72);
+      expect(result.feedback).toBe('Adequate response');
     });
 
     it('stores quality feedback in routing history after rating', async () => {

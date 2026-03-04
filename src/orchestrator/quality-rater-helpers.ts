@@ -6,6 +6,7 @@
 
 import type BetterSqlite3 from 'better-sqlite3';
 import type { LLMProvider, ModelTier } from '../types/index.js';
+import { antiThinkingInstruction } from '../utils/think-strip.js';
 
 // === Constants ===
 
@@ -107,7 +108,7 @@ export interface QualityCheckResult {
  * @returns The formatted rating prompt string.
  */
 export function buildRatingPrompt(userMessage: string, assistantResponse: string): string {
-  return `Rate this AI assistant's response quality from 0 to 1. Reply with JSON: {"score": <0-1>, "feedback": "<brief reason>"}\n\nUser asked: ${userMessage}\n\nAssistant replied: ${assistantResponse}`;
+  return `Rate this AI assistant's response quality from 0 to 1. Reply with JSON: {"score": <0-1>, "feedback": "<brief reason>"}\n${antiThinkingInstruction()}\n\nUser asked: ${userMessage}\n\nAssistant replied: ${assistantResponse}`;
 }
 
 /**

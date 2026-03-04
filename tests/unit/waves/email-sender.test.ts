@@ -45,15 +45,30 @@ describe('email-sender wave', () => {
   });
 
   describe('plan()', () => {
-    it('returns a deterministic plan with rawInput', async () => {
-      const plan = await waveModule.plan('send an email to John about the project', {});
+    it('returns a deterministic plan with regex-extracted params', async () => {
+      const plan = await waveModule.plan('send an email to john@example.com about the project saying hello', {});
 
       expect(plan.isDeterministic).toBe(true);
       expect(plan.estimatedCostUsd).toBe(0);
       expect(plan.steps).toHaveLength(1);
       expect(plan.steps[0].type).toBe('api_call');
       expect(plan.steps[0].description).toContain('Send email');
-      expect(plan.extractedParams.rawInput).toBe('send an email to John about the project');
+      expect(plan.extractedParams.to).toBe('john@example.com');
+      expect(plan.extractedParams.subject).toBe('the project');
+      expect(plan.extractedParams.body).toBe('hello');
+    });
+
+    it('extracts email address from natural language', async () => {
+      const plan = await waveModule.plan('email alice@corp.io about meeting notes', {});
+      expect(plan.extractedParams.to).toBe('alice@corp.io');
+      expect(plan.extractedParams.subject).toBe('meeting notes');
+    });
+
+    it('returns partial params when only some fields are detectable', async () => {
+      const plan = await waveModule.plan('send an email to John about the project', {});
+      // No email address in input, so 'to' won't be extracted
+      expect(plan.extractedParams.to).toBeUndefined();
+      expect(plan.extractedParams.subject).toBe('the project');
     });
   });
 

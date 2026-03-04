@@ -15,6 +15,7 @@ import type {
 import { canAfford } from '../cost/budget.js';
 import { createModuleLogger } from '../utils/logger.js';
 import { BudgetExceededError } from '../errors.js';
+import { stripThinkTags, antiThinkingInstruction, prependNoThink } from '../utils/think-strip.js';
 import type { WaveExecutionResult, WaveExecutorDeps } from './executor.js';
 
 const helpersLogger = createModuleLogger('wave-executor-helpers');
@@ -50,12 +51,12 @@ export async function callLLMForParamExtraction(
     'Extract the parameters from the user message for this wave.',
     'Return ONLY a valid JSON object with the extracted parameters.',
     'Do NOT include any explanation, markdown, or text outside the JSON.',
-    'Do NOT use <think> tags or any reasoning. Output the JSON immediately.',
+    antiThinkingInstruction(),
     'If no parameters can be extracted, return an empty JSON object: {}',
   ].join('\n');
 
   const messages: Message[] = [
-    { role: 'user', content: `/no_think\n${userMessage}` },
+    { role: 'user', content: prependNoThink(userMessage) },
   ];
 
   return provider.chat(messages, {
@@ -81,8 +82,7 @@ export function parseExtractedParams(response: ChatResponse): Record<string, unk
     .join('');
 
   // Strip <think>...</think> blocks from models with thinking mode (qwen, deepseek-r1, etc.)
-  const withoutThinking = rawText.replace(/<think>[\s\S]*?<\/think>/g, '');
-  const trimmed = withoutThinking.trim();
+  const trimmed = stripThinkTags(rawText);
 
   try {
     const parsed: unknown = JSON.parse(trimmed);

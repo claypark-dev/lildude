@@ -134,10 +134,19 @@ export interface ToolDefinition {
   };
 }
 
+/**
+ * Result returned from a wave's execute() method or a tool call.
+ * Represents the outcome of a single action: whether it succeeded,
+ * what to show the user, and optional structured metadata.
+ */
 export interface ToolResult {
+  /** Whether the action completed successfully. */
   success: boolean;
+  /** Human-readable output shown to the user. Keep concise and informative. */
   output: string;
+  /** Error message for logging (not shown to user directly). */
   error?: string;
+  /** Structured data for downstream use (e.g., message IDs, API response metadata). */
   metadata?: Record<string, unknown>;
 }
 
@@ -182,53 +191,141 @@ export interface KeyFact {
 
 // === Waves ===
 
+/**
+ * A loaded wave instance with its manifest and lifecycle methods.
+ * Waves are Lil Dude's plugin system — each encapsulates a specific capability
+ * (web search, calendar, stock monitor, etc.).
+ *
+ * The executor calls the lifecycle methods in order:
+ * 1. `plan()` — Extract parameters from natural language via regex (preferred) or LLM
+ * 2. `execute()` — Perform the action using the extracted parameters
+ * 3. `validate()` — (optional) Sanity-check the output before it reaches the user
+ *
+ * @see docs/building-skills.md for the developer guide
+ */
 export interface Wave {
+  /** The wave's manifest declaring its capabilities, triggers, and permissions. */
   manifest: WaveManifest;
+
+  /**
+   * Extract parameters from the user's natural language input.
+   * Use regex-based extraction in this method for zero-LLM-call performance.
+   * If extractedParams contains useful values, the executor skips the LLM call entirely.
+   *
+   * @param userInput - The raw user message.
+   * @param context - Additional context (injected deps, conversation state).
+   * @returns A WavePlan with extractedParams populated.
+   */
   plan(userInput: string, context: Record<string, unknown>): Promise<WavePlan>;
+
+  /**
+   * Execute the wave's action using parameters from the plan.
+   * This is the "do the work" method — call APIs, query databases, etc.
+   * Access injected dependencies via `plan.extractedParams._deps`.
+   *
+   * @param plan - The WavePlan with extractedParams and step descriptions.
+   * @returns A ToolResult with success/failure and human-readable output.
+   */
   execute(plan: WavePlan): Promise<ToolResult>;
+
+  /**
+   * Optional validation of the execution result.
+   * Use this to catch stale data, API errors, or suspicious output
+   * before it reaches the user.
+   *
+   * @param result - The ToolResult from execute().
+   * @returns Whether the result is valid, with optional feedback if not.
+   */
   validate?(result: ToolResult): Promise<{ valid: boolean; feedback?: string }>;
 }
 
+/**
+ * Wave manifest — the declarative config file (wave.json) that describes
+ * what a wave does, what it needs, and when it should activate.
+ */
 export interface WaveManifest {
+  /** Unique kebab-case identifier (e.g., "stock-monitor", "web-search"). */
   name: string;
+  /** Semver version string (e.g., "1.0.0"). */
   version: string;
+  /** One-sentence description of what the wave does. */
   description: string;
+  /** Author name or organization. */
   author: string;
+  /** Permission declarations — what the wave needs access to. */
   permissions: {
+    /** Network domains the wave may contact (e.g., ["api.example.com"]). */
     domains: string[];
+    /** Shell commands the wave may execute (dangerous, rarely needed). */
     shell: string[];
+    /** Filesystem paths the wave may access. */
     directories: string[];
+    /** Whether the wave requires a headless browser. */
     requiresBrowser: boolean;
+    /** OAuth providers the wave needs (e.g., ["google"]). */
     requiresOAuth: string[];
   };
+  /** Keywords that activate the wave when they appear in user messages. */
   triggers: string[];
+  /** If true, the wave uses at most 1 LLM call (param extraction). If false, full planning path. */
   deterministic: boolean;
+  /** Tool definitions describing the wave's capabilities and their parameters. */
   tools: Array<{
     name: string;
     description: string;
     parameters: Record<string, unknown>;
   }>;
+  /** Minimum subscription tier required: "basic", "standard", "power". */
   minTier: 'basic' | 'standard' | 'power';
+  /** Path to the JavaScript entry file (usually "index.js"). */
   entryPoint: string;
+  /** Safety tier controlling what security/model combinations can run this wave. */
   safetyTier?: WaveSafetyTier;
+  /** Whether this is a personal wave (owner only) or party wave (external contacts). */
   waveCategory?: WaveCategory;
 }
 
+/**
+ * The execution plan produced by a wave's plan() method.
+ * Contains the extracted parameters and a description of what steps will run.
+ */
 export interface WavePlan {
+  /** Ordered list of steps the wave will execute. */
   steps: WaveStep[];
+  /** Estimated cost in USD for executing this plan. 0 for deterministic waves. */
   estimatedCostUsd: number;
+  /** Whether the plan can be executed without additional LLM calls. */
   isDeterministic: boolean;
+  /**
+   * Parameters extracted from the user's message.
+   * The `_deps` key is injected by the executor with { db, getAccessToken }.
+   */
   extractedParams: Record<string, unknown>;
 }
 
+/**
+ * A single step in a wave's execution plan.
+ */
 export interface WaveStep {
+  /** The type of action this step performs. */
   type: 'api_call' | 'browser_action' | 'shell_command' | 'llm_call' | 'file_operation';
+  /** Human-readable description of what this step does. */
   description: string;
+  /** Parameters for this step. */
   params: Record<string, unknown>;
 }
 
 // === Wave Safety ===
 
+/**
+ * Safety tier classification for waves, ordered from least to most dangerous.
+ * Interacts with the user's security level and model tier to produce allow/confirm/block decisions.
+ * - observe: Read-only data retrieval (stock prices, weather)
+ * - create: Creates new content (emails, calendar events)
+ * - modify: Changes existing data (edit events, rename files)
+ * - destroy: Deletes data permanently
+ * - execute: Runs shell commands or arbitrary code
+ */
 export type WaveSafetyTier = 'observe' | 'create' | 'modify' | 'destroy' | 'execute';
 
 // === Wave Categories ===

@@ -376,6 +376,36 @@ describe('Conversation Summarizer', () => {
       expect(calls[0].options.model).toBe('claude-haiku-4-5-20251001');
     });
 
+    it('strips <think> tags from summarization response', async () => {
+      const conversation = createConversation(dbManager.db, {
+        channelType: 'cli',
+        channelId: 'test',
+      });
+
+      seedConversationOverThreshold(dbManager.db, conversation.id, 5000, 10);
+
+      // Simulate a thinking model that wraps its output in <think> tags
+      const thinkingResponse: ChatResponse = {
+        content: [{ type: 'text', text: '<think>\nLet me summarize this conversation...\nI see the user discussed weather.\n</think>\nSUMMARY:\nUser discussed weather forecasts.\n\nKEY_FACTS:\nFACT: topic = weather (confidence: 0.9)' }],
+        model: 'ollama/qwen3.5:4b',
+        usage: { inputTokens: 500, outputTokens: 200 },
+        stopReason: 'end_turn',
+      };
+      provider.setDefault(thinkingResponse);
+
+      const result = await summarizeConversation(
+        dbManager.db,
+        conversation.id,
+        provider,
+      );
+
+      expect(result.summarized).toBe(true);
+      expect(result.summary).toBe('User discussed weather forecasts.');
+      expect(result.keyFacts).toHaveLength(1);
+      expect(result.keyFacts[0].key).toBe('topic');
+      expect(result.keyFacts[0].value).toBe('weather');
+    });
+
     it('handles empty LLM response gracefully', async () => {
       const conversation = createConversation(dbManager.db, {
         channelType: 'cli',

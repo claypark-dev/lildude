@@ -15,6 +15,7 @@ import { upsertKnowledge } from '../persistence/knowledge.js';
 import { calculateCost } from '../cost/pricing.js';
 import { canAfford } from '../cost/budget.js';
 import { createModuleLogger } from '../utils/logger.js';
+import { stripThinkTags, antiThinkingInstruction } from '../utils/think-strip.js';
 
 const summarizerLogger = createModuleLogger('summarizer');
 
@@ -25,7 +26,7 @@ const DEFAULT_SUMMARIZATION_THRESHOLD = 4000;
 const SUMMARIZATION_MODEL = 'claude-haiku-4-5-20251001';
 
 /** Maximum tokens to allocate for the summarization response. */
-const SUMMARIZATION_MAX_TOKENS = 1500;
+const SUMMARIZATION_MAX_TOKENS = 800;
 
 /** Estimated input tokens for a summarization call (conversation text). */
 const ESTIMATED_INPUT_TOKENS = 4000;
@@ -62,7 +63,8 @@ export interface SummarizationResult {
  * Instructs the model to produce structured output with a summary
  * paragraph followed by key facts in a parseable format.
  */
-const SUMMARIZATION_SYSTEM_PROMPT = `You are a conversation summarizer. Given conversation logs, produce:
+const SUMMARIZATION_SYSTEM_PROMPT = `You are a conversation summarizer. ${antiThinkingInstruction()}
+Given conversation logs, produce:
 
 1. A concise summary paragraph (under 200 words) capturing the main topics, decisions, and outcomes.
 
@@ -193,8 +195,8 @@ export async function summarizeConversation(
       },
     );
 
-    // Step 6: Extract text from response
-    const responseText = extractResponseText(response);
+    // Step 6: Extract text from response (strip thinking tags from local models)
+    const responseText = stripThinkTags(extractResponseText(response));
 
     if (responseText.length === 0) {
       summarizerLogger.warn(

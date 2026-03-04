@@ -9,6 +9,7 @@
  */
 
 import type { ShorebreakTemplate } from './shorebreak-templates/index.js';
+import { antiThinkingInstruction } from '../utils/think-strip.js';
 
 /**
  * Build the system prompt for gap detection.
@@ -35,6 +36,8 @@ export function buildGapDetectionPrompt(): string {
     'Set isGap to true ONLY if the assistant explicitly cannot do what was asked.',
     'Phrases like "I can\'t", "I don\'t have access", "no tool available" indicate a gap.',
     'If the assistant successfully answered, set isGap to false.',
+    '',
+    antiThinkingInstruction(),
   ].join('\n');
 }
 
