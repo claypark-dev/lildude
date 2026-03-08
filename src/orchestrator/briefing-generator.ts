@@ -15,7 +15,6 @@ import { getAllWaves } from '../waves/registry.js';
 import { listTokens } from '../integrations/oauth-store.js';
 import { listEmails } from '../integrations/gmail.js';
 import { listEvents } from '../integrations/google-calendar.js';
-import { searchKnowledge } from '../persistence/knowledge.js';
 import { createModuleLogger } from '../utils/logger.js';
 
 const briefingLogger = createModuleLogger('briefing');
