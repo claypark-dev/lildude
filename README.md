@@ -14,26 +14,35 @@
 </p>
 
 <p align="center">
+  <a href="https://org-lil.github.io/lildude/"><img src="https://img.shields.io/badge/Landing_Page-2dd4bf?style=for-the-badge&logo=github&logoColor=white" alt="Landing Page"/></a>
+  <a href="https://org-lil.github.io/wave-registry/"><img src="https://img.shields.io/badge/Wave_Hub-38bdf8?style=for-the-badge&logo=github&logoColor=white" alt="Wave Hub"/></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-blue?style=for-the-badge" alt="Quick Start"/></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/org-lil/lildude/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/org-lil/lildude/ci.yml?style=for-the-badge&label=CI" alt="CI"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
-  <a href="#development"><img src="https://img.shields.io/badge/Tests-2,461_passing-brightgreen?style=for-the-badge" alt="Tests"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/Version-1.0.0-orange?style=for-the-badge" alt="v1.0.0"/></a>
+  <a href="#development"><img src="https://img.shields.io/badge/Tests-4,000+-brightgreen?style=for-the-badge" alt="Tests"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Version-1.1.0-orange?style=for-the-badge" alt="v1.1.0"/></a>
 </p>
 
 ---
 
 Lil Dude is a **free, open-source** AI executive assistant that runs on **your machine**. It connects to your messaging apps, automates your daily tasks, and learns your preferences over time — like hiring an EA on Day 1 who gets better every week. All while keeping your data private, your costs low, and your system safe.
 
+**967 community waves. 12 messaging channels. 5 LLM providers. Zero cloud telemetry.**
+
 ---
 
 ## Why Lil Dude?
 
-**It learns you.** Lil Dude extracts your preferences, communication style, and routines from every conversation. Your morning briefing gets more relevant. Your assistant gets more efficient.
+**It learns you.** Lil Dude extracts your preferences, communication style, and routines from every conversation — using deterministic regex and SQL, not expensive LLM calls. Inline fact extraction catches "Sarah is my manager" in real-time. Contradiction detection knows when "I moved to Portland" supersedes "I live in Seattle." Entity linking connects the dots across conversations. Your morning briefing gets more relevant every day.
 
 **It builds itself.** When Lil Dude can't do something, [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation) triggers — automatically generating new capabilities from safe templates, scanning them for security issues, and asking for your approval before activation.
+
+**It watches your back.** The [Heartbeat system](#heartbeat-proactive-agent) checks in on a schedule — surfacing unread notifications, upcoming calendar events, and overdue reminders without being asked. Stays silent when there's nothing to report. Uses the cheapest model with a $0.50/day budget cap.
 
 **Every model is safe.** Whether you're running Claude Opus or a local 7B model through Ollama, [wave safety tiers](docs/waves.md#wave-safety-tiers) ensure read-only tasks always work, destructive actions always confirm, and small models auto-escalate when they struggle. [Learn more about local model safeguards.](docs/local-models.md)
 
@@ -83,26 +92,53 @@ The onboarding wizard walks you through provider API keys, channel setup, securi
  Telegram ─┤
  iMessage ─┤                              ┌─ Anthropic (Claude)
     Slack ─┤     ┌──────────────────┐      ├─ OpenAI (GPT-4o)
- WhatsApp ─┼────>│   Agent Loop      │─────>├─ Google (Gemini)
+ WhatsApp ─┤     │   Agent Loop      │─────>├─ Google (Gemini)
    Signal ─┤     │                  │      ├─ DeepSeek
-  WebChat ─┤     │  Sanitize        │      ├─ Ollama (local)
-      CLI ─┘     │  > Security Gate │      └─ Groq (voice)
-                 │  > Cost Gate     │
-                 │  > Route Model   │     ┌─ Shell (sandboxed)
-                 │  > Build Context │────>├─ File I/O
-                 │  > LLM Call      │     ├─ HTTP fetch
+  WebChat ─┼────>│  Sanitize        │      ├─ Ollama (local)
+      CLI ─┤     │  > Security Gate │      └─ Groq (voice)
+   Matrix ─┤     │  > Cost Gate     │
+    Teams ─┤     │  > Route Model   │     ┌─ Shell (sandboxed)
+     LINE ─┤     │  > Build Context │────>├─ File I/O
+  G. Chat ─┘     │  > LLM Call      │     ├─ HTTP fetch
                  │  > Tool Loop     │     ├─ Knowledge base
-                 │  > Track Cost    │     └─ Waves (extensible)
-                 └──────────────────┘
+                 │  > Track Cost    │     ├─ MCP servers
+                 └──────────────────┘     └─ Waves (extensible)
                          │
                     SQLite (local)
 ```
 
-Every message flows through: input sanitization, security gate, budget check, model routing, context building (with learned knowledge), LLM call with tool-use loop, and cost tracking.
+Every message flows through: input sanitization, inline fact extraction, security gate, budget check, model routing, context building (with learned knowledge + entity links), LLM call with tool-use loop, and cost tracking.
 
 ---
 
 ## Key Features
+
+### Artifacts: Rich Output Rendering
+
+Lil Dude renders rich content inline in chat — not just plain text:
+
+| Type | Rendering | Security |
+|------|-----------|----------|
+| **HTML** | Sandboxed iframe (`srcdoc` + `sandbox`) | DOMPurify sanitization |
+| **SVG** | Inline rendering | SVG-specific sanitization |
+| **Mermaid** | Client-side diagrams (lazy-loaded mermaid.js) | Fallback on parse error |
+| **Code** | Syntax highlighting (40+ languages) | Read-only display |
+| **Tables** | Styled HTML with alignment detection | Sanitized output |
+
+Every artifact gets a copy-to-clipboard button and collapse/expand toggle. HTML iframes auto-resize to content (60-600px). Mermaid diagrams render client-side with error fallback.
+
+### Heartbeat: Proactive Agent
+
+The Heartbeat system turns Lil Dude from reactive to proactive. It runs on a configurable schedule, reads standing instructions from `~/.lil-dude/heartbeat.md`, and surfaces actionable items without being asked.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `heartbeat.enabled` | `true` | Master toggle |
+| `heartbeat.intervalMinutes` | `30` | Check frequency |
+| `heartbeat.maxDailyBudgetUsd` | `$0.50` | Daily spend cap |
+| `heartbeat.model` | auto | Uses cheapest small-tier model |
+
+When nothing needs attention, Heartbeat stays silent — zero cost. Standing instructions are user-editable markdown. Dashboard widget shows last run time, actions taken today, and daily cost.
 
 ### Waves: Extensible Capabilities
 
@@ -123,19 +159,50 @@ lil-dude wave list
 
 **Wave Registry & Updates:** HMAC-SHA256 signed wave manifests with verified badges. Automatic update checking compares installed versions against the community registry. One-click updates preserve configuration.
 
-**20+ Verified Community Waves** — Pre-built, security-scanned capabilities ready to install:
+**[967 Community Waves](https://org-lil.github.io/wave-registry/)** — Browse, search, and install from the Wave Hub marketplace:
 
-| Category | Waves |
-|----------|-------|
-| **Productivity** | note-taker, todo-manager, file-organizer, timer-pomodoro, clipboard-saver |
-| **Communication** | email-template, quick-reply, contact-lookup |
-| **Finance** | expense-tracker, currency-converter, receipt-parser |
-| **Utilities** | weather-checker, timezone-converter, unit-converter, text-summarizer, url-shortener |
-| **Social** | birthday-reminder, rsvp-tracker, gift-ideas, social-scheduler |
+| Category | Count | Examples |
+|----------|-------|---------|
+| **Utilities** | 826 | weather, timezone-converter, text-summarizer, url-shortener |
+| **AI** | 37 | image-gen, text-classifier, sentiment-analyzer |
+| **Development** | 31 | git-helper, code-reviewer, test-generator |
+| **Communication** | 24 | email-template, quick-reply, contact-lookup |
+| **Cloud** | 20 | aws-helper, gcp-monitor, azure-deploy |
+| **Productivity** | 10 | note-taker, todo-manager, file-organizer |
+| **Data** | 8 | csv-parser, json-transformer, data-cleaner |
+| **Media** | 8 | image-resize, audio-convert, video-thumbnail |
 
-All deterministic-first, verified by the CI pipeline, and installable with `lil-dude wave install`.
+All security-scanned, safety-tier labeled, and installable with `lil-dude wave install`. Every wave passes quality gates: valid manifest, entry point exists, no dangerous shell commands.
 
-[Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation)
+[Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation) | [Wave Hub](https://org-lil.github.io/wave-registry/)
+
+### MCP Protocol Support
+
+Connect any [Model Context Protocol](https://modelcontextprotocol.io/) server as a tool provider. MCP tools appear alongside waves in the agent loop — same security pipeline, same budget tracking.
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "filesystem",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user"]
+    },
+    {
+      "name": "database",
+      "transport": "sse",
+      "url": "http://localhost:3001/sse"
+    }
+  ]
+}
+```
+
+- **Tool discovery**: Automatically discovers and registers tools from connected servers
+- **Namespaced tools**: `mcp_filesystem_readFile` prevents collisions between servers
+- **Dynamic management**: Add/remove servers at runtime via API or config
+- **Parallel connection**: Connects to all servers simultaneously with individual error handling
+- **Status monitoring**: Dashboard shows tool count, connection status, and errors per server
 
 ### 5-Level Security Sandbox
 
@@ -156,6 +223,23 @@ Commands are parsed, not string-matched. Prompt injection is detected and blocke
 **Advanced Security Pipeline:** Unified input/output security chain — intent classification, injection detection, output filtering, and canary token verification in a single pipeline. Abuse detection auto-blocks contacts after 3 injection attempts within an hour (reversible by owner). All security events logged to audit trail.
 
 [Full security documentation](docs/security.md)
+
+### Adaptive Memory System
+
+Lil Dude's memory runs on **deterministic-first** principles — regex extraction, SQL aggregation, and entity linking. Zero additional LLM cost.
+
+| Component | What It Does | LLM Cost |
+|-----------|-------------|----------|
+| **Inline Extraction** | Catches facts from every message in real-time ("Sarah is my manager", "I live in Seattle") | $0 |
+| **Contradiction Detection** | Knows "I moved to Portland" supersedes "I live in Seattle" — supersedes old facts automatically | $0 |
+| **Entity Linking** | Links "Sarah's email is sarah@work.com" to the same Sarah entity across conversations | $0 |
+| **Behavioral Analysis** | Infers active hours, preferred response length, recurring topics from conversation patterns | $0 |
+| **Knowledge Lifecycle** | Auto-evicts stale facts, decays confidence on unused entries, deduplicates — daily maintenance | $0 |
+| **Confidence Feedback** | Facts that keep being useful get boosted; contradicted facts get demoted | $0 |
+
+**Extraction patterns:** relationships, personal facts (location, birthday, email), corrections ("actually it's..."), temporal updates ("starting Monday..."), contact attributes, and entity types (person, organization, project, location, event).
+
+**Safety guards:** Never evicts explicit user-set facts or high-confidence entries (>=0.9). Superseded facts kept for 14-day audit window.
 
 ### Contact Management + Trust Levels
 
@@ -198,13 +282,28 @@ All gated by trust levels — owner controls who can do what. Meeting requests a
 | **DeepSeek** | deepseek-chat | Pay per token |
 | **Ollama** | llama3.2, qwen2.5, phi3, mistral | Free (local) |
 
-Quality-aware routing learns from feedback to improve model selection over time.
+Quality-aware routing tracks every model's quality score per task type — models scoring well get boosted, poor performers get deprioritized. The system learns which models work best for your usage patterns.
 
 [Full provider documentation](docs/providers.md) | [Local model safeguards](docs/local-models.md)
 
-### 8 Messaging Channels
+### 12 Messaging Channels
 
-Discord, Telegram, iMessage, Slack, WhatsApp, Signal, WebChat, CLI. Talk to your assistant from wherever you already are.
+| Channel | Transport | Message Limit |
+|---------|-----------|---------------|
+| **Discord** | WebSocket (discord.js) | 2,000 chars |
+| **Telegram** | Polling (telegraf) | 4,096 chars |
+| **iMessage** | AppleScript bridge | 20,000 chars |
+| **Slack** | WebSocket (Bolt) | 40,000 chars |
+| **WhatsApp** | Cloud API webhook | 4,096 chars |
+| **Signal** | signal-cli bridge | 6,000 chars |
+| **WebChat** | Built-in WebSocket | Unlimited |
+| **CLI** | stdin/stdout | Unlimited |
+| **Matrix** | matrix-js-sdk | 8,192 chars |
+| **Microsoft Teams** | Bot Framework | 28,000 chars |
+| **LINE** | Messaging API webhook | 5,000 chars |
+| **Google Chat** | Workspace API | 4,096 chars |
+
+Talk to your assistant from wherever you already are. Long responses are automatically chunked to stay within platform limits.
 
 [Channel setup guide](docs/channels.md)
 
@@ -215,6 +314,7 @@ Discord, Telegram, iMessage, Slack, WhatsApp, Signal, WebChat, CLI. Talk to your
 | Monthly limit | $20.00 |
 | Per-task limit | $0.50 |
 | Warning threshold | 80% |
+| Heartbeat daily cap | $0.50 |
 | Hard stop | Enabled |
 
 Typical cost with cloud providers: ~$0.25/day (~$7.50/month). With Ollama: $0/month.
@@ -223,9 +323,9 @@ Typical cost with cloud providers: ~$0.25/day (~$7.50/month). With Ollama: $0/mo
 
 Read and summarize emails, send messages, manage calendar events — all via Gmail/Google Calendar or Microsoft Graph APIs. OAuth2 with PKCE keeps credentials secure; AES-256-GCM encrypted token storage.
 
-### Wave Hub & Plugins
+### Wave Hub & Marketplace
 
-Browse, install, rate, and manage community waves from a curated registry. Extend Lil Dude with custom LLM providers, messaging channels, and memory backends via the plugin architecture. Connect external MCP servers as additional tool providers.
+Browse, search, and install from **[967 community waves](https://org-lil.github.io/wave-registry/)** in a ClawHub-style marketplace. Real-time search, category filtering, safety tier badges, one-click install commands, and security scan indicators. Rate and review waves, check for updates, and publish your own.
 
 ### Self-Improvement Loop
 
@@ -238,6 +338,18 @@ Transcribe audio with Groq Whisper, generate speech with ElevenLabs TTS. Works a
 ### Daily Briefings & Cron
 
 Scheduled tasks and morning briefings (email summary, calendar, weather, cost overview, learning insights) delivered to your preferred channel. Gets smarter over time as Lil Dude learns your routines.
+
+### Integrated Dashboard
+
+11-page web dashboard — no separate products to install:
+
+- **Chat** — WebChat interface with artifact rendering
+- **Dashboard** — System health, budget widget, heartbeat status, activity overview
+- **Tasks** — Cron job management and scheduled task monitoring
+- **Settings** — Provider keys, channel config, security level, budget caps
+- **Waves Hub** — Browse, install, and manage community waves
+- **Shorebreak** — Review and approve auto-generated capabilities
+- **Contacts** — Trust levels, groups, activity metrics, notification preferences
 
 ---
 
@@ -270,7 +382,7 @@ For local LLM support, uncomment the `ollama` service in `docker-compose.yml`.
 | [Security](docs/security.md) | 5-level sandbox, command parsing, injection detection, wave safety enforcement |
 | [Providers & Routing](docs/providers.md) | Model routing, quality-aware selection, pricing |
 | [Local Models](docs/local-models.md) | Ollama safeguards, safety tiers for small models, auto-escalation |
-| [Channels](docs/channels.md) | Setup guides for all 8 messaging platforms |
+| [Channels](docs/channels.md) | Setup guides for all 12 messaging platforms |
 | [Configuration](docs/configuration.md) | Full config reference |
 | [CLAUDE.md](CLAUDE.md) | Development rules and coding standards |
 
@@ -287,7 +399,7 @@ cd lildude && npm install
 |--------|-------------|
 | `npm run dev` | Start with hot reload |
 | `npm run build` | Build with tsup |
-| `npm test` | Run 2,461 tests |
+| `npm test` | Run 4,000+ tests |
 | `npm run typecheck` | TypeScript strict check |
 | `npm run lint` | ESLint |
 | `npm run web:dev` | Web panel dev server |
@@ -296,35 +408,37 @@ cd lildude && npm install
 
 ```
 src/
-  orchestrator/     # Agent loop, task pool, tool guard, quality rater, learning journal
+  orchestrator/     # Agent loop, heartbeat, task pool, tool guard, quality rater, learning journal
   waves/            # Wave loader, executor, safety tiers, hub, shorebreak, request classifier
   security/         # Permission engine, command parser, injection detection, output filter, canary tokens, intent classifier
   providers/        # LLM adapters (Anthropic, OpenAI, Gemini, DeepSeek, Ollama) + plugins
-  channels/         # 8 channel adapters + plugin discovery
+  channels/         # 12 channel adapters (Discord, Telegram, iMessage, Slack, WhatsApp, Signal, WebChat, CLI, Matrix, Teams, LINE, Google Chat)
   cost/             # Pricing, budget enforcement, token counting
   contacts/         # Contact permissions, trust-level gating, profile learning, rate limiting, budget tracking, activity metrics, notifications
-  persistence/      # SQLite DAL with 12 migrations (001-012)
+  persistence/      # SQLite DAL with 20 migrations (001-020)
   context/          # Knowledge management, summarization
-  memory/           # Hybrid search (vector + BM25), embeddings, temporal decay, MMR
-  integrations/     # OAuth2, Gmail, Google Calendar, MCP client
-  tools/            # Tool executor with input validation
+  memory/           # Inline extraction, contradiction detection, entity linking, behavioral analysis, knowledge lifecycle, hybrid search
+  integrations/     # OAuth2, Gmail, Google Calendar, MCP manager
+  tools/            # Tool executor with input validation + MCP bridge
   voice/            # Transcription, synthesis
-  gateway/          # Fastify HTTP + WebSocket + REST APIs + auth middleware + rate limiter
+  gateway/          # Fastify HTTP + WebSocket + REST APIs + MCP management API + auth middleware + rate limiter
   types/            # All canonical interfaces
-web/                # React + Tailwind control panel
+web/                # React + Tailwind control panel with artifact rendering
+landing/            # GitHub Pages landing site
 docs/               # Detailed documentation
-waves/community/    # 20+ verified community waves with registry
+waves/bundled/      # Core bundled waves
 scripts/            # Install scripts (macOS/Linux/Windows), benchmark
-tests/              # 2,461 tests across 135 files (unit, integration, E2E)
+tests/              # 4,000+ tests across 218 files (unit, integration, E2E)
 ```
 
 ### Architecture Principles
 
 1. **Security first** — Every feature passes through the security layer
-2. **Token-efficient** — Deterministic over AI; budget checks before every LLM call
-3. **Performance** — Fast, low memory, local SQLite
+2. **Deterministic over AI** — Regex, SQL, and static analysis before reaching for LLM calls
+3. **Cost-conscious** — Budget checks before every LLM call; cheapest model that works
 4. **Approachable** — Non-developers can set up via the onboarding wizard
-5. **Self-learning** — Gets better with every interaction
+5. **Self-learning** — Gets better with every interaction, at zero additional LLM cost
+6. **You approve** — The agent suggests, you decide. No autonomous surprises.
 
 ---
 
