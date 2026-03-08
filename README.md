@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-blue?style=for-the-badge" alt="Quick Start"/></a>
-  <a href="https://github.com/clapyark/lildude/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/clapyark/lildude/ci.yml?style=for-the-badge&label=CI" alt="CI"/></a>
+  <a href="https://github.com/org-lil/lildude/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/org-lil/lildude/ci.yml?style=for-the-badge&label=CI" alt="CI"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
@@ -45,7 +45,7 @@ Lil Dude is a **free, open-source** AI executive assistant that runs on **your m
 
 ```bash
 # Install
-curl -fsSL https://raw.githubusercontent.com/clapyark/lildude/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/org-lil/lildude/main/scripts/install.sh | bash
 
 # Set up your assistant
 lil-dude onboard
@@ -56,7 +56,7 @@ lil-dude start
 
 The onboarding wizard walks you through provider API keys, channel setup, security level, and token budget.
 
-**Windows:** `irm https://raw.githubusercontent.com/clapyark/lildude/main/scripts/install.ps1 | iex`
+**Windows:** `irm https://raw.githubusercontent.com/org-lil/lildude/main/scripts/install.ps1 | iex`
 
 **From source:** `git clone`, `npm install`, `npm run build`, `npm run onboard`, `npm run start`
 
@@ -279,7 +279,7 @@ For local LLM support, uncomment the `ollama` service in `docker-compose.yml`.
 ## Development
 
 ```bash
-git clone https://github.com/clapyark/lildude.git
+git clone https://github.com/org-lil/lildude.git
 cd lildude && npm install
 ```
 

@@ -178,7 +178,7 @@ waveCmd
   .description('Publish a wave to the community registry via GitHub PR')
   .option('--dry-run', 'Validate and scan without opening a PR')
   .option('--skip-sandbox', 'Skip sandbox execution (scan still required)')
-  .option('--registry-repo <repo>', 'Override registry repo', 'clapyark/wave-registry')
+  .option('--registry-repo <repo>', 'Override registry repo', 'org-lil/wave-registry')
   .option('--github-token <token>', 'GitHub PAT (or set GITHUB_TOKEN env var)')
   .action(async (wavePath: string, options: {
     dryRun?: boolean;

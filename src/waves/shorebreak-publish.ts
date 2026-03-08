@@ -20,7 +20,7 @@ const logger = createModuleLogger('shorebreak-publish');
 export interface ShorebreakPublishOptions {
   /** GitHub PAT for creating the PR. */
   githubToken: string;
-  /** Override registry repo (default: clapyark/wave-registry). */
+  /** Override registry repo (default: org-lil/wave-registry). */
   registryRepo?: string;
   /** Skip sandbox execution during packaging. */
   skipSandbox?: boolean;

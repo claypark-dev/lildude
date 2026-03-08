@@ -1,6 +1,6 @@
 /**
  * Wave publisher for the community registry.
- * Publishes packaged waves to the clapyark/wave-registry
+ * Publishes packaged waves to the org-lil/wave-registry
  * GitHub repo by creating a pull request via the GitHub REST API.
  *
  * Uses fetch() against api.github.com — no external dependencies.
@@ -12,7 +12,7 @@ import { createModuleLogger } from '../utils/logger.js';
 const publisherLogger = createModuleLogger('wave-publisher');
 
 /** Default registry repository. */
-const DEFAULT_REGISTRY_REPO = 'clapyark/wave-registry';
+const DEFAULT_REGISTRY_REPO = 'org-lil/wave-registry';
 
 /** GitHub API base URL. */
 const GITHUB_API = 'https://api.github.com';
@@ -31,7 +31,7 @@ export interface PublishResult {
 export interface PublishOptions {
   /** GitHub personal access token for API authentication. */
   githubToken: string;
-  /** Override the registry repo (default: clapyark/wave-registry). */
+  /** Override the registry repo (default: org-lil/wave-registry). */
   registryRepo?: string;
   /** If true, validate but do not create a PR. */
   dryRun?: boolean;
@@ -88,7 +88,7 @@ async function getAuthenticatedUser(token: string): Promise<string> {
  * Ensure a fork of the registry repo exists for the authenticated user.
  * Returns the fork's full name (e.g., "username/wave-registry").
  *
- * @param registryRepo - The upstream registry repo (e.g., "clapyark/wave-registry").
+ * @param registryRepo - The upstream registry repo (e.g., "org-lil/wave-registry").
  * @param token - GitHub PAT.
  * @returns The full name of the fork.
  */

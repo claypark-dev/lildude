@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Lil Dude — Install Script (macOS/Linux)
-# Usage: curl -fsSL https://raw.githubusercontent.com/clapyark/lildude/main/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/org-lil/lildude/main/scripts/install.sh | bash
 # Flags: --yes  Skip all interactive prompts
 # Exit codes: 0 success, 1 missing Node.js, 2 install failed, 3 verification failed
 # =============================================================================
@@ -11,7 +11,7 @@ set -euo pipefail
 # --- Configuration ---
 REQUIRED_NODE_MAJOR=20
 PACKAGE_NAME="lil-dude"
-GITHUB_REPO="https://github.com/clapyark/lildude.git"
+GITHUB_REPO="https://github.com/org-lil/lildude.git"
 YES_FLAG=false
 
 # --- Parse arguments ---
