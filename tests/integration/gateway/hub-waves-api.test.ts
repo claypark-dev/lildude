@@ -98,7 +98,7 @@ function seedRegistryCache(db: import('better-sqlite3').Database): void {
   };
   setCachedRegistry(
     db,
-    'https://raw.githubusercontent.com/lildude-community/wave-registry/main/registry.json',
+    'https://raw.githubusercontent.com/clapyark/wave-registry/main/registry.json',
     JSON.stringify(testRegistry),
     24,
   );

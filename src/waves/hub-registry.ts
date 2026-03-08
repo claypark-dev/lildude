@@ -48,7 +48,7 @@ export function clearRegistryMemoryCache(): void {
 
 /** Default registry URL (GitHub raw JSON). */
 const DEFAULT_REGISTRY_URL =
-  'https://raw.githubusercontent.com/lildude-community/wave-registry/main/registry.json';
+  'https://raw.githubusercontent.com/clapyark/wave-registry/main/registry.json';
 
 /** Default cache TTL in hours. */
 const DEFAULT_CACHE_TTL_HOURS = 24;
