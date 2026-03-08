@@ -11,6 +11,13 @@ import {
   createDiscordAdapter,
   createTelegramAdapter,
   createSlackAdapter,
+  createIMessageAdapter,
+  createMatrixAdapter,
+  createTeamsAdapter,
+  createLineAdapter,
+  createGoogleChatAdapter,
+  createSignalAdapter,
+  createWhatsAppAdapter,
 } from './channels/index.js';
 import type { AgentLoop } from './orchestrator/agent-loop.js';
 import type { ChannelMessage, InstallTier, LLMProvider } from './types/index.js';
@@ -107,20 +114,133 @@ export async function initializeChannels(
     }
   }
 
-  // WhatsApp (requires external connection provider — log guidance if enabled)
-  if (config.channels.whatsapp.enabled) {
-    log.info(
-      'WhatsApp channel is enabled in config. ' +
-        'Provide a WhatsAppConnection via createWhatsAppAdapter() to activate.',
-    );
+  // iMessage (macOS only — no credentials required)
+  if (config.channels.imessage.enabled) {
+    try {
+      const imessageAdapter = createIMessageAdapter();
+      await imessageAdapter.connect({
+        enabled: true,
+      });
+      channelManager.registerAdapter(imessageAdapter);
+      log.info('iMessage adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn({ error: message }, 'Failed to connect iMessage adapter');
+    }
   }
 
-  // Signal (requires signal-cli — log guidance if enabled)
+  // Matrix (only if enabled and credentials provided)
+  if (config.channels.matrix.enabled && config.channels.matrix.homeserverUrl && config.channels.matrix.accessToken) {
+    try {
+      const matrixAdapter = createMatrixAdapter();
+      await matrixAdapter.connect({
+        enabled: true,
+        homeserverUrl: config.channels.matrix.homeserverUrl,
+        accessToken: config.channels.matrix.accessToken,
+        allowFrom: config.channels.matrix.allowFrom,
+      });
+      channelManager.registerAdapter(matrixAdapter);
+      log.info('Matrix adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn({ error: message }, 'Failed to connect Matrix adapter');
+    }
+  }
+
+  // Microsoft Teams (only if enabled and credentials provided)
+  if (config.channels.teams.enabled && config.channels.teams.appId && config.channels.teams.appPassword) {
+    try {
+      const teamsAdapter = createTeamsAdapter();
+      await teamsAdapter.connect({
+        enabled: true,
+        appId: config.channels.teams.appId,
+        appPassword: config.channels.teams.appPassword,
+        allowFrom: config.channels.teams.allowFrom,
+      });
+      channelManager.registerAdapter(teamsAdapter);
+      log.info('Teams adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn({ error: message }, 'Failed to connect Teams adapter');
+    }
+  }
+
+  // LINE (only if enabled and credentials provided)
+  if (config.channels.line.enabled && config.channels.line.channelAccessToken && config.channels.line.channelSecret) {
+    try {
+      const lineAdapter = createLineAdapter();
+      await lineAdapter.connect({
+        enabled: true,
+        channelAccessToken: config.channels.line.channelAccessToken,
+        channelSecret: config.channels.line.channelSecret,
+        allowFrom: config.channels.line.allowFrom,
+      });
+      channelManager.registerAdapter(lineAdapter);
+      log.info('LINE adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn({ error: message }, 'Failed to connect LINE adapter');
+    }
+  }
+
+  // Google Chat (only if enabled and service account key provided)
+  if (config.channels.googlechat.enabled && config.channels.googlechat.serviceAccountKey) {
+    try {
+      const googleChatAdapter = createGoogleChatAdapter();
+      await googleChatAdapter.connect({
+        enabled: true,
+        serviceAccountKey: config.channels.googlechat.serviceAccountKey,
+        allowFrom: config.channels.googlechat.allowFrom,
+      });
+      channelManager.registerAdapter(googleChatAdapter);
+      log.info('Google Chat adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn({ error: message }, 'Failed to connect Google Chat adapter');
+    }
+  }
+
+  // Signal (requires signal-cli — log guidance, then attempt initialization)
   if (config.channels.signal.enabled) {
     log.info(
       'Signal channel is enabled in config. ' +
         'Provide a SignalConnection via createSignalAdapter() to activate.',
     );
+    if (config.channels.signal.phoneNumber) {
+      try {
+        const signalAdapter = createSignalAdapter();
+        await signalAdapter.connect({
+          enabled: true,
+          phoneNumber: config.channels.signal.phoneNumber,
+          allowFrom: config.channels.signal.allowFrom,
+        });
+        channelManager.registerAdapter(signalAdapter);
+        log.info('Signal adapter enabled');
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        log.warn({ error: message }, 'Failed to connect Signal adapter');
+      }
+    }
+  }
+
+  // WhatsApp (requires external connection provider — log guidance, then attempt initialization)
+  if (config.channels.whatsapp.enabled) {
+    log.info(
+      'WhatsApp channel is enabled in config. ' +
+        'Provide a WhatsAppConnection via createWhatsAppAdapter() to activate.',
+    );
+    try {
+      const whatsappAdapter = createWhatsAppAdapter();
+      await whatsappAdapter.connect({
+        enabled: true,
+        allowFrom: config.channels.whatsapp.allowFrom,
+      });
+      channelManager.registerAdapter(whatsappAdapter);
+      log.info('WhatsApp adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn({ error: message }, 'Failed to connect WhatsApp adapter');
+    }
   }
 }
 

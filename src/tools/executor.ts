@@ -18,6 +18,10 @@ import { scheduleTask } from './scheduler.js';
 import { executeBrowserAction } from './browser.js';
 import { CORE_TOOLS } from './definitions.js';
 import { DOMAIN_RULES } from '../security/defaults.js';
+import { checkFilePath, checkDomain } from '../security/permissions.js';
+import type { PermissionsCheckOptions } from '../security/permissions.js';
+import { appendSecurityLog } from '../persistence/security-log.js';
+import { securityLogger } from '../utils/logger.js';
 
 /** Default timeout for tool execution in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -159,6 +163,170 @@ function getAllowedBrowserDomains(securityLevel: SecurityLevel): string[] {
   return base;
 }
 
+/** MCP tool category patterns for security classification. */
+const MCP_FILESYSTEM_PATTERNS = /file|read|write|directory/i;
+const MCP_NETWORK_PATTERNS = /http|fetch|request/i;
+
+/**
+ * Check an MCP tool call against security rules before execution.
+ * Validates filesystem paths and network domains based on tool name heuristics,
+ * and enforces security-level gating (block at 1-2, prompt at 3, allow+log at 4-5).
+ *
+ * @param db - Database connection for audit logging.
+ * @param toolName - The MCP tool name being invoked.
+ * @param toolInput - The input arguments to the tool.
+ * @param securityLevel - The current security level (1-5).
+ * @param taskId - Optional task ID for audit trail.
+ * @returns A ToolResult if the call should be blocked/prompted, or null if allowed.
+ */
+function checkMcpToolSecurity(
+  db: BetterSqlite3.Database,
+  toolName: string,
+  toolInput: Record<string, unknown>,
+  securityLevel: SecurityLevel,
+  taskId?: string,
+): ToolResult | null {
+  const permOpts: PermissionsCheckOptions = { securityLevel };
+
+  // ── Level 1-2 (Tin Foil Hat / Careful): Block all MCP tools unless explicitly allowed ──
+  if (securityLevel <= 2) {
+    const reason = `MCP tool '${toolName}' blocked at security level ${securityLevel} — all MCP tools require level 3+`;
+    securityLogger.warn({ toolName, securityLevel, taskId }, reason);
+    appendSecurityLog(db, {
+      actionType: 'mcp_tool_blocked',
+      actionDetail: `Blocked MCP tool '${toolName}' at security level ${securityLevel}`,
+      allowed: false,
+      securityLevel,
+      reason,
+      taskId,
+    });
+    return {
+      success: false,
+      output: '',
+      error: reason,
+    };
+  }
+
+  // ── Level 3 (Balanced): Prompt for approval ──
+  if (securityLevel === 3) {
+    const reason = `MCP tool '${toolName}' requires user approval at security level 3. Please explicitly approve this MCP tool execution.`;
+    securityLogger.info({ toolName, securityLevel, taskId }, 'MCP tool needs approval at level 3');
+    appendSecurityLog(db, {
+      actionType: 'mcp_tool_needs_approval',
+      actionDetail: `MCP tool '${toolName}' needs user approval at security level 3`,
+      allowed: false,
+      securityLevel,
+      reason,
+      taskId,
+    });
+    return {
+      success: false,
+      output: '',
+      error: reason,
+    };
+  }
+
+  // ── Level 4-5: Allow but validate paths/domains and log ──
+
+  // Check filesystem paths for tools that interact with files
+  if (MCP_FILESYSTEM_PATTERNS.test(toolName)) {
+    const pathValues = extractPathsFromInput(toolInput);
+    for (const filePath of pathValues) {
+      const pathResult = checkFilePath(filePath, permOpts);
+      if (pathResult.decision === 'deny') {
+        securityLogger.warn({ toolName, filePath, taskId }, 'MCP filesystem tool path denied');
+        appendSecurityLog(db, {
+          actionType: 'mcp_tool_path_denied',
+          actionDetail: `MCP tool '${toolName}' denied for path '${filePath}': ${pathResult.reason}`,
+          allowed: false,
+          securityLevel,
+          reason: pathResult.reason,
+          taskId,
+        });
+        return {
+          success: false,
+          output: '',
+          error: `MCP tool '${toolName}' blocked: ${pathResult.reason}`,
+        };
+      }
+    }
+  }
+
+  // Check domains for tools that make network requests
+  if (MCP_NETWORK_PATTERNS.test(toolName)) {
+    const domains = extractDomainsFromInput(toolInput);
+    for (const domain of domains) {
+      const domainResult = checkDomain(domain, permOpts);
+      if (domainResult.decision === 'deny') {
+        securityLogger.warn({ toolName, domain, taskId }, 'MCP network tool domain denied');
+        appendSecurityLog(db, {
+          actionType: 'mcp_tool_domain_denied',
+          actionDetail: `MCP tool '${toolName}' denied for domain '${domain}': ${domainResult.reason}`,
+          allowed: false,
+          securityLevel,
+          reason: domainResult.reason,
+          taskId,
+        });
+        return {
+          success: false,
+          output: '',
+          error: `MCP tool '${toolName}' blocked: ${domainResult.reason}`,
+        };
+      }
+    }
+  }
+
+  // Log allowed execution at level 4-5
+  securityLogger.info({ toolName, securityLevel, taskId }, 'MCP tool execution allowed');
+  appendSecurityLog(db, {
+    actionType: 'mcp_tool_allowed',
+    actionDetail: `MCP tool '${toolName}' allowed at security level ${securityLevel}`,
+    allowed: true,
+    securityLevel,
+    reason: `Allowed at security level ${securityLevel}`,
+    taskId,
+  });
+
+  return null; // Null means allowed — proceed with execution
+}
+
+/**
+ * Extract file path values from MCP tool input arguments.
+ * Looks for common parameter names that hold file/directory paths.
+ */
+function extractPathsFromInput(input: Record<string, unknown>): string[] {
+  const pathKeys = ['path', 'file', 'filepath', 'filePath', 'file_path', 'directory', 'dir', 'target', 'source', 'destination', 'dest', 'src'];
+  const paths: string[] = [];
+  for (const key of pathKeys) {
+    const value = input[key];
+    if (typeof value === 'string' && (value.startsWith('/') || value.startsWith('~') || value.startsWith('./'))) {
+      paths.push(value);
+    }
+  }
+  return paths;
+}
+
+/**
+ * Extract domain names from MCP tool input arguments.
+ * Looks for common parameter names that hold URLs or domain values.
+ */
+function extractDomainsFromInput(input: Record<string, unknown>): string[] {
+  const urlKeys = ['url', 'uri', 'endpoint', 'host', 'domain', 'target'];
+  const domains: string[] = [];
+  for (const key of urlKeys) {
+    const value = input[key];
+    if (typeof value === 'string') {
+      try {
+        const parsed = new URL(value.startsWith('http') ? value : `https://${value}`);
+        domains.push(parsed.hostname);
+      } catch {
+        // Not a parseable URL, skip
+      }
+    }
+  }
+  return domains;
+}
+
 /** Options for creating a tool executor. */
 export interface ToolExecutorOptions {
   /** Optional MCP manager for dispatching MCP tool calls. */
@@ -284,6 +452,12 @@ export function createToolExecutor(
 
       // Check if this is an MCP tool call
       if (options?.mcpManager?.isMcpTool(toolName)) {
+        // Security gate: validate MCP tool against security level, paths, and domains
+        const securityBlock = checkMcpToolSecurity(db, toolName, toolInput, securityLevel, taskId);
+        if (securityBlock !== null) {
+          return buildToolResultBlock(toolUseId, securityBlock);
+        }
+
         try {
           const toolResult = await withTimeout(
             options.mcpManager.executeTool(toolName, toolInput),

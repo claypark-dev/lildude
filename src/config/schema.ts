@@ -13,6 +13,12 @@ export const ConfigSchema = z.object({
     name: z.string().default('Friend'),
     timezone: z.string().default('America/New_York'),
   }).default({}),
+  agent: z.object({
+    /** Display name for the assistant (shown in chat, briefings, and dashboard). */
+    name: z.string().default('Lil Dude'),
+    /** Short persona description injected into the system prompt. */
+    persona: z.string().default('a chill, capable AI executive assistant'),
+  }).default({}),
   providers: z.object({
     anthropic: z.object({
       apiKey: z.string().optional(),

@@ -1,6 +1,6 @@
 # =============================================================================
 # Lil Dude — Install Script (Windows PowerShell)
-# Usage: irm https://raw.githubusercontent.com/org-lil/lildude/main/scripts/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/claypark-dev/lildude/main/scripts/install.ps1 | iex
 # Flags: -Yes  Skip all interactive prompts
 # Exit codes: 0 success, 1 missing Node.js, 2 install failed, 3 verification failed
 # =============================================================================
@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 
 $RequiredNodeMajor = 20
 $PackageName = "lil-dude"
-$GithubRepo = "https://github.com/org-lil/lildude.git"
+$GithubRepo = "https://github.com/claypark-dev/lildude.git"
 
 # --- Helper functions ---
 function Write-Info {

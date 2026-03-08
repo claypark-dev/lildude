@@ -27,7 +27,7 @@ RUN npm run build
 # --- Stage 2: Runtime ---
 FROM node:20-alpine AS runtime
 
-LABEL maintainer="org-lil"
+LABEL maintainer="claypark-dev"
 LABEL description="Lil Dude — Your personal AI executive assistant"
 LABEL version="1.0.0"
 

@@ -14,13 +14,13 @@
 </p>
 
 <p align="center">
-  <a href="https://org-lil.github.io/lildude/"><img src="https://img.shields.io/badge/Landing_Page-2dd4bf?style=for-the-badge&logo=github&logoColor=white" alt="Landing Page"/></a>
-  <a href="https://org-lil.github.io/wave-registry/"><img src="https://img.shields.io/badge/Wave_Hub-38bdf8?style=for-the-badge&logo=github&logoColor=white" alt="Wave Hub"/></a>
+  <a href="https://claypark-dev.github.io/lildude/"><img src="https://img.shields.io/badge/Landing_Page-2dd4bf?style=for-the-badge&logo=github&logoColor=white" alt="Landing Page"/></a>
+  <a href="https://claypark-dev.github.io/wave-registry/"><img src="https://img.shields.io/badge/Wave_Hub-38bdf8?style=for-the-badge&logo=github&logoColor=white" alt="Wave Hub"/></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-blue?style=for-the-badge" alt="Quick Start"/></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/org-lil/lildude/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/org-lil/lildude/ci.yml?style=for-the-badge&label=CI" alt="CI"/></a>
+  <a href="https://github.com/claypark-dev/lildude/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/claypark-dev/lildude/ci.yml?style=for-the-badge&label=CI" alt="CI"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node 20+"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
@@ -54,7 +54,7 @@ Lil Dude is a **free, open-source** AI executive assistant that runs on **your m
 
 ```bash
 # Install
-curl -fsSL https://raw.githubusercontent.com/org-lil/lildude/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/claypark-dev/lildude/main/scripts/install.sh | bash
 
 # Set up your assistant
 lil-dude onboard
@@ -65,7 +65,7 @@ lil-dude start
 
 The onboarding wizard walks you through provider API keys, channel setup, security level, and token budget.
 
-**Windows:** `irm https://raw.githubusercontent.com/org-lil/lildude/main/scripts/install.ps1 | iex`
+**Windows:** `irm https://raw.githubusercontent.com/claypark-dev/lildude/main/scripts/install.ps1 | iex`
 
 **From source:** `git clone`, `npm install`, `npm run build`, `npm run onboard`, `npm run start`
 
@@ -159,7 +159,7 @@ lil-dude wave list
 
 **Wave Registry & Updates:** HMAC-SHA256 signed wave manifests with verified badges. Automatic update checking compares installed versions against the community registry. One-click updates preserve configuration.
 
-**[967 Community Waves](https://org-lil.github.io/wave-registry/)** — Browse, search, and install from the Wave Hub marketplace:
+**[967 Community Waves](https://claypark-dev.github.io/wave-registry/)** — Browse, search, and install from the Wave Hub marketplace:
 
 | Category | Count | Examples |
 |----------|-------|---------|
@@ -174,7 +174,7 @@ lil-dude wave list
 
 All security-scanned, safety-tier labeled, and installable with `lil-dude wave install`. Every wave passes quality gates: valid manifest, entry point exists, no dangerous shell commands.
 
-[Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation) | [Wave Hub](https://org-lil.github.io/wave-registry/)
+[Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation) | [Wave Hub](https://claypark-dev.github.io/wave-registry/)
 
 ### MCP Protocol Support
 
@@ -325,7 +325,7 @@ Read and summarize emails, send messages, manage calendar events — all via Gma
 
 ### Wave Hub & Marketplace
 
-Browse, search, and install from **[967 community waves](https://org-lil.github.io/wave-registry/)** in a ClawHub-style marketplace. Real-time search, category filtering, safety tier badges, one-click install commands, and security scan indicators. Rate and review waves, check for updates, and publish your own.
+Browse, search, and install from **[967 community waves](https://claypark-dev.github.io/wave-registry/)** in a ClawHub-style marketplace. Real-time search, category filtering, safety tier badges, one-click install commands, and security scan indicators. Rate and review waves, check for updates, and publish your own.
 
 ### Self-Improvement Loop
 
@@ -391,7 +391,7 @@ For local LLM support, uncomment the `ollama` service in `docker-compose.yml`.
 ## Development
 
 ```bash
-git clone https://github.com/org-lil/lildude.git
+git clone https://github.com/claypark-dev/lildude.git
 cd lildude && npm install
 ```
 
