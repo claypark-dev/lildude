@@ -1,5 +1,5 @@
 /**
- * Helper utilities for the Wave Hub module.
+ * Helper utilities for the Shorebreak module.
  * Handles source format parsing, permission checking against security levels,
  * and advanced registry search/filtering.
  */

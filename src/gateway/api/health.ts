@@ -7,6 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { HealthData } from '../../types/index.js';
 import { getTasksByStatus } from '../../persistence/tasks.js';
+import { getConfigValue } from '../../persistence/config-store.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,12 +51,35 @@ export function registerHealthRoutes(app: FastifyInstance, db: BetterSqlite3.Dat
         // DB size query may not be supported in all SQLite builds
       }
 
+      // Heartbeat status from config store
+      let heartbeatEnabled = false;
+      let heartbeatLastRun: string | null = null;
+      try {
+        heartbeatEnabled = getConfigValue(db, 'heartbeat.enabled') !== 'false';
+        heartbeatLastRun = getConfigValue(db, 'heartbeat.last_run_at') ?? null;
+      } catch {
+        // Config store may not have heartbeat keys yet
+      }
+
+      // Budget remaining
+      let budgetRemainingUsd: number | undefined;
+      try {
+        const monthlyBudget = parseFloat(getConfigValue(db, 'budget.monthlyLimitUsd') ?? '20');
+        const monthlySpent = parseFloat(getConfigValue(db, 'budget.monthlySpentUsd') ?? '0');
+        budgetRemainingUsd = Math.max(0, monthlyBudget - monthlySpent);
+      } catch {
+        // Budget keys may not exist
+      }
+
       const health: HealthData = {
         uptime: Math.floor((Date.now() - startTime) / 1000),
         memoryUsageMb: Math.round(memUsage.heapUsed / 1024 / 1024),
         dbSizeBytes,
         activeTasks: activeTasks.length,
         version: APP_VERSION,
+        heartbeatEnabled,
+        heartbeatLastRun,
+        budgetRemainingUsd,
       };
 
       return reply.status(200).send(health);

@@ -183,21 +183,21 @@ lil-dude wave install github:username/wave-name
 
 The CLI clones the repository, validates the manifest against the `WaveManifestSchema`, checks declared permissions against your security level, and registers the wave.
 
-### From Wave Hub
+### From Shorebreak
 
 ```bash
 lil-dude wave install hub:wave-name
 ```
 
-Wave Hub is the curated registry of community waves. All waves on the Hub have been through security scanning (static analysis of declared permissions, AST scanning of source code).
+Shorebreak is the curated registry of community waves. All waves on Shorebreak have been through security scanning (static analysis of declared permissions, AST scanning of source code).
 
 ### CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `lil-dude wave install <source>` | Install a wave from GitHub or Wave Hub |
+| `lil-dude wave install <source>` | Install a wave from GitHub or Shorebreak |
 | `lil-dude wave list` | List all installed waves with their safety tiers |
-| `lil-dude wave search <query>` | Search Wave Hub for waves matching a query |
+| `lil-dude wave search <query>` | Search Shorebreak for waves matching a query |
 | `lil-dude wave uninstall <name>` | Remove an installed wave |
 
 ---
@@ -246,9 +246,9 @@ If the sandbox test passes, the wave is registered in the wave registry and avai
 
 ---
 
-## Wave Hub
+## Shorebreak
 
-Wave Hub is the curated community registry for Lil Dude waves. It provides:
+Shorebreak is the curated community registry for Lil Dude waves. It provides:
 
 - **Security scanning**: Every submitted wave undergoes static analysis, AST scanning, and permission verification
 - **Safety tier verification**: The declared safety tier is validated against actual code behavior
@@ -256,7 +256,7 @@ Wave Hub is the curated community registry for Lil Dude waves. It provides:
 - **Search and discovery**: Browse and search waves by category, safety tier, or keyword
 - **Trust scores**: Community ratings and usage statistics
 
-Waves on the Hub must pass all security checks before being listed. The Hub never hosts waves that declare a lower safety tier than their code actually requires.
+Waves on Shorebreak must pass all security checks before being listed. Shorebreak never hosts waves that declare a lower safety tier than their code actually requires.
 
 ---
 
@@ -368,7 +368,7 @@ Per-contact wave allowlists can further restrict access. If a contact has `permi
 
 ## Manifest Signing and Verification
 
-Waves published through the official registry are signed with HMAC-SHA256. Signed waves display a "Verified" badge in the Wave Hub.
+Waves published through the official registry are signed with HMAC-SHA256. Signed waves display a "Verified" badge in Shorebreak.
 
 ### How It Works
 
@@ -440,7 +440,7 @@ Lil Dude periodically checks the registry for updates to installed waves:
 GET /api/v1/hub/updates
 ```
 
-Returns a list of waves with newer versions available. Users can update via the Wave Hub page or CLI:
+Returns a list of waves with newer versions available. Users can update via the Shorebreak page or CLI:
 
 ```bash
 lil-dude wave update <name>

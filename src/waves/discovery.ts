@@ -96,7 +96,7 @@ function scoreWave(
  * Search the wave registry cache for waves matching a user message.
  * Returns up to 3 most relevant suggestions.
  *
- * @param db - Database with the wave_hub_cache table.
+ * @param db - Database with the Shorebreak cache table (wave_hub_cache).
  * @param userMessage - The user's message text.
  * @param installedWaves - Set of already-installed wave names to exclude.
  * @returns Discovery result with suggestions and a formatted message.
@@ -113,7 +113,7 @@ export function discoverWaves(
   }
 
   try {
-    // Query the hub cache for all waves
+    // Query the Shorebreak cache for all waves
     const stmt = db.prepare(`
       SELECT name, description, category, safety_tier, triggers, tags
       FROM wave_hub_cache
@@ -179,7 +179,7 @@ export function discoverWaves(
       message: lines.join('\n'),
     };
   } catch (error) {
-    logger.debug({ error }, 'Wave discovery query failed (hub cache may not exist yet)');
+    logger.debug({ error }, 'Wave discovery query failed (Shorebreak cache may not exist yet)');
     return { found: false, suggestions: [], message: '' };
   }
 }

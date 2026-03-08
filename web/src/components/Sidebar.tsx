@@ -96,7 +96,7 @@ export function Sidebar() {
             <span className="text-sm">{'\uD83D\uDEE0'}</span>
             Setup Wizard
           </NavLink>
-          <p className="text-xs text-slate-500 text-center">v0.1.0</p>
+          <p className="text-xs text-slate-500 text-center">v1.1.0-beta.1</p>
         </div>
       </aside>
     </>

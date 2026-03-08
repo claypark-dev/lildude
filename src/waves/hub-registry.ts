@@ -1,5 +1,5 @@
 /**
- * Remote Wave Hub registry.
+ * Remote Shorebreak registry.
  * Fetches the curated wave registry from a remote URL (GitHub JSON)
  * with 24-hour caching in SQLite. Returns an empty list if the remote
  * fetch and all caches fail.

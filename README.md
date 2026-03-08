@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://claypark-dev.github.io/lildude/"><img src="https://img.shields.io/badge/Landing_Page-2dd4bf?style=for-the-badge&logo=github&logoColor=white" alt="Landing Page"/></a>
-  <a href="https://claypark-dev.github.io/wave-registry/"><img src="https://img.shields.io/badge/Wave_Hub-38bdf8?style=for-the-badge&logo=github&logoColor=white" alt="Wave Hub"/></a>
+  <a href="https://claypark-dev.github.io/wave-registry/"><img src="https://img.shields.io/badge/Shorebreak-38bdf8?style=for-the-badge&logo=github&logoColor=white" alt="Shorebreak"/></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-blue?style=for-the-badge" alt="Quick Start"/></a>
 </p>
 
@@ -159,7 +159,7 @@ lil-dude wave list
 
 **Wave Registry & Updates:** HMAC-SHA256 signed wave manifests with verified badges. Automatic update checking compares installed versions against the community registry. One-click updates preserve configuration.
 
-**[967 Community Waves](https://claypark-dev.github.io/wave-registry/)** — Browse, search, and install from the Wave Hub marketplace:
+**[967 Community Waves](https://claypark-dev.github.io/wave-registry/)** — Browse, search, and install from the Shorebreak marketplace:
 
 | Category | Count | Examples |
 |----------|-------|---------|
@@ -174,7 +174,7 @@ lil-dude wave list
 
 All security-scanned, safety-tier labeled, and installable with `lil-dude wave install`. Every wave passes quality gates: valid manifest, entry point exists, no dangerous shell commands.
 
-[Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation) | [Wave Hub](https://claypark-dev.github.io/wave-registry/)
+[Full wave documentation](docs/waves.md) | [Wave safety tiers](docs/waves.md#wave-safety-tiers) | [Shorebreak](docs/waves.md#shorebreak-dynamic-wave-generation) | [Shorebreak](https://claypark-dev.github.io/wave-registry/)
 
 ### MCP Protocol Support
 
@@ -323,7 +323,7 @@ Typical cost with cloud providers: ~$0.25/day (~$7.50/month). With Ollama: $0/mo
 
 Read and summarize emails, send messages, manage calendar events — all via Gmail/Google Calendar or Microsoft Graph APIs. OAuth2 with PKCE keeps credentials secure; AES-256-GCM encrypted token storage.
 
-### Wave Hub & Marketplace
+### Shorebreak & Marketplace
 
 Browse, search, and install from **[967 community waves](https://claypark-dev.github.io/wave-registry/)** in a ClawHub-style marketplace. Real-time search, category filtering, safety tier badges, one-click install commands, and security scan indicators. Rate and review waves, check for updates, and publish your own.
 
@@ -347,7 +347,7 @@ Scheduled tasks and morning briefings (email summary, calendar, weather, cost ov
 - **Dashboard** — System health, budget widget, heartbeat status, activity overview
 - **Tasks** — Cron job management and scheduled task monitoring
 - **Settings** — Provider keys, channel config, security level, budget caps
-- **Waves Hub** — Browse, install, and manage community waves
+- **Shorebreak** — Browse, install, and manage community waves
 - **Shorebreak** — Review and approve auto-generated capabilities
 - **Contacts** — Trust levels, groups, activity metrics, notification preferences
 
@@ -378,7 +378,7 @@ For local LLM support, uncomment the `ollama` service in `docker-compose.yml`.
 
 | Topic | Description |
 |-------|-------------|
-| [Waves & Shorebreak](docs/waves.md) | Wave system, safety tiers, dynamic generation, Wave Hub |
+| [Waves & Shorebreak](docs/waves.md) | Wave system, safety tiers, dynamic generation, Shorebreak |
 | [Security](docs/security.md) | 5-level sandbox, command parsing, injection detection, wave safety enforcement |
 | [Providers & Routing](docs/providers.md) | Model routing, quality-aware selection, pricing |
 | [Local Models](docs/local-models.md) | Ollama safeguards, safety tiers for small models, auto-escalation |

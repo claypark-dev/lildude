@@ -283,6 +283,14 @@ export interface DashboardCronJob {
   expiresAt: string | null;
 }
 
+/** Heartbeat status for the dashboard. */
+export interface HeartbeatStatus {
+  enabled: boolean;
+  lastBeatAt: string | null;
+  actionsToday: number;
+  costToday: number;
+}
+
 /** Consolidated dashboard data returned by GET /api/v1/dashboard. */
 export interface DashboardData {
   health: {
@@ -309,6 +317,7 @@ export interface DashboardData {
     jobs: DashboardCronJob[];
     count: number;
   };
+  heartbeat?: HeartbeatStatus;
 }
 
 /** Weather widget response from GET /api/v1/widgets/weather. */

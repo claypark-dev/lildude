@@ -1,6 +1,6 @@
 /**
- * Waves Hub API client.
- * Centralizes all fetch calls for the enhanced Waves Hub frontend.
+ * Shorebreak API client.
+ * Centralizes all fetch calls for the enhanced Shorebreak frontend.
  */
 
 import { getStoredApiKey } from '../../lib/api.ts';

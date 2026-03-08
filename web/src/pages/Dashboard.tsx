@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi.ts';
 import { BudgetBar } from '../components/BudgetBar.tsx';
 import { fetchDashboard, fetchBudget, fetchWeatherWidget, fetchRemindersWidget } from '../lib/api.ts';
-import type { DashboardData, DashboardCronJob } from '../lib/types.ts';
+import type { DashboardData, DashboardCronJob, HeartbeatStatus } from '../lib/types.ts';
 import {
   DASHBOARD_TEMPLATES,
   getTemplate,
@@ -333,7 +333,7 @@ function RemindersWidget() {
 function HeartbeatWidget({ data }: { data: DashboardData | null }) {
   if (!data) return <WidgetSkeleton />;
 
-  const hb = (data as DashboardData & { heartbeat?: HeartbeatStatus }).heartbeat;
+  const hb = data.heartbeat;
   if (!hb) {
     return (
       <p className="text-sm text-[#666] text-center py-4">
@@ -342,7 +342,7 @@ function HeartbeatWidget({ data }: { data: DashboardData | null }) {
     );
   }
 
-  const lastRun = hb.lastRunAt ? new Date(hb.lastRunAt) : null;
+  const lastRun = hb.lastBeatAt ? new Date(hb.lastBeatAt) : null;
   const lastRunStr = lastRun
     ? lastRun.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
     : 'Never';
@@ -352,14 +352,14 @@ function HeartbeatWidget({ data }: { data: DashboardData | null }) {
       <div className="flex items-center gap-3">
         <div
           className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
-            hb.active ? 'bg-green-500/10' : 'bg-[#222]'
+            hb.enabled ? 'bg-green-500/10' : 'bg-[#222]'
           }`}
         >
-          {hb.active ? '\uD83D\uDC93' : '\uD83D\uDC94'}
+          {hb.enabled ? '\uD83D\uDC93' : '\uD83D\uDC94'}
         </div>
         <div className="flex-1">
-          <p className={`text-sm font-semibold ${hb.active ? 'text-green-400' : 'text-[#666]'}`}>
-            {hb.active ? 'Active' : 'Inactive'}
+          <p className={`text-sm font-semibold ${hb.enabled ? 'text-green-400' : 'text-[#666]'}`}>
+            {hb.enabled ? 'Active' : 'Inactive'}
           </p>
           <p className="text-xs text-[#666]">
             Last beat: {lastRunStr}
@@ -368,18 +368,10 @@ function HeartbeatWidget({ data }: { data: DashboardData | null }) {
       </div>
       <div className="flex justify-between text-xs text-[#a0a0a0] pt-2 border-t border-[#222]">
         <span>{hb.actionsToday} action{hb.actionsToday !== 1 ? 's' : ''} today</span>
-        <span>${hb.costTodayUsd.toFixed(4)} spent</span>
+        <span>${hb.costToday.toFixed(4)} spent</span>
       </div>
     </div>
   );
-}
-
-/** Heartbeat status shape from the dashboard API */
-interface HeartbeatStatus {
-  active: boolean;
-  lastRunAt: string | null;
-  actionsToday: number;
-  costTodayUsd: number;
 }
 
 // ── Clock Widget ─────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 /**
- * Wave Hub cache data access layer.
+ * Shorebreak cache data access layer.
  * Stores and retrieves remote registry data with TTL-based invalidation.
  * Also manages wave ratings for installed waves.
  */

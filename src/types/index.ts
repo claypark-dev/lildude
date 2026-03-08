@@ -578,4 +578,12 @@ export interface HealthData {
   dbSizeBytes: number;
   activeTasks: number;
   version: string;
+  /** Connected messaging channel count. */
+  connectedChannels?: number;
+  /** Whether the heartbeat proactive agent is enabled. */
+  heartbeatEnabled?: boolean;
+  /** Last heartbeat run timestamp (ISO string) or null. */
+  heartbeatLastRun?: string | null;
+  /** Remaining monthly budget in USD. */
+  budgetRemainingUsd?: number;
 }

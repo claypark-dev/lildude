@@ -1,5 +1,5 @@
 /**
- * Wave Hub — S3.R.1
+ * Shorebreak wave manager — S3.R.1
  *
  * Marketplace installer for waves from GitHub repositories.
  * Provides install, list, uninstall, and search functionality.

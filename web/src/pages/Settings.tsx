@@ -18,10 +18,16 @@ interface SettingsFormState {
   anthropicApiKey: string;
   slackEnabled: boolean;
   discordEnabled: boolean;
+  telegramEnabled: boolean;
   webEnabled: boolean;
   securityLevel: number;
   monthlyBudgetUsd: number;
   dailyLimitUsd: number;
+  agentName: string;
+  agentPersona: string;
+  heartbeatEnabled: boolean;
+  heartbeatIntervalMinutes: number;
+  heartbeatMaxDailyBudgetUsd: number;
 }
 
 const DEFAULT_FORM: SettingsFormState = {
@@ -29,10 +35,16 @@ const DEFAULT_FORM: SettingsFormState = {
   anthropicApiKey: '',
   slackEnabled: false,
   discordEnabled: false,
+  telegramEnabled: false,
   webEnabled: true,
   securityLevel: 3,
   monthlyBudgetUsd: 10,
   dailyLimitUsd: 2,
+  agentName: 'Lil Dude',
+  agentPersona: 'a chill, capable AI executive assistant',
+  heartbeatEnabled: true,
+  heartbeatIntervalMinutes: 30,
+  heartbeatMaxDailyBudgetUsd: 0.5,
 };
 
 /** Settings page with API key inputs, channel toggles, security, budget, and voice controls */
@@ -51,10 +63,16 @@ export function Settings() {
       anthropicApiKey: typeof cfg.anthropicApiKey === 'string' ? cfg.anthropicApiKey : '',
       slackEnabled: cfg.slackEnabled === true,
       discordEnabled: cfg.discordEnabled === true,
+      telegramEnabled: cfg.telegramEnabled === true,
       webEnabled: cfg.webEnabled !== false,
       securityLevel: typeof cfg.securityLevel === 'number' ? cfg.securityLevel : 3,
       monthlyBudgetUsd: typeof cfg.monthlyBudgetUsd === 'number' ? cfg.monthlyBudgetUsd : 10,
       dailyLimitUsd: typeof cfg.dailyLimitUsd === 'number' ? cfg.dailyLimitUsd : 2,
+      agentName: typeof cfg.agentName === 'string' ? cfg.agentName : 'Lil Dude',
+      agentPersona: typeof cfg.agentPersona === 'string' ? cfg.agentPersona : 'a chill, capable AI executive assistant',
+      heartbeatEnabled: cfg.heartbeatEnabled !== false,
+      heartbeatIntervalMinutes: typeof cfg.heartbeatIntervalMinutes === 'number' ? cfg.heartbeatIntervalMinutes : 30,
+      heartbeatMaxDailyBudgetUsd: typeof cfg.heartbeatMaxDailyBudgetUsd === 'number' ? cfg.heartbeatMaxDailyBudgetUsd : 0.5,
     });
     setInitialized(true);
   }
@@ -83,6 +101,37 @@ export function Settings() {
 
       {config.loading && <p className="text-[#a0a0a0]">Loading configuration...</p>}
       {config.error && <p className="text-red-400">{config.error}</p>}
+
+      {/* Agent Identity */}
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
+        <h3 className="text-lg font-semibold text-white">Agent Identity</h3>
+        <p className="text-xs text-[#666]">Give your assistant a name and personality.</p>
+
+        <div>
+          <label className="block text-sm text-[#ccc] mb-1">Agent Name</label>
+          <input
+            type="text"
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
+                       placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            placeholder="Lil Dude"
+            value={form.agentName}
+            onChange={(e) => setForm((prev) => ({ ...prev, agentName: e.target.value }))}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-[#ccc] mb-1">Persona</label>
+          <input
+            type="text"
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
+                       placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            placeholder="a chill, capable AI executive assistant"
+            value={form.agentPersona}
+            onChange={(e) => setForm((prev) => ({ ...prev, agentPersona: e.target.value }))}
+          />
+          <p className="text-xs text-[#666] mt-1">Injected into the system prompt as: &quot;You are [Name], [Persona] for [User].&quot;</p>
+        </div>
+      </section>
 
       {/* API Keys */}
       <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
@@ -118,9 +167,48 @@ export function Settings() {
           onChange={(val) => setForm((prev) => ({ ...prev, discordEnabled: val }))}
         />
         <ToggleSwitch
+          label="Telegram"
+          enabled={form.telegramEnabled}
+          onChange={(val) => setForm((prev) => ({ ...prev, telegramEnabled: val }))}
+        />
+        <ToggleSwitch
           label="Web Chat"
           enabled={form.webEnabled}
           onChange={(val) => setForm((prev) => ({ ...prev, webEnabled: val }))}
+        />
+        <p className="text-xs text-[#666]">
+          Configure additional channels (Matrix, Teams, LINE, Google Chat, Signal, iMessage, WhatsApp) via{' '}
+          <code className="text-blue-400">lildude onboard</code> or the config file.
+        </p>
+      </section>
+
+      {/* Heartbeat */}
+      <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
+        <h3 className="text-lg font-semibold text-white">Heartbeat (Proactive Agent)</h3>
+        <p className="text-xs text-[#666]">
+          Periodically checks for actionable items based on your standing instructions in <code className="text-blue-400">~/.lil-dude/heartbeat.md</code>.
+        </p>
+
+        <ToggleSwitch
+          label="Enabled"
+          enabled={form.heartbeatEnabled}
+          onChange={(val) => setForm((prev) => ({ ...prev, heartbeatEnabled: val }))}
+        />
+
+        <NumberInput
+          label="Interval (minutes)"
+          value={form.heartbeatIntervalMinutes}
+          onChange={(val) => setForm((prev) => ({ ...prev, heartbeatIntervalMinutes: val }))}
+          min={5}
+          step={5}
+        />
+
+        <NumberInput
+          label="Max Daily Budget (USD)"
+          value={form.heartbeatMaxDailyBudgetUsd}
+          onChange={(val) => setForm((prev) => ({ ...prev, heartbeatMaxDailyBudgetUsd: val }))}
+          min={0}
+          step={0.1}
         />
       </section>
 

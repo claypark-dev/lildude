@@ -1,5 +1,5 @@
 /**
- * Wave Hub API route handlers.
+ * Shorebreak API route handlers.
  * Exposes wave installation, uninstallation, listing, search,
  * rating, and MCP server management endpoints.
  */
@@ -25,7 +25,7 @@ import { createModuleLogger } from '../../utils/logger.js';
 const hubApiLogger = createModuleLogger('hub-api');
 
 /**
- * Register Wave Hub REST endpoints.
+ * Register Shorebreak REST endpoints.
  *
  * @param app - The Fastify server instance.
  * @param db - The better-sqlite3 Database instance.
