@@ -68,6 +68,63 @@ export async function callLLMForParamExtraction(
 }
 
 /**
+ * Call the LLM to fill in specific missing parameters that regex extraction
+ * returned as null. This is a foundational principle: when regex partially
+ * succeeds, the LLM fills only the gaps rather than re-extracting everything.
+ *
+ * @param provider - The LLM provider instance.
+ * @param model - The model identifier to use.
+ * @param wave - The wave whose parameters to extract.
+ * @param userMessage - The raw user message.
+ * @param nullKeys - Parameter keys that regex returned as null.
+ * @param extractedParams - Already-extracted params (for context, not to override).
+ * @returns The ChatResponse from the LLM.
+ */
+export async function callLLMForParamGapFill(
+  provider: LLMProvider,
+  model: string,
+  wave: Wave,
+  userMessage: string,
+  nullKeys: string[],
+  extractedParams: Record<string, unknown>,
+): Promise<ChatResponse> {
+  const alreadyExtracted = Object.entries(extractedParams)
+    .filter(([_, v]) => v !== null && v !== undefined)
+    .map(([k, v]) => `  - ${k}: ${JSON.stringify(v)}`)
+    .join('\n');
+
+  const toolParamDescriptions = wave.manifest.tools
+    .map((tool) => `  - ${tool.name}: ${tool.description} (params: ${JSON.stringify(tool.parameters)})`)
+    .join('\n');
+
+  const systemPrompt = [
+    `You are a parameter extraction engine for the "${wave.manifest.name}" wave.`,
+    `Wave description: ${wave.manifest.description}`,
+    `Available tools:\n${toolParamDescriptions || '  (no tools defined)'}`,
+    '',
+    'Some parameters were already extracted:',
+    alreadyExtracted || '  (none)',
+    '',
+    `Extract ONLY these missing parameters from the user message: ${nullKeys.join(', ')}`,
+    'Return a JSON object with ONLY the missing parameter keys.',
+    'If a parameter genuinely does not appear in the user message, set it to null.',
+    'Do NOT include already-extracted parameters. Do NOT include explanation or markdown.',
+    antiThinkingInstruction(),
+  ].join('\n');
+
+  const messages: Message[] = [
+    { role: 'user', content: prependNoThink(userMessage) },
+  ];
+
+  return provider.chat(messages, {
+    model,
+    maxTokens: 128,
+    temperature: 0,
+    systemPrompt,
+  });
+}
+
+/**
  * Parse extracted parameters from an LLM ChatResponse.
  * Attempts to find and parse JSON from the response text.
  * Falls back to an empty object if parsing fails.

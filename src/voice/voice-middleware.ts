@@ -194,8 +194,10 @@ export async function generateOutboundVoice(
   config: Config,
   tier: InstallTier,
 ): Promise<VoiceOutboundResult> {
-  // Only generate voice response if original was a voice message
-  if (!hadAudio) {
+  const autoSpeak = config.voice.synthesis.autoSpeak === true;
+
+  // Generate voice response if original was a voice message OR autoSpeak is enabled
+  if (!hadAudio && !autoSpeak) {
     return { audioAttachment: null };
   }
 

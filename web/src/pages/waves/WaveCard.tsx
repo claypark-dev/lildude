@@ -4,6 +4,7 @@
  */
 
 import type { WaveCard as WaveCardData } from './wave-hub-api.ts';
+import { TrustBadge } from './TrustBadge.tsx';
 
 /** Star rating display (1-5 scale). */
 function StarRating({ rating, count }: { rating: number; count: number }) {
@@ -94,8 +95,15 @@ export function WaveCard({
 
           {/* Metadata row */}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
-            <span className="text-xs text-[#666]">
-              by {wave.author}
+            <span className="inline-flex items-center gap-1.5 text-xs text-[#666]">
+              {wave.authorProfile?.avatarUrl && (
+                <img
+                  src={wave.authorProfile.avatarUrl}
+                  alt=""
+                  className="w-4 h-4 rounded-full"
+                />
+              )}
+              by {wave.authorProfile?.displayName ?? wave.author}
             </span>
             {wave.averageRating > 0 && (
               <StarRating rating={wave.averageRating} count={wave.ratingCount} />
@@ -110,6 +118,9 @@ export function WaveCard({
           {/* Badges row */}
           {!compact && (
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              {wave.trustTier && (
+                <TrustBadge tier={wave.trustTier} />
+              )}
               <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${tierColor}`}>
                 {wave.safetyTier}
               </span>

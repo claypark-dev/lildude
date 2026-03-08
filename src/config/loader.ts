@@ -3,11 +3,12 @@
  * Reads config from ~/.lil-dude/config.json, applies env var overrides,
  * validates with Zod, and provides save functionality.
  *
- * Priority: env vars > config.json > Zod defaults
+ * Priority: env vars > .env file > config.json > Zod defaults
  * See HLD Section 4.
  */
 
 import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ZodError } from 'zod';
@@ -30,6 +31,56 @@ export function homeDir(): string {
  */
 function configFilePath(): string {
   return path.join(homeDir(), 'config.json');
+}
+
+/**
+ * Loads environment variables from a .env file.
+ * Looks in the project root directory (process.cwd()), then falls back
+ * to the lil-dude home directory. Does NOT overwrite existing env vars —
+ * real env vars always win.
+ *
+ * Format: KEY=VALUE (one per line, # comments, blank lines allowed).
+ * Quoted values are unquoted: KEY="value" → KEY=value
+ */
+function loadDotEnv(): void {
+  // Skip .env loading in test environments to avoid polluting test config
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return;
+  }
+
+  const candidates = [
+    path.join(process.cwd(), '.env'),
+    path.join(homeDir(), '.env'),
+  ];
+
+  for (const filePath of candidates) {
+    try {
+      const raw = readFileSync(filePath, 'utf-8');
+      let loaded = 0;
+      for (const line of raw.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.substring(0, eqIdx).trim();
+        let value = trimmed.substring(eqIdx + 1).trim();
+        // Strip surrounding quotes
+        if ((value.startsWith('"') && value.endsWith('"'))
+            || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        // Don't overwrite real env vars
+        if (process.env[key] === undefined) {
+          process.env[key] = value;
+          loaded++;
+        }
+      }
+      log.info({ path: filePath, loaded }, '.env file loaded');
+      return; // Only load from the first file found
+    } catch {
+      // File doesn't exist — try next candidate
+    }
+  }
 }
 
 /**
@@ -66,8 +117,12 @@ async function readConfigFile(): Promise<Record<string, unknown>> {
  *   LIL_DUDE_OPENAI_KEY     -> providers.openai.apiKey + enabled
  *   LIL_DUDE_DEEPSEEK_KEY   -> providers.deepseek.apiKey + enabled
  *   LIL_DUDE_GEMINI_KEY     -> providers.gemini.apiKey + enabled
+ *   LIL_DUDE_OLLAMA_ENABLED -> providers.ollama.enabled
+ *   LIL_DUDE_OLLAMA_URL     -> providers.ollama.baseUrl
+ *   LIL_DUDE_OLLAMA_MODEL   -> providers.ollama.model
  *   LIL_DUDE_DISCORD_TOKEN  -> channels.discord.token + enabled
  *   LIL_DUDE_TELEGRAM_TOKEN -> channels.telegram.token + enabled
+ *   LIL_DUDE_WEBCHAT_ENABLED -> channels.webchat.enabled
  *   LIL_DUDE_SECURITY       -> security.level
  *   LIL_DUDE_BUDGET         -> budget.monthlyLimitUsd
  *   LIL_DUDE_WS_PORT        -> gateway.wsPort
@@ -106,6 +161,27 @@ function applyEnvOverrides(config: Record<string, unknown>): Record<string, unkn
     }
   }
 
+  // Ollama-specific overrides
+  const ollamaEnabled = process.env.LIL_DUDE_OLLAMA_ENABLED;
+  if (ollamaEnabled !== undefined) {
+    const ollama = ensureNested(merged, 'providers', 'ollama');
+    ollama.enabled = ollamaEnabled === 'true' || ollamaEnabled === '1';
+    log.info({ enabled: ollama.enabled }, 'Ollama enabled set from env var');
+  }
+
+  const ollamaUrl = process.env.LIL_DUDE_OLLAMA_URL;
+  if (ollamaUrl !== undefined) {
+    const ollama = ensureNested(merged, 'providers', 'ollama');
+    ollama.baseUrl = ollamaUrl;
+  }
+
+  const ollamaModel = process.env.LIL_DUDE_OLLAMA_MODEL;
+  if (ollamaModel !== undefined) {
+    const ollama = ensureNested(merged, 'providers', 'ollama');
+    ollama.model = ollamaModel;
+    log.info({ model: ollamaModel }, 'Ollama model set from env var');
+  }
+
   // Channel tokens
   const channelTokenMap: Record<string, string> = {
     LIL_DUDE_DISCORD_TOKEN: 'discord',
@@ -120,6 +196,14 @@ function applyEnvOverrides(config: Record<string, unknown>): Record<string, unkn
       channel.enabled = true;
       log.info({ channel: channelName }, 'Token set from env var');
     }
+  }
+
+  // Webchat enabled
+  const webchatEnabled = process.env.LIL_DUDE_WEBCHAT_ENABLED;
+  if (webchatEnabled !== undefined) {
+    const webchat = ensureNested(merged, 'channels', 'webchat');
+    webchat.enabled = webchatEnabled === 'true' || webchatEnabled === '1';
+    log.info({ enabled: webchat.enabled }, 'Webchat enabled set from env var');
   }
 
   // Security level
@@ -196,6 +280,9 @@ function applyEnvOverrides(config: Record<string, unknown>): Record<string, unkn
  */
 export async function loadConfig(): Promise<Config> {
   try {
+    // Load .env file (project root, then ~/.lil-dude/) before env overrides
+    loadDotEnv();
+
     const rawFile = await readConfigFile();
     const withEnv = applyEnvOverrides(rawFile);
     const result = ConfigSchema.safeParse(withEnv);

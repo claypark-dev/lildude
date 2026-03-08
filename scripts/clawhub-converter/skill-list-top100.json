@@ -1,0 +1,729 @@
+[
+  {
+    "name": "github-repo-info",
+    "description": "Get repository information from GitHub",
+    "env": [
+      "GITHUB_TOKEN"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "github-issues",
+    "description": "Create and manage GitHub issues",
+    "env": [
+      "GITHUB_TOKEN"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "github-pull-requests",
+    "description": "List and review GitHub pull requests",
+    "env": [
+      "GITHUB_TOKEN"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "github-actions",
+    "description": "View and trigger GitHub Actions workflows",
+    "env": [
+      "GITHUB_TOKEN"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "github-gist",
+    "description": "Create and manage GitHub Gists",
+    "env": [
+      "GITHUB_TOKEN"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "slack-message",
+    "description": "Send messages to Slack channels",
+    "env": [
+      "SLACK_BOT_TOKEN"
+    ],
+    "category": "communication"
+  },
+  {
+    "name": "slack-channel-info",
+    "description": "Get Slack channel information and history",
+    "env": [
+      "SLACK_BOT_TOKEN"
+    ],
+    "category": "communication"
+  },
+  {
+    "name": "discord-message",
+    "description": "Send messages to Discord channels",
+    "env": [
+      "DISCORD_BOT_TOKEN"
+    ],
+    "category": "communication"
+  },
+  {
+    "name": "telegram-message",
+    "description": "Send messages via Telegram bot",
+    "env": [
+      "TELEGRAM_BOT_TOKEN"
+    ],
+    "category": "communication"
+  },
+  {
+    "name": "twilio-sms",
+    "description": "Send SMS messages via Twilio",
+    "env": [
+      "TWILIO_ACCOUNT_SID",
+      "TWILIO_AUTH_TOKEN"
+    ],
+    "category": "communication"
+  },
+  {
+    "name": "notion-page",
+    "description": "Create and update Notion pages",
+    "env": [
+      "NOTION_API_KEY"
+    ],
+    "category": "productivity"
+  },
+  {
+    "name": "notion-database",
+    "description": "Query and update Notion databases",
+    "env": [
+      "NOTION_API_KEY"
+    ],
+    "category": "productivity"
+  },
+  {
+    "name": "airtable-records",
+    "description": "Read and write Airtable records",
+    "env": [
+      "AIRTABLE_API_KEY"
+    ],
+    "category": "productivity"
+  },
+  {
+    "name": "linear-issues",
+    "description": "Create and manage Linear issues",
+    "env": [
+      "LINEAR_API_KEY"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "jira-issues",
+    "description": "Create and manage Jira issues",
+    "env": [
+      "JIRA_API_TOKEN"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "gitlab-merge-requests",
+    "description": "List and review GitLab merge requests",
+    "env": [
+      "GITLAB_TOKEN"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "openai-chat",
+    "description": "Chat with OpenAI GPT models",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "category": "ai"
+  },
+  {
+    "name": "openai-image-gen",
+    "description": "Generate images with DALL-E",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "category": "ai"
+  },
+  {
+    "name": "anthropic-chat",
+    "description": "Chat with Anthropic Claude models",
+    "env": [
+      "ANTHROPIC_API_KEY"
+    ],
+    "category": "ai"
+  },
+  {
+    "name": "groq-chat",
+    "description": "Fast inference with Groq LLM API",
+    "env": [
+      "GROQ_API_KEY"
+    ],
+    "category": "ai"
+  },
+  {
+    "name": "replicate-run",
+    "description": "Run AI models on Replicate",
+    "env": [
+      "REPLICATE_API_TOKEN"
+    ],
+    "category": "ai"
+  },
+  {
+    "name": "spotify-search",
+    "description": "Search for music on Spotify",
+    "env": [
+      "SPOTIFY_CLIENT_ID",
+      "SPOTIFY_CLIENT_SECRET"
+    ],
+    "category": "media"
+  },
+  {
+    "name": "youtube-search",
+    "description": "Search for videos on YouTube",
+    "env": [
+      "YOUTUBE_API_KEY"
+    ],
+    "category": "media"
+  },
+  {
+    "name": "aws-s3-list",
+    "description": "List objects in AWS S3 buckets",
+    "env": [
+      "AWS_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY"
+    ],
+    "category": "cloud"
+  },
+  {
+    "name": "supabase-query",
+    "description": "Query Supabase databases",
+    "env": [
+      "SUPABASE_URL",
+      "SUPABASE_KEY"
+    ],
+    "category": "data"
+  },
+  {
+    "name": "firebase-data",
+    "description": "Read and write Firebase Realtime Database",
+    "env": [
+      "FIREBASE_API_KEY"
+    ],
+    "category": "data"
+  },
+  {
+    "name": "webhook-sender",
+    "description": "Send HTTP webhook notifications",
+    "env": [
+      "SLACK_WEBHOOK_URL"
+    ],
+    "category": "communication"
+  },
+  {
+    "name": "text-summarizer",
+    "description": "Summarize long text documents",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "category": "ai"
+  },
+  {
+    "name": "code-reviewer",
+    "description": "Review code and suggest improvements",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "translation-service",
+    "description": "Translate text between languages",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "sentiment-analyzer",
+    "description": "Analyze sentiment of text content",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "category": "ai"
+  },
+  {
+    "name": "json-formatter",
+    "description": "Format and validate JSON data",
+    "category": "utilities"
+  },
+  {
+    "name": "markdown-to-html",
+    "description": "Convert Markdown to HTML",
+    "category": "utilities"
+  },
+  {
+    "name": "base64-encoder",
+    "description": "Encode and decode Base64 strings",
+    "category": "utilities"
+  },
+  {
+    "name": "uuid-generator",
+    "description": "Generate UUIDs and other identifiers",
+    "category": "utilities"
+  },
+  {
+    "name": "hash-calculator",
+    "description": "Calculate MD5, SHA256, and other hashes",
+    "category": "utilities"
+  },
+  {
+    "name": "url-shortener",
+    "description": "Create short URLs for sharing",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "qr-code-gen",
+    "description": "Generate QR codes from text or URLs",
+    "category": "utilities"
+  },
+  {
+    "name": "cron-parser",
+    "description": "Parse and explain cron expressions",
+    "category": "utilities"
+  },
+  {
+    "name": "regex-tester",
+    "description": "Test and explain regular expressions",
+    "category": "utilities"
+  },
+  {
+    "name": "color-converter",
+    "description": "Convert colors between HEX, RGB, and HSL",
+    "category": "utilities"
+  },
+  {
+    "name": "jwt-decoder",
+    "description": "Decode and inspect JWT tokens",
+    "category": "utilities"
+  },
+  {
+    "name": "lorem-ipsum",
+    "description": "Generate placeholder text for testing",
+    "category": "utilities"
+  },
+  {
+    "name": "password-generator",
+    "description": "Generate secure random passwords",
+    "category": "utilities"
+  },
+  {
+    "name": "ip-lookup",
+    "description": "Look up IP address geolocation and details",
+    "category": "utilities"
+  },
+  {
+    "name": "dns-lookup",
+    "description": "Perform DNS lookups for domains",
+    "bins": [
+      "dig"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "port-scanner",
+    "description": "Scan open ports on a host",
+    "bins": [
+      "nc"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "ssl-checker",
+    "description": "Check SSL certificate details for a domain",
+    "bins": [
+      "openssl"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "whois-lookup",
+    "description": "Look up domain registration details",
+    "bins": [
+      "whois"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "ping-check",
+    "description": "Ping a host and report latency",
+    "bins": [
+      "ping"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "traceroute",
+    "description": "Trace network route to a host",
+    "bins": [
+      "traceroute"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "curl-request",
+    "description": "Make HTTP requests with curl",
+    "bins": [
+      "curl"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "git-log",
+    "description": "View git commit history and stats",
+    "bins": [
+      "git"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "git-diff",
+    "description": "Show git diff between commits or branches",
+    "bins": [
+      "git"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "git-branch-manager",
+    "description": "Create, list, and manage git branches",
+    "bins": [
+      "git"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "docker-status",
+    "description": "Check Docker container and image status",
+    "bins": [
+      "docker"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "docker-logs",
+    "description": "View Docker container logs",
+    "bins": [
+      "docker"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "npm-info",
+    "description": "Get npm package information and versions",
+    "bins": [
+      "npm"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "pip-info",
+    "description": "Get Python package information from PyPI",
+    "bins": [
+      "pip"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "system-info",
+    "description": "Get system information (CPU, memory, disk)",
+    "bins": [
+      "uname",
+      "df"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "process-list",
+    "description": "List running processes and resource usage",
+    "bins": [
+      "ps"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "disk-usage",
+    "description": "Check disk usage for directories",
+    "bins": [
+      "du"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "file-search",
+    "description": "Search for files by name or content",
+    "bins": [
+      "find",
+      "grep"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "log-analyzer",
+    "description": "Analyze log files for patterns and errors",
+    "bins": [
+      "grep",
+      "awk"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "csv-processor",
+    "description": "Process and transform CSV files",
+    "bins": [
+      "awk"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "archive-manager",
+    "description": "Create and extract archive files",
+    "bins": [
+      "tar",
+      "zip"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "file-compressor",
+    "description": "Compress files with gzip or bzip2",
+    "bins": [
+      "gzip"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "text-counter",
+    "description": "Count words, lines, and characters",
+    "bins": [
+      "wc"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "file-permissions",
+    "description": "View and change file permissions",
+    "bins": [
+      "chmod",
+      "ls"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "crontab-manager",
+    "description": "List and manage cron jobs",
+    "bins": [
+      "crontab"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "env-inspector",
+    "description": "Inspect environment variables safely",
+    "bins": [
+      "env"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "network-interfaces",
+    "description": "List network interfaces and IP addresses",
+    "bins": [
+      "ifconfig"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "memory-monitor",
+    "description": "Monitor system memory usage",
+    "bins": [
+      "free"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "uptime-checker",
+    "description": "Check system uptime and load average",
+    "bins": [
+      "uptime"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "date-calculator",
+    "description": "Calculate dates and durations",
+    "bins": [
+      "date"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "file-differ",
+    "description": "Compare two files and show differences",
+    "bins": [
+      "diff"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "directory-tree",
+    "description": "Display directory structure as a tree",
+    "bins": [
+      "find",
+      "ls"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "file-renamer",
+    "description": "Batch rename files with patterns",
+    "bins": [
+      "mv"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "backup-creator",
+    "description": "Create timestamped backups of files",
+    "bins": [
+      "cp",
+      "tar"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "symlink-manager",
+    "description": "Create and manage symbolic links",
+    "bins": [
+      "ln"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "temp-cleaner",
+    "description": "Clean up temporary files safely",
+    "bins": [
+      "rm",
+      "find"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "log-rotator",
+    "description": "Rotate and compress old log files",
+    "bins": [
+      "mv",
+      "gzip"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "service-manager",
+    "description": "Manage system services and daemons",
+    "bins": [
+      "systemctl"
+    ],
+    "category": "utilities"
+  },
+  {
+    "name": "kubectl-status",
+    "description": "Get Kubernetes cluster and pod status",
+    "bins": [
+      "kubectl"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "brew-manager",
+    "description": "Manage Homebrew packages on macOS",
+    "bins": [
+      "brew"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "rust-build",
+    "description": "Build and test Rust projects",
+    "bins": [
+      "cargo"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "go-build",
+    "description": "Build and test Go projects",
+    "bins": [
+      "go"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "python-runner",
+    "description": "Run Python scripts safely",
+    "bins": [
+      "python3"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "node-runner",
+    "description": "Run Node.js scripts safely",
+    "bins": [
+      "node"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "make-runner",
+    "description": "Run Makefile targets",
+    "bins": [
+      "make"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "linter-runner",
+    "description": "Run code linters for various languages",
+    "bins": [
+      "npx"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "test-runner",
+    "description": "Run project test suites",
+    "bins": [
+      "npx",
+      "npm"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "dep-checker",
+    "description": "Check for outdated dependencies",
+    "bins": [
+      "npm"
+    ],
+    "category": "development"
+  },
+  {
+    "name": "security-audit",
+    "description": "Run security audit on project dependencies",
+    "bins": [
+      "npm"
+    ],
+    "category": "development"
+  }
+]

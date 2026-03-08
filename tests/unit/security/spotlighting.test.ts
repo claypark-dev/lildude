@@ -31,16 +31,16 @@ describe('wrapUntrustedContent', () => {
   it('generates a random nonce when none is provided', () => {
     const wrapped = wrapUntrustedContent('data', 'web');
     // Should contain EXTERNAL_ prefix with some nonce
-    expect(wrapped).toMatch(/<EXTERNAL_\w+ source="web"/);
-    expect(wrapped).toMatch(/<\/EXTERNAL_\w+>/);
+    expect(wrapped).toMatch(/<EXTERNAL_[\w-]+ source="web"/);
+    expect(wrapped).toMatch(/<\/EXTERNAL_[\w-]+>/);
   });
 
   it('uses different nonces for different calls', () => {
     const wrapped1 = wrapUntrustedContent('data1', 'web');
     const wrapped2 = wrapUntrustedContent('data2', 'web');
     // Extract nonces
-    const nonce1 = wrapped1.match(/<EXTERNAL_(\w+)/)?.[1];
-    const nonce2 = wrapped2.match(/<EXTERNAL_(\w+)/)?.[1];
+    const nonce1 = wrapped1.match(/<EXTERNAL_([\w-]+)/)?.[1];
+    const nonce2 = wrapped2.match(/<EXTERNAL_([\w-]+)/)?.[1];
     expect(nonce1).not.toBe(nonce2);
   });
 

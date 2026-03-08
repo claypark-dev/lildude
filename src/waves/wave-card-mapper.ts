@@ -5,6 +5,7 @@
  */
 
 import type { WaveRegistryEntry, ListedWave } from './hub-helpers.js';
+import { getTrustTier, type TrustTier } from './community-trust.js';
 
 /** Display-ready wave card for the Waves Hub UI. */
 export interface WaveCard {
@@ -50,6 +51,22 @@ export interface WaveCard {
   successRate: number;
   /** Timestamp of last execution (ISO string or null). */
   lastExecutedAt: string | null;
+  /** Community trust score (0–100). */
+  trustScore: number | null;
+  /** Community trust tier. */
+  trustTier: TrustTier | null;
+  /** Author profile for community waves. */
+  authorProfile: {
+    githubUsername: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+  /** Timestamp when the wave was first published (ISO string). */
+  publishedAt: string | null;
+  /** Timestamp when the wave was last updated (ISO string). */
+  updatedAt: string | null;
+  /** SHA-256 package hash for integrity verification. */
+  packageHash: string | null;
 }
 
 /** Local data to merge into a wave card. */
@@ -65,6 +82,16 @@ export interface LocalWaveData {
   successRate?: number;
   /** Last execution timestamp. */
   lastExecutedAt?: string | null;
+  /** Community trust score (0–100). */
+  trustScore?: number | null;
+  /** Community trust tier. */
+  trustTier?: TrustTier | null;
+  /** Author profile for community waves. */
+  authorProfile?: {
+    githubUsername: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
 }
 
 /**
@@ -114,6 +141,12 @@ export function registryEntryToWaveCard(
     executionCount: localData.executionCount ?? 0,
     successRate: localData.successRate ?? 0,
     lastExecutedAt: localData.lastExecutedAt ?? null,
+    trustScore: localData.trustScore ?? entry.communityTrust ?? null,
+    trustTier: localData.trustTier ?? (entry.communityTrust != null ? getTrustTier(entry.communityTrust) : null),
+    authorProfile: localData.authorProfile ?? null,
+    publishedAt: entry.publishedAt ?? null,
+    updatedAt: entry.updatedAt ?? null,
+    packageHash: entry.packageHash ?? null,
   };
 }
 
@@ -147,6 +180,12 @@ export function listedWaveToWaveCard(listedWave: ListedWave): WaveCard {
     executionCount: 0,
     successRate: 0,
     lastExecutedAt: null,
+    trustScore: null,
+    trustTier: null,
+    authorProfile: null,
+    publishedAt: null,
+    updatedAt: null,
+    packageHash: null,
   };
 }
 

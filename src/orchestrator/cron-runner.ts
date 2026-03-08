@@ -124,6 +124,13 @@ async function processJob(
 ): Promise<void> {
   const jobId = job.id;
 
+  // Check if job has expired (time-bounded recurrence)
+  if (job.expiresAt && new Date() >= job.expiresAt) {
+    deleteCronJob(db, jobId);
+    cronLogger.info({ jobId }, 'Expired cron job deleted');
+    return;
+  }
+
   try {
     cronLogger.debug({ jobId, description: job.taskDescription }, 'Executing cron job');
 
@@ -136,8 +143,15 @@ async function processJob(
       cronLogger.info({ jobId }, 'One-time cron job completed and deleted');
     } else {
       const nextRun = computeNextRun(job.schedule, new Date());
-      updateCronJobLastRun(db, jobId, 'success', nextRun);
-      cronLogger.debug({ jobId, nextRun: nextRun.toISOString() }, 'Recurring job updated');
+
+      // Check if next run would be after expiry — if so, delete instead
+      if (job.expiresAt && nextRun >= job.expiresAt) {
+        deleteCronJob(db, jobId);
+        cronLogger.info({ jobId }, 'Cron job completed final run before expiry, deleted');
+      } else {
+        updateCronJobLastRun(db, jobId, 'success', nextRun);
+        cronLogger.debug({ jobId, nextRun: nextRun.toISOString() }, 'Recurring job updated');
+      }
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

@@ -1,0 +1,29 @@
+{
+  "totalWaves": 968,
+  "byCategory": {
+    "ai": 38,
+    "cloud": 20,
+    "communication": 23,
+    "data": 8,
+    "development": 31,
+    "media": 8,
+    "productivity": 9,
+    "uncategorized": 2,
+    "utilities": 829
+  },
+  "bySafetyTier": {
+    "execute": 142,
+    "observe": 365,
+    "create": 447,
+    "modify": 45,
+    "destroy": 2
+  },
+  "byMinTier": {
+    "power": 189,
+    "basic": 366,
+    "standard": 446
+  },
+  "apiOnly": 145,
+  "shellBased": 208,
+  "noExternal": 648
+}

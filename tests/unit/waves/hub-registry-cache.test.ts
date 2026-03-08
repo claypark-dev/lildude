@@ -54,10 +54,10 @@ describe('hub-registry memory cache', () => {
     it('clears the in-memory cache', async () => {
       const db = createFakeDb();
 
-      // First call populates cache (SQLite miss → falls to fallback)
+      // First call misses SQLite cache → remote fails → returns empty list
       mockGetCachedRegistry.mockReturnValue(null);
       const firstResult = await fetchRegistry(db);
-      expect(firstResult.length).toBeGreaterThan(0);
+      expect(firstResult.length).toBe(0);
 
       // Second call should use memory cache (no SQLite read)
       mockGetCachedRegistry.mockClear();

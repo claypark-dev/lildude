@@ -19,7 +19,11 @@
  * @returns The text with all thinking blocks removed and whitespace trimmed.
  */
 export function stripThinkTags(text: string): string {
-  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  // Strip complete <think>...</think> blocks
+  let result = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  // Strip unclosed <think> blocks (model ran out of tokens mid-reasoning)
+  result = result.replace(/<think>[\s\S]*$/g, '').trim();
+  return result;
 }
 
 /**

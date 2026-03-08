@@ -43,6 +43,17 @@ export interface WaveCard {
   executionCount: number;
   successRate: number;
   lastExecutedAt: string | null;
+  /** Community trust fields */
+  trustScore: number | null;
+  trustTier: TrustTier | null;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  packageHash: string | null;
+  authorProfile: {
+    githubUsername: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
 }
 
 /** Category with wave count. */
@@ -136,11 +147,34 @@ export interface WaveExecutionStats {
   lastExecutedAt: string | null;
 }
 
-/** Fetch full wave detail with reviews and execution stats. */
+/** Trust detail from wave detail endpoint. */
+export interface WaveDetailTrust {
+  score: number;
+  tier: TrustTier;
+  scanPassed: boolean;
+  sandboxPassed: boolean;
+  highFindings: number;
+  criticalFindings: number;
+  computedAt: string;
+}
+
+/** Author detail from wave detail endpoint. */
+export interface WaveDetailAuthor {
+  githubUsername: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  publishedCount: number;
+  totalInstalls: number;
+  averageRating: number;
+}
+
+/** Fetch full wave detail with reviews, execution stats, trust, and author data. */
 export async function fetchWaveDetail(name: string): Promise<{
   wave: WaveCard;
   reviews: WaveReview[];
   executionStats: WaveExecutionStats | null;
+  trust: WaveDetailTrust | null;
+  author: WaveDetailAuthor | null;
 }> {
   const res = await hubFetch(`/api/v1/hub/waves/${encodeURIComponent(name)}/detail`);
   if (!res.ok) throw new Error(`Failed to fetch wave "${name}"`);
@@ -237,4 +271,90 @@ export async function uninstallWave(name: string): Promise<void> {
     const data = await res.json().catch(() => ({ error: 'Uninstall failed' }));
     throw new Error(data.error ?? 'Uninstall failed');
   }
+}
+
+// ── Community publishing API ────────────────────────────────────────────
+
+/** Trust tier for community waves. */
+export type TrustTier = 'trusted' | 'community' | 'new' | 'unreviewed';
+
+/** Community author profile. */
+export interface CommunityAuthor {
+  githubUsername: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  publishedCount: number;
+  totalInstalls: number;
+  averageRating: number;
+  joinedAt: string;
+}
+
+/** Trust score breakdown for a wave. */
+export interface TrustScoreInfo {
+  waveName: string;
+  score: number;
+  tier: TrustTier;
+  scanPassed: boolean;
+  sandboxPassed: boolean;
+  highFindings: number;
+  criticalFindings: number;
+  computedAt: string;
+}
+
+/** Publish history entry. */
+export interface PublishHistoryEntry {
+  id: string;
+  waveName: string;
+  version: string;
+  prUrl: string | null;
+  prNumber: number | null;
+  status: string;
+  publishedAt: string;
+}
+
+/** Validate a wave for community publishing. */
+export async function validateWaveForPublish(
+  wavePath: string,
+  skipSandbox?: boolean,
+): Promise<{
+  valid: boolean;
+  manifest: { name: string; version: string; description: string };
+  scanResult: { passed: boolean; summary: Record<string, number> };
+  packageHash: string;
+  totalSizeBytes: number;
+  fileCount: number;
+}> {
+  const res = await hubFetch('/api/v1/community/validate', {
+    method: 'POST',
+    body: JSON.stringify({ wavePath, skipSandbox }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: 'Validation failed' }));
+    throw new Error(data.error ?? 'Validation failed');
+  }
+  return res.json();
+}
+
+/** Fetch community author profile. */
+export async function fetchAuthorProfile(username: string): Promise<{ author: CommunityAuthor }> {
+  const res = await hubFetch(`/api/v1/community/authors/${encodeURIComponent(username)}`);
+  if (!res.ok) throw new Error('Failed to fetch author profile');
+  return res.json();
+}
+
+/** Fetch trust score for a wave. */
+export async function fetchTrustScore(waveName: string): Promise<TrustScoreInfo> {
+  const res = await hubFetch(`/api/v1/community/trust/${encodeURIComponent(waveName)}`);
+  if (!res.ok) throw new Error('Failed to fetch trust score');
+  return res.json();
+}
+
+/** Fetch publish history. */
+export async function fetchPublishHistory(limit?: number): Promise<{
+  submissions: PublishHistoryEntry[];
+}> {
+  const qs = limit ? `?limit=${limit}` : '';
+  const res = await hubFetch(`/api/v1/community/publish/history${qs}`);
+  if (!res.ok) throw new Error('Failed to fetch publish history');
+  return res.json();
 }

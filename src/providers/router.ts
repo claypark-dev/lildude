@@ -7,6 +7,9 @@ import type BetterSqlite3 from 'better-sqlite3';
 import type { ModelTier, ModelSelection } from '../types/index.js';
 import { MODEL_PRICING, type ModelPricingEntry } from '../cost/pricing.js';
 import { getModelQualityStats } from '../persistence/routing-history.js';
+import { createModuleLogger } from '../utils/logger.js';
+
+const routerLogger = createModuleLogger('router');
 
 /** Min ratings before adjusting priority; boost threshold; penalize threshold. */
 const MIN_QUALITY_RATINGS = 5;
@@ -283,8 +286,42 @@ export function selectModel(
     }
   }
 
+  // Tier downgrade fallback: if the requested tier has no available models,
+  // try a lower tier rather than failing entirely. A smaller model is better
+  // than no response at all.
+  const TIER_FALLBACK_ORDER: Record<ModelTier, ModelTier[]> = {
+    large: ['medium', 'small'],
+    medium: ['small'],
+    small: [],
+  };
+
+  for (const fallbackTier of TIER_FALLBACK_ORDER[tier]) {
+    const fallbackPrefs = getTierPreferences(fallbackTier);
+    for (const pref of fallbackPrefs) {
+      if (enabledProviders.includes(pref.provider)) {
+        const pricing = MODEL_PRICING[pref.model] as ModelPricingEntry | undefined;
+        const estimatedCostUsd = pricing
+          ? (pricing.inputPer1k + pricing.outputPer1k)
+          : 0;
+
+        routerLogger.info(
+          { requestedTier: tier, fallbackTier, model: pref.model },
+          'No model for requested tier, falling back to lower tier',
+        );
+
+        return {
+          provider: pref.provider,
+          model: pref.model,
+          tier: fallbackTier,
+          estimatedCostUsd,
+          reasoning: `No ${tier}-tier model available; fell back to ${pref.model} (${fallbackTier} tier) from ${pref.provider}`,
+        };
+      }
+    }
+  }
+
   throw new Error(
-    `No model available for tier "${tier}" with enabled providers: [${enabledProviders.join(', ')}]`,
+    `No model available for tier "${tier}" (or any fallback tier) with enabled providers: [${enabledProviders.join(', ')}]`,
   );
 }
 

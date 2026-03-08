@@ -7,6 +7,11 @@
 import type BetterSqlite3 from 'better-sqlite3';
 import { PersistenceError } from '../errors.js';
 import { persistenceLogger } from '../utils/logger.js';
+import {
+  detectContradiction,
+  markSuperseded,
+  boostConfidence,
+} from '../memory/contradiction-detector.js';
 
 /** Row shape returned from the knowledge table. */
 export interface KnowledgeRow {
@@ -29,6 +34,8 @@ export interface UpsertKnowledgeInput {
   sourceConversationId?: string;
   sourceTaskId?: string;
   confidence?: number;
+  /** Whether the source message contained a correction signal (e.g. "actually", "I changed"). */
+  isCorrection?: boolean;
 }
 
 /** Raw row from SQLite for the knowledge table. */
@@ -64,18 +71,50 @@ function mapRow(row: KnowledgeDbRow): KnowledgeRow {
 }
 
 /**
- * Insert a new knowledge entry.
- * The schema allows multiple entries per category+key combination.
+ * Insert or update a knowledge entry with contradiction-aware logic.
+ *
+ * Before inserting, checks for existing entries with the same category+key:
+ * - **Same value** → boost confidence of existing entry (no duplicate)
+ * - **Different value + correction signal** → supersede the old entry
+ * - **Different value + much higher confidence** → supersede the old entry
+ * - **Different value + similar confidence** → insert both (genuinely different facts)
+ *
  * @param db - The database connection.
  * @param input - The knowledge entry data.
- * @returns The newly created knowledge row.
- * @throws {PersistenceError} If the insert fails.
+ * @returns The resulting knowledge row (new or boosted existing).
+ * @throws {PersistenceError} If the operation fails.
  */
 export function upsertKnowledge(
   db: BetterSqlite3.Database,
   input: UpsertKnowledgeInput,
 ): KnowledgeRow {
   try {
+    const newConfidence = input.confidence ?? 1.0;
+
+    // Run contradiction detection against existing entries
+    const decision = detectContradiction(
+      db,
+      input.category,
+      input.key,
+      input.value,
+      newConfidence,
+      input.isCorrection ?? false,
+    );
+
+    if (decision.action === 'boost' && decision.existingId != null && decision.existingConfidence != null) {
+      // Same value already exists — boost its confidence instead of duplicating
+      boostConfidence(db, decision.existingId, decision.existingConfidence);
+      persistenceLogger.debug(
+        { knowledgeId: decision.existingId, category: input.category, key: input.key },
+        'Knowledge entry boosted (duplicate value)',
+      );
+      const row = db.prepare(
+        'SELECT * FROM knowledge WHERE id = ?',
+      ).get(decision.existingId) as KnowledgeDbRow;
+      return mapRow(row);
+    }
+
+    // Insert the new entry (for both 'insert' and 'supersede' actions)
     const result = db.prepare(
       `INSERT INTO knowledge (category, key, value, source_conversation_id, source_task_id, confidence)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -85,14 +124,24 @@ export function upsertKnowledge(
       input.value,
       input.sourceConversationId ?? null,
       input.sourceTaskId ?? null,
-      input.confidence ?? 1.0,
+      newConfidence,
     );
 
     const insertedId = result.lastInsertRowid as number;
-    persistenceLogger.debug(
-      { knowledgeId: insertedId, category: input.category, key: input.key },
-      'Knowledge entry created',
-    );
+
+    // If superseding, mark the old entry
+    if (decision.action === 'supersede' && decision.existingId != null) {
+      markSuperseded(db, decision.existingId, insertedId);
+      persistenceLogger.debug(
+        { newId: insertedId, supersededId: decision.existingId, category: input.category, key: input.key },
+        'Knowledge entry superseded',
+      );
+    } else {
+      persistenceLogger.debug(
+        { knowledgeId: insertedId, category: input.category, key: input.key },
+        'Knowledge entry created',
+      );
+    }
 
     const row = db.prepare(
       'SELECT * FROM knowledge WHERE id = ?',
@@ -124,8 +173,8 @@ export function getKnowledge(
   try {
     const rows = db.prepare(
       `SELECT * FROM knowledge
-       WHERE category = ? AND key = ?
-       ORDER BY created_at DESC`,
+       WHERE category = ? AND key = ? AND superseded_by IS NULL
+       ORDER BY confidence DESC, created_at DESC`,
     ).all(category, key) as KnowledgeDbRow[];
 
     return rows.map(mapRow);
@@ -155,9 +204,9 @@ export function searchKnowledge(
     if (category !== undefined) {
       const rows = db.prepare(
         `SELECT * FROM knowledge
-         WHERE category = ?
+         WHERE category = ? AND superseded_by IS NULL
            AND (key LIKE ? COLLATE NOCASE OR value LIKE ? COLLATE NOCASE)
-         ORDER BY created_at DESC`,
+         ORDER BY confidence DESC, created_at DESC`,
       ).all(category, pattern, pattern) as KnowledgeDbRow[];
 
       return rows.map(mapRow);
@@ -165,8 +214,9 @@ export function searchKnowledge(
 
     const rows = db.prepare(
       `SELECT * FROM knowledge
-       WHERE key LIKE ? COLLATE NOCASE OR value LIKE ? COLLATE NOCASE
-       ORDER BY created_at DESC`,
+       WHERE superseded_by IS NULL
+         AND (key LIKE ? COLLATE NOCASE OR value LIKE ? COLLATE NOCASE)
+       ORDER BY confidence DESC, created_at DESC`,
     ).all(pattern, pattern) as KnowledgeDbRow[];
 
     return rows.map(mapRow);
@@ -190,8 +240,8 @@ export function getKnowledgeByCategory(
   try {
     const rows = db.prepare(
       `SELECT * FROM knowledge
-       WHERE category = ?
-       ORDER BY created_at DESC`,
+       WHERE category = ? AND superseded_by IS NULL
+       ORDER BY confidence DESC, created_at DESC`,
     ).all(category) as KnowledgeDbRow[];
 
     return rows.map(mapRow);

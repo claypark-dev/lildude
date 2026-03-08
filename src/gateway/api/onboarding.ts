@@ -22,6 +22,12 @@ import { createModuleLogger, securityLogger } from '../../utils/logger.js';
 
 const log = createModuleLogger('api-onboarding');
 
+// In-memory cache for the raw web-panel API key.
+// The DB only stores hashes, so the raw key is only available at generation time.
+// We cache it here so repeated unauthenticated calls return the same key
+// without regenerating (which would invalidate the previous hash).
+let cachedWebPanelKey: string | null = null;
+
 // ── Zod Schemas ─────────────────────────────────────────────────────
 
 const VerifyKeyRequestSchema = z.object({
@@ -44,10 +50,28 @@ export function registerOnboardingRoutes(app: FastifyInstance, db?: BetterSqlite
    * GET /api/v1/onboarding/status
    * Returns onboarding state and hardware profile.
    */
-  app.get('/api/v1/onboarding/status', async (_request, reply) => {
+  app.get('/api/v1/onboarding/status', async (request, reply) => {
     try {
       const onboarded = isOnboarded();
       const hardware = detectHardware();
+
+      // If already onboarded and the request has no valid auth header,
+      // return the existing web-panel API key or generate one if none exists.
+      let apiKey: string | undefined;
+      const authHeader = request.headers.authorization;
+      if (onboarded && db && !authHeader) {
+        if (cachedWebPanelKey) {
+          apiKey = cachedWebPanelKey;
+        } else {
+          // Delete any stale web-panel key from a previous server process
+          // (we can't recover the raw key from the hash).
+          db.prepare("DELETE FROM api_keys WHERE label = 'web-panel'").run();
+          apiKey = generateApiKey();
+          storeApiKey(db, apiKey, 'web-panel');
+          cachedWebPanelKey = apiKey;
+          log.info('Web panel API key generated for new browser session');
+        }
+      }
 
       return reply.send({
         onboarded,
@@ -61,6 +85,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, db?: BetterSqlite
           features: hardware.features,
           recommendedTier: hardware.recommendedTier,
         },
+        ...(apiKey ? { apiKey } : {}),
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -146,6 +171,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, db?: BetterSqlite
         ).run();
         apiKey = generateApiKey();
         storeApiKey(db, apiKey, 'web-panel');
+        cachedWebPanelKey = apiKey;
         log.info('Web panel API key generated during onboarding');
       }
 

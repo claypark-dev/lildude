@@ -578,7 +578,7 @@ describe('Gateway REST API', () => {
       expect(body).toHaveProperty('greeting');
       expect(body).toHaveProperty('sections');
       expect(body).toHaveProperty('summary');
-      expect(body.sections).toHaveLength(7);
+      expect(body.sections).toHaveLength(8);
       expect(body.summary.activeWaves).toBe(0);
       expect(body.summary.pendingTasks).toBe(0);
     });

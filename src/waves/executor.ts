@@ -19,12 +19,14 @@ import { createModuleLogger } from '../utils/logger.js';
 import { BudgetExceededError } from '../errors.js';
 import {
   callLLMForParamExtraction,
+  callLLMForParamGapFill,
   parseExtractedParams,
   runValidationIfPresent,
   assertCanAfford,
   buildFailureResult,
 } from './executor-helpers.js';
 import { executePartyWave } from './executor-party.js';
+import { executeBrowserAction } from '../tools/browser.js';
 
 const executorLogger = createModuleLogger('wave-executor');
 
@@ -36,6 +38,8 @@ export interface WaveExecutionResult {
   costUsd: number;
   llmCallCount: number;
   wasDeterministic: boolean;
+  /** Optional metadata from the wave's execute() return. Used for actions like cron job creation. */
+  metadata?: Record<string, unknown>;
 }
 
 /** Dependencies injected into the wave executor. */
@@ -129,9 +133,12 @@ async function executeDeterministic(
 ): Promise<WaveExecutionResult> {
   const waveName = wave.manifest.name;
 
+  // Build wave deps with browser tool and allowed domains from manifest
   const waveDeps = {
     db: deps.db,
     getAccessToken: deps.getAccessToken,
+    executeBrowserAction,
+    allowedDomains: wave.manifest.permissions.domains,
   };
 
   // Step 1: Try the wave's own plan() for regex-based param extraction first.
@@ -156,7 +163,7 @@ async function executeDeterministic(
         extractedParams = regexParams;
         executorLogger.debug(
           { waveName, extractedParams },
-          'Parameters extracted via wave plan() regex — skipping LLM call',
+          'Parameters extracted via wave plan() regex',
         );
       }
     } catch (planError: unknown) {
@@ -168,7 +175,68 @@ async function executeDeterministic(
     }
   }
 
-  // Step 2: Fall back to LLM param extraction if regex didn't yield params
+  // Step 1b: LLM gap-fill — if regex extracted some params but left others null,
+  // use a cheap LLM call to fill in just the missing values.
+  const nullKeys = Object.entries(extractedParams)
+    .filter(([_, v]) => v === null)
+    .map(([k]) => k);
+
+  if (Object.keys(extractedParams).length > 0 && nullKeys.length > 0) {
+    try {
+      const modelSelection = selectModel('small', deps.enabledProviders);
+      const estimatedCost = calculateCost(modelSelection.model, 500, 200);
+      assertCanAfford(deps, estimatedCost);
+
+      executorLogger.debug(
+        { waveName, nullKeys },
+        'LLM gap-fill triggered for null params',
+      );
+
+      const gapFillResponse = await callLLMForParamGapFill(
+        deps.provider,
+        modelSelection.model,
+        wave,
+        userMessage,
+        nullKeys,
+        extractedParams,
+      );
+
+      const gapFillCost = calculateCost(
+        modelSelection.model,
+        gapFillResponse.usage.inputTokens,
+        gapFillResponse.usage.outputTokens,
+        gapFillResponse.usage.cacheReadTokens ?? 0,
+      );
+
+      const gapFillParams = parseExtractedParams(gapFillResponse);
+
+      // Merge: only fill in keys that were null
+      for (const key of nullKeys) {
+        if (gapFillParams[key] !== undefined && gapFillParams[key] !== null) {
+          extractedParams[key] = gapFillParams[key];
+        }
+      }
+
+      totalInputTokens += gapFillResponse.usage.inputTokens;
+      totalOutputTokens += gapFillResponse.usage.outputTokens;
+      extractionCost += gapFillCost;
+      llmCallCount += 1;
+
+      executorLogger.debug(
+        { waveName, filledKeys: nullKeys.filter((k) => extractedParams[k] !== null) },
+        'LLM gap-fill complete',
+      );
+    } catch (gapFillError: unknown) {
+      // Gap-fill is best-effort — if it fails (budget, LLM error), continue with partial params
+      const msg = gapFillError instanceof Error ? gapFillError.message : String(gapFillError);
+      executorLogger.debug(
+        { waveName, error: msg },
+        'LLM gap-fill failed, continuing with regex-only params',
+      );
+    }
+  }
+
+  // Step 2: Fall back to full LLM param extraction if regex didn't yield any params
   if (Object.keys(extractedParams).length === 0) {
     const modelSelection = selectModel('small', deps.enabledProviders);
     const estimatedCost = calculateCost(modelSelection.model, 500, 200);
@@ -233,6 +301,7 @@ async function executeDeterministic(
     costUsd: extractionCost,
     llmCallCount,
     wasDeterministic: true,
+    metadata: toolResult.metadata as Record<string, unknown> | undefined,
   };
 }
 
@@ -287,8 +356,19 @@ async function executeNonDeterministic(
   const waveDeps = {
     db: deps.db,
     getAccessToken: deps.getAccessToken,
+    executeBrowserAction,
+    allowedDomains: wave.manifest.permissions.domains,
+    provider: deps.provider,
+    model: modelSelection.model,
   };
-  const plan = await wave.plan(userMessage, { _deps: waveDeps });
+  const rawPlan = await wave.plan(userMessage, { _deps: waveDeps });
+
+  // Inject _deps into the plan's extractedParams so the wave's execute()
+  // can access injected tools (browser, db, etc.) without needing direct imports.
+  const plan = {
+    ...rawPlan,
+    extractedParams: { ...rawPlan.extractedParams, _deps: waveDeps },
+  };
 
   executorLogger.debug(
     { waveName, stepCount: plan.steps.length, isDeterministic: plan.isDeterministic },
@@ -320,5 +400,6 @@ async function executeNonDeterministic(
     costUsd: plan.estimatedCostUsd,
     llmCallCount: 2,
     wasDeterministic: false,
+    metadata: toolResult.metadata as Record<string, unknown> | undefined,
   };
 }

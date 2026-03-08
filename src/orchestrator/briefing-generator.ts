@@ -15,6 +15,7 @@ import { getAllWaves } from '../waves/registry.js';
 import { listTokens } from '../integrations/oauth-store.js';
 import { listEmails } from '../integrations/gmail.js';
 import { listEvents } from '../integrations/google-calendar.js';
+import { searchKnowledge } from '../persistence/knowledge.js';
 import { createModuleLogger } from '../utils/logger.js';
 
 const briefingLogger = createModuleLogger('briefing');
@@ -90,6 +91,7 @@ export async function generateBriefing(
     sections.push(buildNoCalendarSection());
   }
 
+  sections.push(buildRecentlyLearnedSection(db));
   sections.push(buildWavesSection());
   sections.push(buildTasksSection(db));
   sections.push(buildScheduleSection(db));
@@ -363,6 +365,62 @@ function formatEventTime(isoStr: string): string {
   } catch {
     return isoStr;
   }
+}
+
+// ─── Recently Learned Section ────────────────────────────────────────────────
+
+/**
+ * Build a section showing recently learned facts with low confidence,
+ * giving the user a chance to confirm or deny them.
+ */
+function buildRecentlyLearnedSection(db: BetterSqlite3.Database): BriefingSection {
+  const items: BriefingItem[] = [];
+
+  try {
+    // Find recent facts with low confidence that haven't been accessed much
+    const recentFacts = db.prepare(`
+      SELECT category, key, value, confidence, created_at
+      FROM knowledge
+      WHERE confidence < 0.6
+        AND access_count < 2
+        AND superseded_by IS NULL
+        AND created_at > datetime('now', '-7 days')
+      ORDER BY created_at DESC
+      LIMIT 5
+    `).all() as Array<{
+      category: string;
+      key: string;
+      value: string;
+      confidence: number;
+      created_at: string;
+    }>;
+
+    if (recentFacts.length === 0) {
+      items.push({
+        label: 'No new facts to confirm',
+        value: 'Everything looks good',
+        status: 'good',
+      });
+    } else {
+      for (const fact of recentFacts) {
+        const displayKey = fact.key.replace(/_/g, ' ').replace(/^favorite /, 'fav ');
+        items.push({
+          label: `${displayKey}: ${fact.value}`,
+          value: `Confidence: ${Math.round(fact.confidence * 100)}% — say "correct" or "wrong" to update`,
+          status: fact.confidence < 0.4 ? 'warning' : 'info',
+        });
+      }
+    }
+  } catch {
+    // Knowledge table may not have the new columns yet — silently skip
+    items.push({
+      label: 'Memory check skipped',
+      value: 'Could not load recent facts',
+      status: 'neutral',
+    });
+  }
+
+  return { title: 'Recently Learned', icon: '\uD83E\uDDE0', items };
 }
 
 // ─── Other Sections ─────────────────────────────────────────────────────────

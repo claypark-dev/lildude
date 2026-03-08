@@ -10,7 +10,7 @@
     "requiresBrowser": true,
     "requiresOAuth": []
   },
-  "triggers": ["flight", "flights", "fly", "airline", "travel"],
+  "triggers": ["flight", "flights", "fly", "airline", "travel", "layover", "nonstop", "stopover", "round trip", "one way", "airport", "airfare"],
   "deterministic": false,
   "tools": [
     {

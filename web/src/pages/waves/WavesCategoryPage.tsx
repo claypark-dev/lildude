@@ -1,6 +1,6 @@
 /**
- * Category browse page for the Skills Hub.
- * Shows filterable/sortable grid of skills within a specific category.
+ * Category browse page for Shorebreak.
+ * Shows filterable/sortable grid of waves within a specific category.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -128,7 +128,7 @@ export function WavesCategoryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-white">{displayCategory}</h2>
-          <p className="text-xs text-[#888]">{total} skills</p>
+          <p className="text-xs text-[#888]">{total} waves</p>
         </div>
       </div>
 
@@ -192,13 +192,13 @@ export function WavesCategoryPage() {
         </p>
       )}
 
-      {loading && <p className="text-[#a0a0a0] text-sm">Loading skills…</p>}
+      {loading && <p className="text-[#a0a0a0] text-sm">Loading waves…</p>}
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       {/* Wave grid */}
       {!loading && waves.length === 0 && (
         <div className="bg-[#111] rounded-xl p-8 border border-[#222] text-center">
-          <p className="text-[#a0a0a0]">No skills found in this category.</p>
+          <p className="text-[#a0a0a0]">No waves found in this category.</p>
         </div>
       )}
 

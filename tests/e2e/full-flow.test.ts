@@ -13,6 +13,7 @@ import type { ChatResponse } from '../../src/types/index.js';
 import { getRecentSecurityLogs } from '../../src/persistence/security-log.js';
 import { getMonthlyTotalCost } from '../../src/persistence/token-usage.js';
 import { generateApiKey, storeApiKey } from '../../src/persistence/api-keys.js';
+import { clearRegistry } from '../../src/waves/registry.js';
 
 const MIGRATIONS_DIR = join(__dirname, '..', '..', 'src', 'persistence', 'migrations');
 
@@ -47,6 +48,8 @@ describe('E2E: Full Application Flow', () => {
   });
 
   afterEach(async () => {
+    // Clear global wave registry to prevent cross-test interference
+    clearRegistry();
     if (appContext) {
       try { await appContext.gateway.stop(); } catch { /* cleanup */ }
       try { appContext.dbManager.close(); } catch { /* cleanup */ }
@@ -67,6 +70,9 @@ describe('E2E: Full Application Flow', () => {
       skipGatewayListen: true,
       skipSignalHandlers: true,
     });
+
+    // Clear wave registry so test messages don't route to community waves
+    clearRegistry();
 
     const result = await appContext.agentLoop.processMessage('conv-e2e-1', 'Help me plan my week', 'webchat');
     expect(result.responseText).toBe('I can help with that!');
@@ -91,6 +97,10 @@ describe('E2E: Full Application Flow', () => {
       skipGatewayListen: true,
       skipSignalHandlers: true,
     });
+
+    // Clear wave registry so "message" keyword doesn't route to community waves
+    // (e.g. slack-message, discord-message) which bypass recordTokenUsage
+    clearRegistry();
 
     await appContext.agentLoop.processMessage('conv-cost-1', 'First message', 'webchat');
     await appContext.agentLoop.processMessage('conv-cost-2', 'Second message', 'webchat');

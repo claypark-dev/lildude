@@ -16,6 +16,8 @@ import { getDailyTotalCost } from '../persistence/token-usage.js';
 import { getDailyFeedbackCounts } from '../persistence/user-feedback.js';
 import { getTopFailureTypes, type TopFailureType } from '../persistence/failure-patterns.js';
 import { getTopWavesByUsage, type TopWaveUsage } from '../persistence/wave-effectiveness.js';
+import { runKnowledgeLifecycle } from '../memory/knowledge-lifecycle.js';
+import { analyzeBehavioralPatterns } from '../memory/behavioral-analyzer.js';
 
 const journalLogger = createModuleLogger('learning-journal');
 
@@ -154,6 +156,32 @@ export function generateDailyJournal(
       { date: targetDate, totalTasks: entry.totalTasks, completedTasks: entry.completedTasks },
       'Daily journal entry generated',
     );
+
+    // Run knowledge lifecycle (eviction, decay, dedup) alongside the daily journal
+    try {
+      const lifecycleResult = runKnowledgeLifecycle(db);
+      journalLogger.info(
+        { ...lifecycleResult, date: targetDate },
+        'Knowledge lifecycle completed during daily journal',
+      );
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      journalLogger.warn({ error: msg }, 'Knowledge lifecycle failed (non-fatal)');
+    }
+
+    // Run behavioral analysis to infer preferences from conversation patterns
+    try {
+      const behavioralResult = analyzeBehavioralPatterns(db);
+      if (behavioralResult.inferred > 0) {
+        journalLogger.info(
+          { ...behavioralResult, date: targetDate },
+          'Behavioral analysis completed during daily journal',
+        );
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      journalLogger.warn({ error: msg }, 'Behavioral analysis failed (non-fatal)');
+    }
 
     return entry;
   } catch (error: unknown) {

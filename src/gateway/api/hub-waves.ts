@@ -21,6 +21,8 @@ import {
   getTopExecutedWaves,
   getExecutionCountsBySource,
 } from '../../persistence/wave-executions.js';
+import { getTrustScoresBatch } from '../../persistence/wave-community-trust.js';
+import { getAuthor } from '../../persistence/wave-authors.js';
 import { createModuleLogger } from '../../utils/logger.js';
 
 const hubWavesLogger = createModuleLogger('hub-waves-api');
@@ -120,12 +122,15 @@ export function registerHubWavesRoutes(
       party?: string;
       limit?: string;
       offset?: string;
+      trust?: string;
+      author?: string;
+      minRating?: string;
     };
   }>('/api/v1/hub/browse', async (request, reply) => {
     try {
       const registryWaves = await fetchRegistry(db);
       const localWaves = listWaves(db);
-      const { q, category, tags, sort, party, limit, offset } = request.query;
+      const { q, category, tags, sort, party, limit, offset, trust, author, minRating } = request.query;
 
       const filteredWaves = searchRegistryAdvanced(registryWaves, {
         query: q,
@@ -135,17 +140,29 @@ export function registerHubWavesRoutes(
         isPartyWave: party === 'true' ? true : party === 'false' ? false : undefined,
         limit: limit ? parseInt(limit, 10) : 50,
         offset: offset ? parseInt(offset, 10) : 0,
+        trust,
+        author,
+        minRating: minRating ? parseFloat(minRating) : undefined,
       });
 
-      // Merge with local data
+      // Merge with local data and trust scores
       const localDataMap = new Map<string, LocalWaveData>();
       for (const wave of localWaves) {
         localDataMap.set(wave.name, { installed: true });
       }
 
+      // Batch-fetch trust scores for all waves in results
+      const waveNames = filteredWaves.map((w) => w.name);
+      const trustScores = getTrustScoresBatch(db, waveNames);
+
       const cards = filteredWaves.map((entry) => {
         const localData = localDataMap.get(entry.name) ?? { installed: false };
-        return registryEntryToWaveCard(entry, localData);
+        const trustEntry = trustScores.get(entry.name);
+        return registryEntryToWaveCard(entry, {
+          ...localData,
+          trustScore: trustEntry?.trustScore ?? entry.communityTrust ?? null,
+          trustTier: trustEntry?.trustTier ?? null,
+        });
       });
 
       return reply.send({ waves: cards, total: cards.length });
@@ -177,6 +194,11 @@ export function registerHubWavesRoutes(
 
       const execStats = getExecutionStats(db, name);
 
+      // Fetch trust and author data
+      const trustScoreMap = getTrustScoresBatch(db, [name]);
+      const trustEntry = trustScoreMap.get(name);
+      const authorProfile = entry.author ? getAuthor(db, entry.author) : null;
+
       const card = registryEntryToWaveCard(entry, {
         installed: isInstalled,
         localInstallCount: installCount,
@@ -185,6 +207,13 @@ export function registerHubWavesRoutes(
         executionCount: execStats?.totalExecutions,
         successRate: execStats?.successRate,
         lastExecutedAt: execStats?.lastExecutedAt,
+        trustScore: trustEntry?.trustScore ?? entry.communityTrust ?? null,
+        trustTier: trustEntry?.trustTier ?? null,
+        authorProfile: authorProfile ? {
+          githubUsername: authorProfile.githubUsername,
+          displayName: authorProfile.displayName,
+          avatarUrl: authorProfile.avatarUrl,
+        } : null,
       });
 
       return reply.send({
@@ -197,6 +226,23 @@ export function registerHubWavesRoutes(
           successRate: execStats.successRate,
           avgExecutionTimeMs: execStats.avgExecutionTimeMs,
           lastExecutedAt: execStats.lastExecutedAt,
+        } : null,
+        trust: trustEntry ? {
+          score: trustEntry.trustScore,
+          tier: trustEntry.trustTier,
+          scanPassed: trustEntry.scanPassed,
+          sandboxPassed: trustEntry.sandboxPassed,
+          highFindings: trustEntry.highFindings,
+          criticalFindings: trustEntry.criticalFindings,
+          computedAt: trustEntry.computedAt.toISOString(),
+        } : null,
+        author: authorProfile ? {
+          githubUsername: authorProfile.githubUsername,
+          displayName: authorProfile.displayName,
+          avatarUrl: authorProfile.avatarUrl,
+          publishedCount: authorProfile.publishedCount,
+          totalInstalls: authorProfile.totalInstalls,
+          averageRating: authorProfile.averageRating,
         } : null,
       });
     } catch (error: unknown) {

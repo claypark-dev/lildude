@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -8,6 +8,19 @@ import { installWave, listWaves, uninstallWave, searchWaves } from '../../../src
 import { parseGitHubSource, checkWavePermissions } from '../../../src/waves/hub-helpers.js';
 import { SecurityError } from '../../../src/errors.js';
 import type { WaveManifest } from '../../../src/types/index.js';
+
+// Mock fetchRegistry for searchWaves tests — returns test data instead of hitting remote
+vi.mock('../../../src/waves/hub-registry.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/waves/hub-registry.js')>();
+  return {
+    ...actual,
+    fetchRegistry: vi.fn().mockResolvedValue([
+      { name: 'weather-checker', description: 'Check weather forecasts for any location', author: 'lil-dude-community', source: 'github:claypark-dev/weather-checker', triggers: ['weather', 'forecast', 'temperature'], version: '1.2.0' },
+      { name: 'email-summarizer', description: 'Summarize unread emails from Gmail or Outlook', author: 'lil-dude-community', source: 'github:claypark-dev/email-summarizer', triggers: ['email', 'inbox', 'unread', 'mail'], version: '0.9.0' },
+      { name: 'code-reviewer', description: 'Review code changes and provide feedback', author: 'lil-dude-community', source: 'github:claypark-dev/code-reviewer', triggers: ['review', 'code review', 'PR', 'pull request'], version: '2.0.1' },
+    ]),
+  };
+});
 
 const MIGRATIONS_DIR = join(__dirname, '..', '..', '..', 'src', 'persistence', 'migrations');
 const FIXTURES_DIR = join(__dirname, '..', '..', 'fixtures', 'waves');
@@ -346,25 +359,25 @@ describe('wave hub', () => {
   // === searchWaves ===
 
   describe('searchWaves', () => {
-    it('filters results by query matching name/description/triggers', () => {
-      const weatherResults = searchWaves('weather');
+    it('filters results by query matching name/description/triggers', async () => {
+      const weatherResults = await searchWaves(manager.db, 'weather');
       expect(weatherResults.length).toBeGreaterThan(0);
       expect(weatherResults.some((entry) => entry.name === 'weather-checker')).toBe(true);
     });
 
-    it('returns empty for queries with no matches', () => {
-      const noResults = searchWaves('xyznonexistent123');
+    it('returns empty for queries with no matches', async () => {
+      const noResults = await searchWaves(manager.db, 'xyznonexistent123');
       expect(noResults).toEqual([]);
     });
 
-    it('matches against triggers', () => {
-      const emailResults = searchWaves('inbox');
+    it('matches against triggers', async () => {
+      const emailResults = await searchWaves(manager.db, 'inbox');
       expect(emailResults.length).toBeGreaterThan(0);
       expect(emailResults.some((entry) => entry.name === 'email-summarizer')).toBe(true);
     });
 
-    it('is case-insensitive', () => {
-      const results = searchWaves('WEATHER');
+    it('is case-insensitive', async () => {
+      const results = await searchWaves(manager.db, 'WEATHER');
       expect(results.length).toBeGreaterThan(0);
     });
   });

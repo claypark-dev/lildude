@@ -42,10 +42,16 @@ describe('think-strip utilities', () => {
       expect(stripThinkTags(input)).toBe('result');
     });
 
-    it('does not strip partial/malformed think tags', () => {
+    it('strips unclosed think tags (model ran out of tokens mid-reasoning)', () => {
       const input = '<think>unclosed tag {"result": true}';
-      // Unclosed tag should not be stripped (greedy match would eat everything)
-      expect(stripThinkTags(input)).toBe('<think>unclosed tag {"result": true}');
+      // Unclosed <think> blocks are stripped — the model likely ran out of tokens
+      // while reasoning, and we don't want raw thinking leaked to the user.
+      expect(stripThinkTags(input)).toBe('');
+    });
+
+    it('preserves text before an unclosed think tag', () => {
+      const input = 'Some answer text <think>unclosed reasoning...';
+      expect(stripThinkTags(input)).toBe('Some answer text');
     });
   });
 

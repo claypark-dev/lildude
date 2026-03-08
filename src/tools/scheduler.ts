@@ -12,6 +12,7 @@ import type BetterSqlite3 from 'better-sqlite3';
 import type { ToolResult } from '../types/index.js';
 import { createCronJob } from '../persistence/cron-jobs.js';
 import { appendSecurityLog } from '../persistence/security-log.js';
+import { computeNextRun } from '../orchestrator/cron-parser.js';
 
 /** Action type constant for security log entries. */
 const ACTION_TYPE = 'schedule_task';
@@ -116,12 +117,16 @@ export async function scheduleTask(
       };
     }
 
+    // Compute the first run time so the cron runner can pick up this job
+    const nextRunAt = computeNextRun(schedule, new Date());
+
     const cronJob = createCronJob(db, {
       schedule,
       taskDescription: description,
       waveId: opts?.waveId,
       usesAi: opts?.usesAi,
       estimatedCostPerRun: opts?.estimatedCostUsd,
+      nextRunAt,
     });
 
     appendSecurityLog(db, {

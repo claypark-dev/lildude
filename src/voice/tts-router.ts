@@ -108,6 +108,15 @@ export async function getTtsBackend(config: Config): Promise<TtsBackend> {
   );
 }
 
+/** Optional voice overrides for preview (use unsaved form state instead of persisted config). */
+export interface VoiceOverrides {
+  backend?: 'say' | 'kokoro' | 'elevenlabs';
+  sayVoice?: string;
+  sayRate?: number;
+  kokoroSpeaker?: string;
+  voiceId?: string;
+}
+
 /**
  * Synthesize text to speech using the configured backend.
  * This is the main entry point for TTS operations.
@@ -115,6 +124,7 @@ export async function getTtsBackend(config: Config): Promise<TtsBackend> {
  * @param config - The full application config.
  * @param text - The text to synthesize.
  * @param tier - The current install tier (for gating).
+ * @param overrides - Optional voice overrides (e.g. from the preview UI before saving).
  * @returns The synthesized audio result.
  * @throws If TTS is not enabled, not available at this tier, or synthesis fails.
  */
@@ -122,6 +132,7 @@ export async function synthesizeSpeech(
   config: Config,
   text: string,
   tier: InstallTier,
+  overrides?: VoiceOverrides,
 ): Promise<TtsSynthesizeResult> {
   // Check if TTS is enabled in config
   if (!config.voice.enabled || !config.voice.synthesis.enabled) {
@@ -137,15 +148,18 @@ export async function synthesizeSpeech(
 
   const backend = await getTtsBackend(config);
 
+  // Use overrides (from preview UI) if provided, otherwise fall back to saved config
+  const activeBackend = overrides?.backend ?? config.voice.synthesis.backend;
+
   const options: TtsSynthesizeOptions = {
     text,
-    voice: config.voice.synthesis.backend === 'say'
-      ? config.voice.synthesis.sayVoice
-      : config.voice.synthesis.backend === 'kokoro'
-        ? config.voice.synthesis.kokoroSpeaker
-        : config.voice.synthesis.voiceId,
-    rate: config.voice.synthesis.backend === 'say'
-      ? config.voice.synthesis.sayRate
+    voice: activeBackend === 'say'
+      ? (overrides?.sayVoice ?? config.voice.synthesis.sayVoice)
+      : activeBackend === 'kokoro'
+        ? (overrides?.kokoroSpeaker ?? config.voice.synthesis.kokoroSpeaker)
+        : (overrides?.voiceId ?? config.voice.synthesis.voiceId),
+    rate: activeBackend === 'say'
+      ? (overrides?.sayRate ?? config.voice.synthesis.sayRate)
       : 1.0,
   };
 

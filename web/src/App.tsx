@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout.tsx';
 import { OnboardingGuard } from './components/OnboardingGuard.tsx';
-import { Dashboard } from './pages/Dashboard.tsx';
+import { Surfwatch } from './pages/Dashboard.tsx';
 import { Chat } from './pages/Chat.tsx';
 import { Tasks } from './pages/Tasks.tsx';
 import { Settings } from './pages/Settings.tsx';
@@ -11,6 +11,9 @@ import { WavesHub } from './pages/WavesHub.tsx';
 import { WavesHubHome } from './pages/waves/WavesHubHome.tsx';
 import { WavesCategoryPage } from './pages/waves/WavesCategoryPage.tsx';
 import { InstalledWaves } from './pages/waves/InstalledWaves.tsx';
+import { CommunityTab } from './pages/waves/CommunityTab.tsx';
+import { PublishWave } from './pages/waves/PublishWave.tsx';
+import { AuthorProfile } from './pages/waves/AuthorProfile.tsx';
 import { PartyWaves } from './pages/PartyWaves.tsx';
 import { Onboarding } from './pages/Onboarding.tsx';
 
@@ -25,7 +28,7 @@ export function App() {
         {/* Main app — guarded by onboarding check */}
         <Route element={<OnboardingGuard />}>
           <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Surfwatch />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/briefing" element={<Briefing />} />
@@ -33,6 +36,9 @@ export function App() {
             <Route path="/hub" element={<WavesHub />}>
               <Route index element={<WavesHubHome />} />
               <Route path="category/:category" element={<WavesCategoryPage />} />
+              <Route path="community" element={<CommunityTab />} />
+              <Route path="publish" element={<PublishWave />} />
+              <Route path="author/:username" element={<AuthorProfile />} />
               <Route path="installed" element={<InstalledWaves />} />
             </Route>
             <Route path="/party-waves" element={<PartyWaves />} />

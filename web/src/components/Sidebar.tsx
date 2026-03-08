@@ -8,12 +8,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/', icon: '\u2302' },
+  { label: 'Surfwatch', path: '/', icon: '\uD83C\uDFC4' },
   { label: 'Briefing', path: '/briefing', icon: '\u2600' },
   { label: 'Chat', path: '/chat', icon: '\u2709' },
   { label: 'Tasks', path: '/tasks', icon: '\u2611' },
   { label: 'Approvals', path: '/shorebreak', icon: '\u2714' },
-  { label: 'Skills Hub', path: '/hub', icon: '\u2B50' },
+  { label: 'Shorebreak', path: '/hub', icon: '\uD83C\uDF0A' },
   { label: 'Party Waves', path: '/party-waves', icon: '\uD83C\uDF0A' },
   { label: 'Settings', path: '/settings', icon: '\u2699' },
 ];

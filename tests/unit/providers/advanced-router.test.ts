@@ -129,11 +129,11 @@ describe('selectModelWithHistory', () => {
     expect(selectionAutomation.model).toBe('gpt-4o-mini');
   });
 
-  it('delegates to selectModel fallback when no available models in tier', () => {
-    // Only deepseek enabled, which has no medium models in TIER_PREFERENCES
-    expect(() => selectModelWithHistory('medium', ['deepseek'], db)).toThrow(
-      /No model available for tier "medium"/,
-    );
+  it('delegates to selectModel fallback which downgrades tier when no models in requested tier', () => {
+    // Only deepseek enabled, which has no medium models — falls back to small tier
+    const selection = selectModelWithHistory('medium', ['deepseek'], db);
+    expect(selection.provider).toBe('deepseek');
+    expect(selection.tier).toBe('small');
   });
 
   it('returns correct estimated cost', () => {

@@ -14,6 +14,8 @@ import { startApp, startOnboardingMode, isOnboarded } from './index.js';
 import { loadConfig, homeDir } from './config/loader.js';
 import { createDatabase } from './persistence/db.js';
 import { installWave, listWaves, uninstallWave, searchWaves } from './waves/hub.js';
+import { packageWave } from './waves/packager.js';
+import { publishToRegistry } from './waves/publisher.js';
 import type { SecurityLevel } from './security/permissions.js';
 
 const program = new Command();
@@ -146,9 +148,13 @@ waveCmd
 waveCmd
   .command('search <query>')
   .description('Search the wave registry')
-  .action((query: string) => {
+  .action(async (query: string) => {
     try {
-      const results = searchWaves(query);
+      const dbPath = join(homeDir(), 'lil-dude.db');
+      const dbManager = createDatabase(dbPath);
+      dbManager.runMigrations();
+
+      const results = await searchWaves(dbManager.db, query);
       if (results.length === 0) {
         console.log(`No waves found matching "${query}".`);
       } else {
@@ -158,9 +164,115 @@ waveCmd
           console.log(`    Install: lil-dude wave install ${entry.source}`);
         }
       }
+
+      dbManager.close();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`Failed to search waves: ${message}`);
+      process.exit(1);
+    }
+  });
+
+waveCmd
+  .command('publish <path>')
+  .description('Publish a wave to the community registry via GitHub PR')
+  .option('--dry-run', 'Validate and scan without opening a PR')
+  .option('--skip-sandbox', 'Skip sandbox execution (scan still required)')
+  .option('--registry-repo <repo>', 'Override registry repo', 'lildude-community/wave-registry')
+  .option('--github-token <token>', 'GitHub PAT (or set GITHUB_TOKEN env var)')
+  .action(async (wavePath: string, options: {
+    dryRun?: boolean;
+    skipSandbox?: boolean;
+    registryRepo: string;
+    githubToken?: string;
+  }) => {
+    try {
+      const resolvedPath = wavePath.startsWith('/')
+        ? wavePath
+        : join(process.cwd(), wavePath);
+
+      console.log(`Packaging wave from: ${resolvedPath}`);
+
+      // Package (validate + scan + sandbox)
+      const pkg = await packageWave(resolvedPath, { skipSandbox: options.skipSandbox });
+
+      console.log(`  Name:      ${pkg.manifest.name}`);
+      console.log(`  Version:   ${pkg.manifest.version}`);
+      console.log(`  Files:     ${pkg.files.length}`);
+      console.log(`  Size:      ${Math.round(pkg.totalSizeBytes / 1024)}KB`);
+      console.log(`  Scan:      ${pkg.scanResult.passed ? 'PASSED' : 'FAILED'}`);
+      if (pkg.sandboxResult) {
+        console.log(`  Sandbox:   ${pkg.sandboxResult.success ? 'PASSED' : 'FAILED'}`);
+      }
+      console.log(`  Hash:      ${pkg.packageHash.slice(0, 16)}...`);
+
+      if (options.dryRun) {
+        console.log('\nDry run — validation passed. No PR created.');
+        return;
+      }
+
+      const githubToken = options.githubToken ?? process.env.GITHUB_TOKEN;
+      if (!githubToken) {
+        console.error('GitHub token required. Use --github-token or set GITHUB_TOKEN env var.');
+        process.exit(1);
+      }
+
+      console.log('\nPublishing to community registry...');
+      const result = await publishToRegistry(pkg, {
+        githubToken,
+        registryRepo: options.registryRepo,
+      });
+
+      console.log(`\nPR created: ${result.prUrl}`);
+      console.log(`Branch: ${result.branch}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to publish wave: ${message}`);
+      process.exit(1);
+    }
+  });
+
+waveCmd
+  .command('validate <path>')
+  .description('Validate a wave directory against community submission standards')
+  .option('--skip-sandbox', 'Skip sandbox execution')
+  .option('--json', 'Output results as JSON')
+  .action(async (wavePath: string, options: { skipSandbox?: boolean; json?: boolean }) => {
+    try {
+      const resolvedPath = wavePath.startsWith('/')
+        ? wavePath
+        : join(process.cwd(), wavePath);
+
+      const pkg = await packageWave(resolvedPath, { skipSandbox: options.skipSandbox });
+
+      if (options.json) {
+        console.log(JSON.stringify({
+          valid: true,
+          name: pkg.manifest.name,
+          version: pkg.manifest.version,
+          scanPassed: pkg.scanResult.passed,
+          scanSummary: pkg.scanResult.summary,
+          sandboxPassed: pkg.sandboxResult?.success ?? null,
+          packageHash: pkg.packageHash,
+          totalSizeBytes: pkg.totalSizeBytes,
+          fileCount: pkg.files.length,
+        }, null, 2));
+      } else {
+        console.log(`Validation PASSED for "${pkg.manifest.name}" v${pkg.manifest.version}`);
+        console.log(`  Scan: ${pkg.scanResult.passed ? 'PASSED' : 'FAILED'} (${pkg.scanResult.findings.length} findings)`);
+        if (pkg.sandboxResult) {
+          console.log(`  Sandbox: ${pkg.sandboxResult.success ? 'PASSED' : 'FAILED'}`);
+        }
+        console.log(`  Size: ${Math.round(pkg.totalSizeBytes / 1024)}KB`);
+        console.log(`  Hash: ${pkg.packageHash.slice(0, 16)}...`);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (options.json) {
+        console.log(JSON.stringify({ valid: false, error: message }));
+      } else {
+        console.error(`Validation FAILED: ${message}`);
+      }
       process.exit(1);
     }
   });

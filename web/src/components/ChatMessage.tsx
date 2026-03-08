@@ -6,6 +6,8 @@ import { FeedbackButtons } from './FeedbackButtons.tsx';
 interface ChatMessageProps {
   message: ChatMessageType;
   voiceEnabled?: boolean;
+  /** Whether this message is currently being auto-spoken. */
+  autoSpeaking?: boolean;
   /** Optional task ID for associating feedback. */
   taskId?: string;
 }
@@ -14,7 +16,7 @@ interface ChatMessageProps {
 type PlayState = 'idle' | 'loading' | 'playing';
 
 /** Single chat message bubble with optional TTS play button and feedback for assistant messages */
-export function ChatMessage({ message, voiceEnabled = false, taskId }: ChatMessageProps) {
+export function ChatMessage({ message, voiceEnabled = false, autoSpeaking = false, taskId }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const [playState, setPlayState] = useState<PlayState>('idle');
   const [speechError, setSpeechError] = useState(false);
@@ -77,7 +79,12 @@ export function ChatMessage({ message, voiceEnabled = false, taskId }: ChatMessa
             : 'bg-[#1a1a1a] text-white rounded-bl-md'
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">{message.text}</p>
+        <p className="whitespace-pre-wrap break-words">
+          {autoSpeaking && (
+            <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse mr-2 align-middle" />
+          )}
+          {message.text}
+        </p>
         <div className="flex items-center justify-between mt-1">
           <p
             className={`text-xs ${

@@ -72,6 +72,8 @@ export async function loadWaves(
     'generated',
   );
 
+  const resolvedCommunityDir = join(resolvedBundledDir, '..', 'community');
+
   let loadedCount = 0;
 
   try {
@@ -108,6 +110,18 @@ export async function loadWaves(
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     loaderLogger.warn({ dir: resolvedGeneratedDir, error: message }, 'Failed to scan generated waves directory');
+  }
+
+  try {
+    const communityLoaded = await loadWavesFromDirectory(
+      db,
+      resolvedCommunityDir,
+      'installed',
+    );
+    loadedCount += communityLoaded;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    loaderLogger.warn({ dir: resolvedCommunityDir, error: message }, 'Failed to scan community waves directory');
   }
 
   loaderLogger.info({ loadedCount }, 'Wave loading complete');

@@ -336,6 +336,9 @@ function buildRequestBody(
     model: options.model.replace(/^ollama\//, ''),
     messages: ollamaMessages,
     stream,
+    // Suppress <think> blocks for models with thinking mode (qwen3, deepseek-r1).
+    // We strip think tags anyway; disabling them saves output tokens.
+    think: false,
   };
 
   if (options.tools && options.tools.length > 0) {

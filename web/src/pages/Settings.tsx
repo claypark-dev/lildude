@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useApi } from '../hooks/useApi.ts';
-import { fetchConfig, updateConfig } from '../lib/api.ts';
-import { useVoiceStatus } from '../hooks/useVoiceStatus.ts';
+import { fetchConfig, updateConfig, updateSecurityLevel } from '../lib/api.ts';
 import { PowerUserPanel } from './PowerUserPanel.tsx';
 import { LocalModelsSettings } from '../components/LocalModelsSettings.tsx';
+import { VoiceSettings } from '../components/VoiceSettings.tsx';
 
 const SECURITY_LEVELS: Record<number, string> = {
   1: 'Minimal -- Basic input validation only',
@@ -22,10 +22,6 @@ interface SettingsFormState {
   securityLevel: number;
   monthlyBudgetUsd: number;
   dailyLimitUsd: number;
-  voiceEnabled: boolean;
-  voiceBackend: 'elevenlabs' | 'local';
-  elevenLabsApiKey: string;
-  voiceId: string;
 }
 
 const DEFAULT_FORM: SettingsFormState = {
@@ -37,16 +33,11 @@ const DEFAULT_FORM: SettingsFormState = {
   securityLevel: 3,
   monthlyBudgetUsd: 10,
   dailyLimitUsd: 2,
-  voiceEnabled: false,
-  voiceBackend: 'elevenlabs',
-  elevenLabsApiKey: '',
-  voiceId: '',
 };
 
 /** Settings page with API key inputs, channel toggles, security, budget, and voice controls */
 export function Settings() {
   const config = useApi(useCallback(() => fetchConfig(), []));
-  const voiceStatus = useVoiceStatus();
   const [form, setForm] = useState<SettingsFormState>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -64,10 +55,6 @@ export function Settings() {
       securityLevel: typeof cfg.securityLevel === 'number' ? cfg.securityLevel : 3,
       monthlyBudgetUsd: typeof cfg.monthlyBudgetUsd === 'number' ? cfg.monthlyBudgetUsd : 10,
       dailyLimitUsd: typeof cfg.dailyLimitUsd === 'number' ? cfg.dailyLimitUsd : 2,
-      voiceEnabled: cfg.voiceEnabled === true,
-      voiceBackend: cfg.voiceBackend === 'local' ? 'local' : 'elevenlabs',
-      elevenLabsApiKey: typeof cfg.elevenLabsApiKey === 'string' ? cfg.elevenLabsApiKey : '',
-      voiceId: typeof cfg.voiceId === 'string' ? cfg.voiceId : '',
     });
     setInitialized(true);
   }
@@ -169,6 +156,26 @@ export function Settings() {
           <p className="text-sm text-blue-400">
             Level {form.securityLevel}: {SECURITY_LEVELS[form.securityLevel]}
           </p>
+          <button
+            type="button"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-[#1a1a1a]
+                       text-slate-900 text-sm font-medium rounded-lg transition-colors"
+            disabled={saving}
+            onClick={async () => {
+              try {
+                await updateSecurityLevel(form.securityLevel);
+                setSaveMessage('Security level updated (applied immediately)');
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Failed to update security level';
+                setSaveMessage(message);
+              }
+            }}
+          >
+            Apply Security Level
+          </button>
+          <p className="text-xs text-[#666]">
+            Changes take effect immediately — no restart required.
+          </p>
         </div>
       </section>
 
@@ -194,70 +201,7 @@ export function Settings() {
       </section>
 
       {/* Voice */}
-      <section className="bg-[#111] rounded-xl p-6 border border-[#222] space-y-4">
-        <h3 className="text-lg font-semibold text-white">Voice</h3>
-        {voiceStatus.loading ? (
-          <p className="text-[#a0a0a0] text-sm">Checking voice status...</p>
-        ) : (
-          <>
-            <ToggleSwitch
-              label="Enable Voice Synthesis"
-              enabled={form.voiceEnabled}
-              onChange={(val) => setForm((prev) => ({ ...prev, voiceEnabled: val }))}
-            />
-
-            {form.voiceEnabled && (
-              <>
-                <div>
-                  <label className="block text-sm text-[#ccc] mb-1">Backend</label>
-                  <select
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
-                               focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    value={form.voiceBackend}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        voiceBackend: e.target.value as 'elevenlabs' | 'local',
-                      }))
-                    }
-                  >
-                    <option value="elevenlabs">ElevenLabs (Cloud)</option>
-                    <option value="local">Local (Ollama TTS)</option>
-                  </select>
-                </div>
-
-                {form.voiceBackend === 'elevenlabs' && (
-                  <>
-                    <ApiKeyInput
-                      label="ElevenLabs API Key"
-                      value={form.elevenLabsApiKey}
-                      maskedValue={maskKey(form.elevenLabsApiKey)}
-                      onChange={(val) => setForm((prev) => ({ ...prev, elevenLabsApiKey: val }))}
-                    />
-                    <div>
-                      <label className="block text-sm text-[#ccc] mb-1">Voice ID (optional)</label>
-                      <input
-                        type="text"
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm
-                                   placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                        placeholder="Default: Adam"
-                        value={form.voiceId}
-                        onChange={(e) => setForm((prev) => ({ ...prev, voiceId: e.target.value }))}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {form.voiceBackend === 'local' && (
-                  <p className="text-xs text-slate-500">
-                    Local TTS uses Ollama. Make sure Ollama is running with a TTS-capable model.
-                  </p>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </section>
+      <VoiceSettings />
 
       {/* Save */}
       <div className="flex items-center gap-4">
@@ -273,7 +217,9 @@ export function Settings() {
         {saveMessage && (
           <p
             className={`text-sm ${
-              saveMessage.includes('success') ? 'text-green-400' : 'text-red-400'
+              saveMessage.includes('success') || saveMessage.includes('updated')
+                ? 'text-green-400'
+                : 'text-red-400'
             }`}
           >
             {saveMessage}

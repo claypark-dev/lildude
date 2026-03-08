@@ -14,6 +14,7 @@ import { createMockProvider, type MockProvider } from '../mocks/provider.js';
 import { createMockChannelAdapter, type MockChannelAdapter } from '../mocks/channel.js';
 import type { ChatResponse, ChannelMessage } from '../../src/types/index.js';
 import { nanoid } from 'nanoid';
+import { clearRegistry } from '../../src/waves/registry.js';
 
 const MIGRATIONS_DIR = join(__dirname, '..', '..', 'src', 'persistence', 'migrations');
 
@@ -58,6 +59,8 @@ describe('Smoke Test — Full App Lifecycle', () => {
   });
 
   afterEach(async () => {
+    // Clear global wave registry to prevent cross-test interference
+    clearRegistry();
     if (appContext) {
       try {
         await appContext.gateway.stop();
@@ -112,6 +115,9 @@ describe('Smoke Test — Full App Lifecycle', () => {
       skipSignalHandlers: true,
     });
 
+    // Clear wave registry so test messages use the normal LLM path
+    clearRegistry();
+
     // Process a message directly through the agent loop
     const result = await appContext.agentLoop.processMessage(
       'test-conv-1',
@@ -143,6 +149,7 @@ describe('Smoke Test — Full App Lifecycle', () => {
       skipGatewayListen: true,
       skipSignalHandlers: true,
     });
+    clearRegistry();
 
     const result = await appContext.agentLoop.processMessage(
       'test-conv-cost',
@@ -175,6 +182,8 @@ describe('Smoke Test — Full App Lifecycle', () => {
       skipGatewayListen: true,
       skipSignalHandlers: true,
     });
+
+    clearRegistry();
 
     // Manually register and wire the mock channel adapter
     await mockChannel.connect({ enabled: true });
@@ -257,6 +266,8 @@ describe('Smoke Test — Full App Lifecycle', () => {
       skipGatewayListen: true,
       skipSignalHandlers: true,
     });
+
+    clearRegistry();
 
     // Send three messages
     const result1 = await appContext.agentLoop.processMessage('conv-seq', 'msg 1', 'webchat');

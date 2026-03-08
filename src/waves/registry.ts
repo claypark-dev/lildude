@@ -90,9 +90,20 @@ export function clearRegistry(): void {
 }
 
 /**
+ * Maximum effective message length for coverage ratio calculation.
+ * Without a cap, long messages (100+ chars) make it nearly impossible
+ * for a few trigger words to reach a reasonable score, even when the
+ * triggers are clearly relevant (e.g. "flight" in a 150-char travel
+ * request). Capping the denominator ensures that trigger relevance is
+ * evaluated consistently regardless of message verbosity.
+ */
+const COVERAGE_DENOMINATOR_CAP = 80;
+
+/**
  * Compute a match score for a message against a set of matching triggers.
  * Score is based on the number of matching triggers and the proportion
- * of the message covered by those triggers.
+ * of the message covered by those triggers (with a length cap to avoid
+ * penalising long messages).
  * @param lowerMessage - The lowercased user message.
  * @param matchingTriggers - Triggers that were found in the message.
  * @returns A score between 0 and 1 (exclusive of 0).
@@ -103,7 +114,8 @@ function computeMatchScore(lowerMessage: string, matchingTriggers: string[]): nu
     0,
   );
 
-  const coverageRatio = Math.min(triggerCoverage / lowerMessage.length, 1);
+  const effectiveLength = Math.min(lowerMessage.length, COVERAGE_DENOMINATOR_CAP);
+  const coverageRatio = Math.min(triggerCoverage / effectiveLength, 1);
   const countBonus = Math.min(matchingTriggers.length * 0.1, 0.5);
 
   return coverageRatio + countBonus;

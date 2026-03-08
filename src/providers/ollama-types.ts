@@ -41,6 +41,10 @@ export interface OllamaChatRequest {
   messages: OllamaMessage[];
   stream: boolean;
   tools?: OllamaTool[];
+  /** Suppress thinking mode (Ollama ≥ 0.9). When false, models that support
+   *  extended thinking (qwen3, deepseek-r1, etc.) skip the <think> block
+   *  and output the answer directly. */
+  think?: boolean;
   options?: {
     temperature?: number;
     num_predict?: number;

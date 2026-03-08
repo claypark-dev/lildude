@@ -71,7 +71,7 @@ export interface ProcessMessageOptions {
   abortSignal?: AbortSignal;
 }
 
-/** The agent loop interface with a single processMessage method. */
+/** The agent loop interface. */
 export interface AgentLoop {
   /** Process a user message and return the agent's response. */
   processMessage(
@@ -80,6 +80,9 @@ export interface AgentLoop {
     channelType: ChannelType,
     options?: ProcessMessageOptions,
   ): Promise<AgentLoopResult>;
+
+  /** Hot-reload the security level without restarting. */
+  updateSecurityLevel(level: SecurityLevel): void;
 }
 
 /**

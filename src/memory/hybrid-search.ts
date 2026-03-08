@@ -113,7 +113,8 @@ export function hybridSearch(
     const embeddingRows = db.prepare(
       `SELECT ke.knowledge_id, ke.embedding, ke.dimensions
        FROM knowledge_embeddings ke
-       JOIN knowledge k ON k.id = ke.knowledge_id`,
+       JOIN knowledge k ON k.id = ke.knowledge_id
+       WHERE k.superseded_by IS NULL`,
     ).all() as EmbeddingDbRow[];
 
     for (const row of embeddingRows) {
@@ -174,7 +175,7 @@ export function hybridSearch(
     const placeholders = [...allIds].map(() => '?').join(',');
     const rows = db.prepare(
       `SELECT id, category, key, value, confidence, access_count, last_accessed_at, created_at, updated_at
-       FROM knowledge WHERE id IN (${placeholders})`,
+       FROM knowledge WHERE id IN (${placeholders}) AND superseded_by IS NULL`,
     ).all([...allIds]) as KnowledgeAccessRow[];
 
     for (const row of rows) {
@@ -250,7 +251,9 @@ export function hybridSearch(
 
 /**
  * Record an access to a knowledge entry (for temporal decay boosting).
- * Increments access_count and updates last_accessed_at.
+ * Increments access_count, updates last_accessed_at, and applies a
+ * small confidence boost (+0.02, capped at 0.95) as positive feedback
+ * that this fact was useful in context.
  *
  * @param db - Database connection.
  * @param knowledgeId - The knowledge entry ID.
@@ -262,8 +265,28 @@ export function recordKnowledgeAccess(
   db.prepare(
     `UPDATE knowledge
      SET access_count = access_count + 1,
-         last_accessed_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
+         last_accessed_at = CURRENT_TIMESTAMP,
+         confidence = MIN(0.95, confidence + 0.02)
+     WHERE id = ? AND superseded_by IS NULL`,
+  ).run(knowledgeId);
+}
+
+/**
+ * Penalize a knowledge entry's confidence when it was contradicted.
+ * Reduces confidence by 0.2 (floor at 0.1).
+ *
+ * @param db - Database connection.
+ * @param knowledgeId - The knowledge entry ID that was contradicted.
+ */
+export function penalizeKnowledgeConfidence(
+  db: BetterSqlite3.Database,
+  knowledgeId: number,
+): void {
+  db.prepare(
+    `UPDATE knowledge
+     SET confidence = MAX(0.1, confidence - 0.2),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = ? AND superseded_by IS NULL`,
   ).run(knowledgeId);
 }
 

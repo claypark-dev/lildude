@@ -1,7 +1,7 @@
 /**
  * Helper utilities for the Wave Hub module.
  * Handles source format parsing, permission checking against security levels,
- * and curated wave registry search (mocked).
+ * and advanced registry search/filtering.
  */
 
 import type BetterSqlite3 from 'better-sqlite3';
@@ -42,6 +42,18 @@ export interface WaveRegistryEntry {
   deterministic?: boolean;
   iconUrl?: string;
   changelog?: string;
+  /** v3 registry fields — community publishing metadata. */
+  publishedAt?: string;
+  updatedAt?: string;
+  packageHash?: string;
+  scanPassed?: boolean;
+  sandboxPassed?: boolean;
+  communityTrust?: number;
+  dependencies?: string[];
+  minLilDudeVersion?: string;
+  repositoryUrl?: string;
+  license?: string;
+  screenshots?: string[];
 }
 
 /** Source type for a listed wave. */
@@ -185,41 +197,8 @@ export function checkWavePermissions(
   );
 }
 
-/**
- * Mocked curated wave registry for search functionality.
- * In a real implementation, this would fetch from a remote URL.
- */
-const CURATED_WAVE_REGISTRY: readonly WaveRegistryEntry[] = [
-  { name: 'weather-checker', description: 'Check weather forecasts for any location', author: 'lil-dude-community', source: 'github:claypark-dev/weather-checker', triggers: ['weather', 'forecast', 'temperature'], version: '1.2.0', category: 'utilities', tags: ['weather', 'forecast'], waveCategory: 'personal', safetyTier: 'observe', deterministic: true, verified: true, installCount: 342, averageRating: 4.5, ratingCount: 28 },
-  { name: 'email-summarizer', description: 'Summarize unread emails from Gmail or Outlook', author: 'lil-dude-community', source: 'github:claypark-dev/email-summarizer', triggers: ['email', 'inbox', 'unread', 'mail'], version: '0.9.0', category: 'communication', tags: ['email', 'inbox', 'summary'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 215, averageRating: 4.2, ratingCount: 18 },
-  { name: 'code-reviewer', description: 'Review code changes and provide feedback', author: 'lil-dude-community', source: 'github:claypark-dev/code-reviewer', triggers: ['review', 'code review', 'PR', 'pull request'], version: '2.0.1', category: 'developer', tags: ['code', 'review', 'git'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 189, averageRating: 4.7, ratingCount: 42 },
-  { name: 'note-taker', description: 'Take and organize notes from conversations', author: 'lil-dude-community', source: 'github:claypark-dev/note-taker', triggers: ['note', 'notes', 'remember', 'save'], version: '1.0.0', category: 'productivity', tags: ['notes', 'organize', 'save'], waveCategory: 'personal', safetyTier: 'create', deterministic: true, verified: false, installCount: 127, averageRating: 3.8, ratingCount: 12 },
-  { name: 'file-organizer', description: 'Organize files in directories by type and date', author: 'lil-dude-community', source: 'github:claypark-dev/file-organizer', triggers: ['organize', 'files', 'cleanup', 'sort files'], version: '1.1.0', category: 'utilities', tags: ['files', 'organize', 'cleanup'], waveCategory: 'personal', safetyTier: 'modify', deterministic: true, verified: false, installCount: 96, averageRating: 4.0, ratingCount: 8 },
-] as const;
-
-/**
- * Search the curated wave registry by query string.
- * Matches against wave name, description, and triggers (case-insensitive).
- *
- * @param query - The search query string.
- * @returns An array of matching wave registry entries.
- */
-export function searchCuratedWaveRegistry(query: string): WaveRegistryEntry[] {
-  const lowerQuery = query.toLowerCase();
-
-  return CURATED_WAVE_REGISTRY.filter((entry) => {
-    const nameMatch = entry.name.toLowerCase().includes(lowerQuery);
-    const descMatch = entry.description.toLowerCase().includes(lowerQuery);
-    const triggerMatch = entry.triggers.some(
-      (trigger) => trigger.toLowerCase().includes(lowerQuery),
-    );
-
-    return nameMatch || descMatch || triggerMatch;
-  });
-}
-
 /** Sort options for advanced registry search. */
-export type RegistrySortOption = 'popular' | 'recent' | 'rated' | 'name';
+export type RegistrySortOption = 'popular' | 'recent' | 'rated' | 'name' | 'trust';
 
 /** Advanced search options for the registry. */
 export interface RegistrySearchOptions {
@@ -230,6 +209,12 @@ export interface RegistrySearchOptions {
   isPartyWave?: boolean;
   limit?: number;
   offset?: number;
+  /** Filter by trust tier (e.g., "trusted", "community"). */
+  trust?: string;
+  /** Filter by author name. */
+  author?: string;
+  /** Minimum average rating filter. */
+  minRating?: number;
 }
 
 /**
@@ -291,6 +276,36 @@ export function searchRegistryAdvanced(
     }
   }
 
+  // Trust tier filter
+  if (options.trust) {
+    const trustTier = options.trust.toLowerCase();
+    filtered = filtered.filter((entry) => {
+      const score = entry.communityTrust ?? 0;
+      switch (trustTier) {
+        case 'trusted': return score >= 80;
+        case 'community': return score >= 50 && score < 80;
+        case 'new': return score >= 20 && score < 50;
+        case 'unreviewed': return score < 20;
+        default: return true;
+      }
+    });
+  }
+
+  // Author filter
+  if (options.author) {
+    const lowerAuthor = options.author.toLowerCase();
+    filtered = filtered.filter(
+      (entry) => entry.author.toLowerCase() === lowerAuthor,
+    );
+  }
+
+  // Minimum rating filter
+  if (options.minRating !== undefined) {
+    filtered = filtered.filter(
+      (entry) => (entry.averageRating ?? 0) >= options.minRating!,
+    );
+  }
+
   // Sorting
   const sort = options.sort ?? 'popular';
   switch (sort) {
@@ -306,6 +321,9 @@ export function searchRegistryAdvanced(
     case 'recent':
       // Keep natural order (most recently added first)
       filtered.reverse();
+      break;
+    case 'trust':
+      filtered.sort((a, b) => (b.communityTrust ?? 0) - (a.communityTrust ?? 0));
       break;
   }
 

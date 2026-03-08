@@ -21,6 +21,10 @@ export interface CronJobRow {
   nextRunAt: Date | null;
   enabled: boolean;
   createdAt: Date;
+  channelType: string | null;
+  channelId: string | null;
+  ownerId: string | null;
+  expiresAt: Date | null;
 }
 
 /** Input for creating a new cron job. */
@@ -31,6 +35,10 @@ export interface CreateCronJobInput {
   usesAi?: boolean;
   estimatedCostPerRun?: number;
   nextRunAt?: Date;
+  channelType?: string;
+  channelId?: string;
+  ownerId?: string;
+  expiresAt?: Date;
 }
 
 /** Raw row shape from the cron_jobs table. */
@@ -46,6 +54,10 @@ interface CronJobDbRow {
   next_run_at: string | null;
   enabled: number;
   created_at: string;
+  channel_type: string | null;
+  channel_id: string | null;
+  owner_id: string | null;
+  expires_at: string | null;
 }
 
 /**
@@ -66,6 +78,10 @@ function mapRow(row: CronJobDbRow): CronJobRow {
     nextRunAt: row.next_run_at ? new Date(row.next_run_at) : null,
     enabled: row.enabled === 1,
     createdAt: new Date(row.created_at),
+    channelType: row.channel_type,
+    channelId: row.channel_id,
+    ownerId: row.owner_id,
+    expiresAt: row.expires_at ? new Date(row.expires_at) : null,
   };
 }
 
@@ -83,8 +99,8 @@ export function createCronJob(
   try {
     const id = nanoid();
     db.prepare(
-      `INSERT INTO cron_jobs (id, schedule, task_description, wave_id, uses_ai, estimated_cost_per_run, next_run_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO cron_jobs (id, schedule, task_description, wave_id, uses_ai, estimated_cost_per_run, next_run_at, channel_type, channel_id, owner_id, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       input.schedule,
@@ -93,6 +109,10 @@ export function createCronJob(
       input.usesAi ? 1 : 0,
       input.estimatedCostPerRun ?? 0,
       input.nextRunAt ? input.nextRunAt.toISOString() : null,
+      input.channelType ?? null,
+      input.channelId ?? null,
+      input.ownerId ?? null,
+      input.expiresAt ? input.expiresAt.toISOString() : null,
     );
 
     persistenceLogger.debug({ jobId: id }, 'Cron job created');
@@ -245,7 +265,7 @@ export function getMissedJobs(
 ): CronJobRow[] {
   try {
     const rows = db.prepare(
-      `SELECT * FROM cron_jobs WHERE enabled = 1 AND next_run_at < datetime('now') ORDER BY next_run_at ASC`,
+      `SELECT * FROM cron_jobs WHERE enabled = 1 AND datetime(next_run_at) < datetime('now') AND (expires_at IS NULL OR datetime(expires_at) > datetime('now')) ORDER BY next_run_at ASC`,
     ).all() as CronJobDbRow[];
 
     return rows.map(mapRow);

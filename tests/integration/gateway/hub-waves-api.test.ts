@@ -13,11 +13,96 @@ import { addReview } from '../../../src/persistence/wave-reviews.js';
 import { incrementInstallCount } from '../../../src/persistence/wave-install-counts.js';
 import { recordExecution } from '../../../src/persistence/wave-executions.js';
 import { createGatewayServer, type GatewayServer } from '../../../src/gateway/server.js';
+import { setCachedRegistry } from '../../../src/persistence/wave-hub-cache.js';
+import { clearRegistryMemoryCache } from '../../../src/waves/hub-registry.js';
 import { ConfigSchema } from '../../../src/config/schema.js';
 import type { InjectOptions } from 'fastify';
 
 const MIGRATIONS_DIR = join(__dirname, '..', '..', '..', 'src', 'persistence', 'migrations');
 const TEST_API_KEY = 'ld_hub_integration_test_key_0000';
+
+/** Seed the wave hub cache with test registry data so fetchRegistry returns results. */
+function seedRegistryCache(db: import('better-sqlite3').Database): void {
+  const testRegistry = {
+    version: '1.0.0',
+    waves: [
+      {
+        name: 'color-converter',
+        description: 'Convert between hex, RGB, and HSL color formats',
+        author: 'test-author',
+        source: 'github:test/color-converter',
+        triggers: ['convert color', 'hex to rgb'],
+        version: '1.0.0',
+        category: 'utilities',
+        tags: ['color', 'converter'],
+        waveCategory: 'personal',
+        safetyTier: 'observe',
+        deterministic: true,
+        verified: true,
+        installCount: 0,
+        averageRating: 0,
+        ratingCount: 0,
+      },
+      {
+        name: 'code-reviewer',
+        description: 'Review code for best practices',
+        author: 'test-author',
+        source: 'github:test/code-reviewer',
+        triggers: ['review code'],
+        version: '1.0.0',
+        category: 'development',
+        tags: ['code', 'review'],
+        waveCategory: 'personal',
+        safetyTier: 'observe',
+        deterministic: false,
+        verified: true,
+        installCount: 0,
+        averageRating: 0,
+        ratingCount: 0,
+      },
+      {
+        name: 'email-reader',
+        description: 'Read and summarize emails',
+        author: 'test-author',
+        source: 'github:test/email-reader',
+        triggers: ['read email', 'check inbox'],
+        version: '1.0.0',
+        category: 'communication',
+        tags: ['email'],
+        waveCategory: 'personal',
+        safetyTier: 'observe',
+        deterministic: false,
+        verified: true,
+        installCount: 0,
+        averageRating: 0,
+        ratingCount: 0,
+      },
+      {
+        name: 'web-search',
+        description: 'Search the web for information',
+        author: 'test-author',
+        source: 'github:test/web-search',
+        triggers: ['search', 'look up'],
+        version: '1.0.0',
+        category: 'utilities',
+        tags: ['search', 'web'],
+        waveCategory: 'personal',
+        safetyTier: 'observe',
+        deterministic: false,
+        verified: true,
+        installCount: 0,
+        averageRating: 0,
+        ratingCount: 0,
+      },
+    ],
+  };
+  setCachedRegistry(
+    db,
+    'https://raw.githubusercontent.com/lildude-community/wave-registry/main/registry.json',
+    JSON.stringify(testRegistry),
+    24,
+  );
+}
 
 function createTestDb(): DatabaseManager {
   const dbManager = createDatabase(':memory:', MIGRATIONS_DIR);
@@ -40,14 +125,17 @@ describe('Hub Waves API (Skills Hub)', () => {
   }
 
   beforeEach(async () => {
+    clearRegistryMemoryCache();
     dbManager = createTestDb();
     storeApiKey(dbManager.db, TEST_API_KEY, 'hub-test');
+    seedRegistryCache(dbManager.db);
     const config = ConfigSchema.parse({});
     gateway = createGatewayServer(dbManager, config);
     await gateway.app.ready();
   });
 
   afterEach(async () => {
+    clearRegistryMemoryCache();
     try { await gateway.stop(); } catch { /* best-effort */ }
     try { dbManager.close(); } catch { /* best-effort */ }
   });
@@ -98,11 +186,11 @@ describe('Hub Waves API (Skills Hub)', () => {
       const response = await authedInject({
         method: 'POST',
         url: '/api/v1/hub/featured',
-        payload: { waveName: 'weather-checker', reason: 'Great utility' },
+        payload: { waveName: 'color-converter', reason: 'Great utility' },
       });
 
       expect(response.statusCode).toBe(201);
-      expect(response.json().message).toContain('weather-checker');
+      expect(response.json().message).toContain('color-converter');
     });
 
     it('rejects feature without waveName', async () => {
@@ -164,18 +252,18 @@ describe('Hub Waves API (Skills Hub)', () => {
     it('supports text search via q parameter', async () => {
       const response = await authedInject({
         method: 'GET',
-        url: '/api/v1/hub/browse?q=weather',
+        url: '/api/v1/hub/browse?q=color',
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
       expect(body.waves.length).toBeGreaterThan(0);
-      // Weather-checker should be in results
-      const weatherWave = body.waves.find(
-        (w: { name: string }) => w.name === 'weather-checker',
+      // color-converter should be in results
+      const matchedWave = body.waves.find(
+        (w: { name: string }) => w.name === 'color-converter',
       );
-      expect(weatherWave).toBeDefined();
+      expect(matchedWave).toBeDefined();
     });
 
     it('supports sort parameter', async () => {
@@ -232,7 +320,7 @@ describe('Hub Waves API (Skills Hub)', () => {
     it('returns full detail for a known wave', async () => {
       const response = await authedInject({
         method: 'GET',
-        url: '/api/v1/hub/waves/weather-checker/detail',
+        url: '/api/v1/hub/waves/color-converter/detail',
       });
 
       expect(response.statusCode).toBe(200);
@@ -240,7 +328,7 @@ describe('Hub Waves API (Skills Hub)', () => {
       const body = response.json();
       expect(body).toHaveProperty('wave');
       expect(body).toHaveProperty('reviews');
-      expect(body.wave.name).toBe('weather-checker');
+      expect(body.wave.name).toBe('color-converter');
     });
 
     it('returns 404 for unknown wave', async () => {
@@ -254,21 +342,21 @@ describe('Hub Waves API (Skills Hub)', () => {
 
     it('includes local install count and ratings when available', async () => {
       // Set up local data
-      incrementInstallCount(dbManager.db, 'weather-checker');
-      incrementInstallCount(dbManager.db, 'weather-checker');
+      incrementInstallCount(dbManager.db, 'color-converter');
+      incrementInstallCount(dbManager.db, 'color-converter');
       addReview(dbManager.db, {
-        waveName: 'weather-checker',
+        waveName: 'color-converter',
         rating: 5,
         comment: 'Excellent!',
       });
 
       const response = await authedInject({
         method: 'GET',
-        url: '/api/v1/hub/waves/weather-checker/detail',
+        url: '/api/v1/hub/waves/color-converter/detail',
       });
 
       const body = response.json();
-      expect(body.wave.name).toBe('weather-checker');
+      expect(body.wave.name).toBe('color-converter');
       expect(body.reviews).toHaveLength(1);
       expect(body.reviews[0].rating).toBe(5);
     });
@@ -280,14 +368,14 @@ describe('Hub Waves API (Skills Hub)', () => {
     it('POST /api/v1/hub/waves/:name/reviews adds a review', async () => {
       const response = await authedInject({
         method: 'POST',
-        url: '/api/v1/hub/waves/weather-checker/reviews',
+        url: '/api/v1/hub/waves/color-converter/reviews',
         payload: { rating: 4, comment: 'Good skill', reviewer: 'tester' },
       });
 
       expect(response.statusCode).toBe(201);
 
       const body = response.json();
-      expect(body.waveName).toBe('weather-checker');
+      expect(body.waveName).toBe('color-converter');
       expect(body.rating).toBe(4);
       expect(body.comment).toBe('Good skill');
     });
@@ -295,7 +383,7 @@ describe('Hub Waves API (Skills Hub)', () => {
     it('POST rejects invalid rating (out of range)', async () => {
       const response = await authedInject({
         method: 'POST',
-        url: '/api/v1/hub/waves/weather-checker/reviews',
+        url: '/api/v1/hub/waves/color-converter/reviews',
         payload: { rating: 6, comment: 'Too high' },
       });
 
@@ -305,7 +393,7 @@ describe('Hub Waves API (Skills Hub)', () => {
     it('POST rejects missing rating', async () => {
       const response = await authedInject({
         method: 'POST',
-        url: '/api/v1/hub/waves/weather-checker/reviews',
+        url: '/api/v1/hub/waves/color-converter/reviews',
         payload: { comment: 'No rating' },
       });
 
@@ -371,10 +459,10 @@ describe('Hub Waves API (Skills Hub)', () => {
     });
 
     it('reflects featured and install counts in stats', async () => {
-      featureWave(dbManager.db, 'weather-checker', 'Popular');
-      incrementInstallCount(dbManager.db, 'weather-checker');
-      incrementInstallCount(dbManager.db, 'weather-checker');
-      incrementInstallCount(dbManager.db, 'weather-checker');
+      featureWave(dbManager.db, 'color-converter', 'Popular');
+      incrementInstallCount(dbManager.db, 'color-converter');
+      incrementInstallCount(dbManager.db, 'color-converter');
+      incrementInstallCount(dbManager.db, 'color-converter');
 
       const response = await authedInject({
         method: 'GET',
@@ -386,7 +474,7 @@ describe('Hub Waves API (Skills Hub)', () => {
       expect(body.stats.topInstalled.length).toBeGreaterThanOrEqual(1);
 
       const weatherEntry = body.stats.topInstalled.find(
-        (t: { waveName: string }) => t.waveName === 'weather-checker',
+        (t: { waveName: string }) => t.waveName === 'color-converter',
       );
       expect(weatherEntry).toBeDefined();
       expect(weatherEntry.installCount).toBe(3);
@@ -437,7 +525,7 @@ describe('Hub Waves API (Skills Hub)', () => {
     it('returns null executionStats when no executions exist', async () => {
       const response = await authedInject({
         method: 'GET',
-        url: '/api/v1/hub/waves/weather-checker/detail',
+        url: '/api/v1/hub/waves/color-converter/detail',
       });
 
       expect(response.statusCode).toBe(200);
@@ -449,13 +537,13 @@ describe('Hub Waves API (Skills Hub)', () => {
 
     it('returns execution stats when executions exist', async () => {
       recordExecution(dbManager.db, {
-        waveName: 'weather-checker',
+        waveName: 'color-converter',
         waveSource: 'bundled',
         success: true,
         executionTimeMs: 500,
       });
       recordExecution(dbManager.db, {
-        waveName: 'weather-checker',
+        waveName: 'color-converter',
         waveSource: 'bundled',
         success: false,
         executionTimeMs: 200,
@@ -464,7 +552,7 @@ describe('Hub Waves API (Skills Hub)', () => {
 
       const response = await authedInject({
         method: 'GET',
-        url: '/api/v1/hub/waves/weather-checker/detail',
+        url: '/api/v1/hub/waves/color-converter/detail',
       });
 
       expect(response.statusCode).toBe(200);
@@ -480,12 +568,12 @@ describe('Hub Waves API (Skills Hub)', () => {
     });
 
     it('includes execution count in wave card data', async () => {
-      recordExecution(dbManager.db, { waveName: 'weather-checker', waveSource: 'bundled', success: true });
-      recordExecution(dbManager.db, { waveName: 'weather-checker', waveSource: 'bundled', success: true });
+      recordExecution(dbManager.db, { waveName: 'color-converter', waveSource: 'bundled', success: true });
+      recordExecution(dbManager.db, { waveName: 'color-converter', waveSource: 'bundled', success: true });
 
       const response = await authedInject({
         method: 'GET',
-        url: '/api/v1/hub/waves/weather-checker/detail',
+        url: '/api/v1/hub/waves/color-converter/detail',
       });
 
       const body = response.json();

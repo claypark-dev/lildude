@@ -60,7 +60,7 @@ const FEATURE_MATRIX: Record<GatedFeature, Set<InstallTier>> = {
   browser_automation: new Set(['standard', 'full']),
   local_models: new Set(['standard', 'full']),
   voice_transcription: new Set(['full']),
-  voice_synthesis: new Set(['full']),
+  voice_synthesis: new Set(['standard', 'full']),
   party_waves: new Set(['standard', 'full']),
   waves_hub: new Set(['standard', 'full']),
   deterministic_waves: new Set(['lite', 'standard', 'full']),

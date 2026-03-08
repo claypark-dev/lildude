@@ -25,3 +25,11 @@ export { createMeetingRequest, getMeetingRequest, listMeetingRequests, approveMe
 export type { MeetingRequest, CreateMeetingRequestInput, MeetingRequestStatus } from './meeting-requests.js';
 export { createContactGroup, getContactGroup, getContactGroupByName, listContactGroups, updateContactGroup, deleteContactGroup, addContactToGroup, removeContactFromGroup, getGroupsForContact, countContactGroups } from './contact-groups.js';
 export type { ContactGroup, CreateContactGroupInput, UpdateContactGroupInput } from './contact-groups.js';
+export { upsertAuthor, getAuthor, incrementPublishedCount, updateAuthorStats, listAuthors } from './wave-authors.js';
+export type { WaveAuthor } from './wave-authors.js';
+export { upsertTrustScore, getTrustScore, getTrustScoresBatch, listTrustScores, deleteTrustScore } from './wave-community-trust.js';
+export type { WaveTrustEntry } from './wave-community-trust.js';
+export { recordPublish, updatePublishStatus, getPublishHistory, listPublishHistory } from './wave-publish-history.js';
+export type { PublishHistoryEntry, PublishStatus } from './wave-publish-history.js';
+export { storePackageHash, getPackageHash, verifyPackageHash, deletePackageHash } from './wave-package-hashes.js';
+export type { PackageHashEntry } from './wave-package-hashes.js';

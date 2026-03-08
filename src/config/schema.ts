@@ -129,6 +129,8 @@ export const ConfigSchema = z.object({
       kokoroModelId: z.string().default('kokoro-en-v0_19'),
       /** Kokoro speaker voice. */
       kokoroSpeaker: z.string().default('af_heart'),
+      /** Auto-speak all assistant responses (not just voice-initiated). */
+      autoSpeak: z.boolean().default(false),
     }).default({}),
   }).default({}),
 });

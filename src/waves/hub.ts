@@ -23,15 +23,17 @@ import { appendSecurityLog } from '../persistence/security-log.js';
 import { homeDir } from '../config/loader.js';
 import { createModuleLogger } from '../utils/logger.js';
 import { incrementInstallCount } from '../persistence/wave-install-counts.js';
+import { verifyPackageHash, storePackageHash } from '../persistence/wave-package-hashes.js';
+import { getTrustScore } from '../persistence/wave-community-trust.js';
 import {
   parseGitHubSource,
   checkWavePermissions,
-  searchCuratedWaveRegistry,
   scanWaveDirectory,
   upsertInstalledWave,
   type ListedWave,
   type WaveRegistryEntry,
 } from './hub-helpers.js';
+import { fetchRegistry, searchRegistry } from './hub-registry.js';
 
 const hubLogger = createModuleLogger('wave-hub');
 const execFileAsync = promisify(execFile);
@@ -40,6 +42,10 @@ const execFileAsync = promisify(execFile);
 export interface InstallWaveOptions {
   installedDir?: string;
   cloneFn?: (repoUrl: string, destPath: string) => Promise<void>;
+  /** Expected package hash from the registry for verification. */
+  registryHash?: string;
+  /** Whether to verify the package hash (default: true). */
+  verifyHash?: boolean;
 }
 
 /**
@@ -95,6 +101,46 @@ export async function installWave(
 
     const manifest = validationResult.manifest;
     checkWavePermissions(manifest, securityLevel);
+
+    // Hash verification for community waves
+    if (options.verifyHash !== false && options.registryHash) {
+      const hashMatch = verifyPackageHash(db, manifest.name, options.registryHash);
+      if (hashMatch === false) {
+        hubLogger.warn(
+          { name: manifest.name, registryHash: options.registryHash },
+          'Package hash mismatch — possible tampering',
+        );
+        appendSecurityLog(db, {
+          actionType: 'wave_install',
+          actionDetail: `Blocked wave "${manifest.name}" — package hash mismatch`,
+          allowed: false,
+          securityLevel,
+          reason: 'Package hash does not match stored hash',
+        });
+        throw new SecurityError(
+          `Package hash mismatch for wave "${manifest.name}". The package may have been tampered with.`,
+        );
+      }
+      // Store hash for future verification
+      storePackageHash(db, manifest.name, manifest.version, options.registryHash);
+    }
+
+    // Trust tier logging for community waves
+    try {
+      const trustEntry = getTrustScore(db, manifest.name);
+      if (trustEntry) {
+        appendSecurityLog(db, {
+          actionType: 'wave_install',
+          actionDetail: `Community wave "${manifest.name}" trust tier: ${trustEntry.trustTier} (score: ${trustEntry.trustScore})`,
+          allowed: true,
+          securityLevel,
+          reason: `Trust tier: ${trustEntry.trustTier}`,
+        });
+      }
+    } catch {
+      // Non-critical — don't fail install if trust lookup fails
+      hubLogger.warn({ name: manifest.name }, 'Failed to log trust tier');
+    }
 
     appendSecurityLog(db, {
       actionType: 'wave_install',
@@ -224,13 +270,20 @@ export async function uninstallWave(
 }
 
 /**
- * Search the curated wave registry for waves matching a query.
+ * Search the community wave registry for waves matching a query.
+ * Fetches from the remote registry with caching and falls back to
+ * a hardcoded list when offline.
  *
+ * @param db - The better-sqlite3 Database instance.
  * @param query - The search query string.
  * @returns An array of matching wave registry entries.
  */
-export function searchWaves(query: string): WaveRegistryEntry[] {
-  return searchCuratedWaveRegistry(query);
+export async function searchWaves(
+  db: BetterSqlite3.Database,
+  query: string,
+): Promise<WaveRegistryEntry[]> {
+  const allWaves = await fetchRegistry(db);
+  return searchRegistry(allWaves, query);
 }
 
 /**

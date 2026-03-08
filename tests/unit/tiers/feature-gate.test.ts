@@ -67,9 +67,9 @@ describe('feature gate', () => {
       expect(isFeatureEnabled('full', 'voice_transcription')).toBe(true);
     });
 
-    it('voice_synthesis is ONLY enabled at full', () => {
+    it('voice_synthesis is enabled at standard and full', () => {
       expect(isFeatureEnabled('lite', 'voice_synthesis')).toBe(false);
-      expect(isFeatureEnabled('standard', 'voice_synthesis')).toBe(false);
+      expect(isFeatureEnabled('standard', 'voice_synthesis')).toBe(true);
       expect(isFeatureEnabled('full', 'voice_synthesis')).toBe(true);
     });
 

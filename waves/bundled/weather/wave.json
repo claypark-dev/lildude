@@ -1,0 +1,28 @@
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "description": "Check current weather conditions and forecast for any location using Open-Meteo",
+  "author": "lil-dude",
+  "permissions": {
+    "domains": ["api.open-meteo.com", "geocoding-api.open-meteo.com"],
+    "shell": [],
+    "directories": [],
+    "requiresBrowser": false,
+    "requiresOAuth": []
+  },
+  "triggers": ["weather", "temperature", "forecast", "rain", "snow", "wind", "weather in", "how cold", "how hot", "how warm"],
+  "deterministic": true,
+  "tools": [
+    {
+      "name": "check_weather",
+      "description": "Check current weather conditions for a location",
+      "parameters": {
+        "location": "string"
+      }
+    }
+  ],
+  "minTier": "basic",
+  "entryPoint": "index.js",
+  "safetyTier": "observe",
+  "category": "utilities"
+}

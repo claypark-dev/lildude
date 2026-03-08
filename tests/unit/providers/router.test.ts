@@ -197,10 +197,12 @@ describe('selectModel', () => {
       );
     });
 
-    it('throws when enabled providers have no models for the tier', () => {
-      expect(() => selectModel('medium', ['deepseek'])).toThrow(
-        /No model available for tier "medium"/,
-      );
+    it('falls back to lower tier when enabled providers have no models for the requested tier', () => {
+      // deepseek only has small-tier models, so medium falls back to small
+      const selection = selectModel('medium', ['deepseek']);
+      expect(selection.provider).toBe('deepseek');
+      expect(selection.tier).toBe('small');
+      expect(selection.reasoning).toMatch(/fell back/i);
     });
   });
 
@@ -242,11 +244,13 @@ describe('selectModel', () => {
       expect(selection.model).toBe('ollama/qwen3.5:4b');
     });
 
-    it('small Ollama model is NOT available for medium tier', () => {
+    it('small Ollama model falls back from medium to small tier', () => {
       setConfiguredOllamaModel('qwen3.5:4b', 4);
-      expect(() => selectModel('medium', ['ollama'])).toThrow(
-        /No model available for tier "medium"/,
-      );
+      const selection = selectModel('medium', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+      expect(selection.model).toBe('ollama/qwen3.5:4b');
+      expect(selection.tier).toBe('small');
+      expect(selection.reasoning).toMatch(/fell back/i);
     });
 
     it('30B+ Ollama model IS available for medium tier', () => {
@@ -262,18 +266,20 @@ describe('selectModel', () => {
       expect(selection.provider).toBe('ollama');
     });
 
-    it('29B model does NOT qualify for medium tier', () => {
+    it('29B model falls back from medium to small tier', () => {
       setConfiguredOllamaModel('some-model:29b', 29);
-      expect(() => selectModel('medium', ['ollama'])).toThrow(
-        /No model available for tier "medium"/,
-      );
+      const selection = selectModel('medium', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+      expect(selection.tier).toBe('small');
     });
 
-    it('Ollama model is never available for large tier regardless of size', () => {
+    it('Ollama model falls back from large tier to medium (70B qualifies for medium)', () => {
       setConfiguredOllamaModel('llama3.2:70b', 70);
-      expect(() => selectModel('large', ['ollama'])).toThrow(
-        /No model available for tier "large"/,
-      );
+      const selection = selectModel('large', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+      expect(selection.model).toBe('ollama/llama3.2:70b');
+      expect(selection.tier).toBe('medium');
+      expect(selection.reasoning).toMatch(/fell back/i);
     });
 
     it('size from name is used when no explicit size is provided', () => {
@@ -282,11 +288,12 @@ describe('selectModel', () => {
       expect(selection.provider).toBe('ollama');
     });
 
-    it('no size info defaults to small-only', () => {
+    it('no size info defaults to small-only (falls back from medium)', () => {
       setConfiguredOllamaModel('mistral');
-      expect(() => selectModel('medium', ['ollama'])).toThrow(
-        /No model available for tier "medium"/,
-      );
+      const selection = selectModel('medium', ['ollama']);
+      expect(selection.provider).toBe('ollama');
+      expect(selection.model).toBe('ollama/mistral');
+      expect(selection.tier).toBe('small');
     });
   });
 });

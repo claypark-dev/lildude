@@ -49,7 +49,7 @@ const TaskKillPayloadSchema = z.object({
 });
 
 const IncomingMessageSchema = z.object({
-  type: z.enum(['subscribe', 'chat.send', 'approval.respond', 'task.kill']),
+  type: z.enum(['subscribe', 'chat.send', 'chat.history', 'approval.respond', 'task.kill']),
   payload: z.unknown(),
   timestamp: z.string().optional(),
 });
@@ -180,6 +180,12 @@ export function createWSManager(options: WSManagerOptions = {}): WSManager {
         break;
       case 'chat.send':
         handleChatSend(client, payload);
+        break;
+      case 'chat.history':
+        // Forward to message handlers — history loading is handled in index.ts
+        for (const handler of messageHandlers) {
+          handler(client.id, 'chat.history', payload ?? {});
+        }
         break;
       case 'approval.respond':
         handleApprovalRespond(client, payload);

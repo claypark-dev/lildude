@@ -1,8 +1,9 @@
 /**
  * Remote Wave Hub registry.
  * Fetches the curated wave registry from a remote URL (GitHub JSON)
- * with 24-hour caching in SQLite. Falls back to the hardcoded registry
- * if the remote fetch fails. Supports update checking for installed waves.
+ * with 24-hour caching in SQLite. Returns an empty list if the remote
+ * fetch and all caches fail.
+ * Supports update checking for installed waves.
  */
 
 import type BetterSqlite3 from 'better-sqlite3';
@@ -66,13 +67,46 @@ interface RegistryJsonV2 {
   waves: WaveRegistryEntry[];
 }
 
-/** Union of v1 and v2 registry shapes. */
-type RegistryJson = RegistryJsonV1 | RegistryJsonV2;
+/** Category definition for v3 registry. */
+export interface CategoryDefinition {
+  name: string;
+  displayName: string;
+  description: string;
+  icon?: string;
+}
+
+/** Schema for v3 registry JSON (with community trust data and category definitions). */
+interface RegistryJsonV3 {
+  version: string;
+  generatedAt: string;
+  categories: CategoryDefinition[];
+  featured: string[];
+  waves: WaveRegistryEntry[];
+}
+
+/** Union of v1, v2, and v3 registry shapes. */
+type RegistryJson = RegistryJsonV1 | RegistryJsonV2 | RegistryJsonV3;
 
 /**
- * Parse a registry JSON payload, supporting both v1 and v2 formats.
- * v2 adds optional `featured` and `categories` arrays. If `featured` is
- * present, each matching wave gets `featured: true` merged in.
+ * Detect the registry format version from the payload.
+ * v3: has `generatedAt` field and version starts with "3."
+ * v2: has `featured` or `categories` arrays
+ * v1: just has `waves` array
+ *
+ * @param raw - The parsed JSON object.
+ * @returns The detected version: 1, 2, or 3.
+ */
+export function detectRegistryVersion(raw: RegistryJson): 1 | 2 | 3 {
+  if ('generatedAt' in raw && raw.version?.startsWith('3')) return 3;
+  if ('featured' in raw || 'categories' in raw) return 2;
+  return 1;
+}
+
+/**
+ * Parse a registry JSON payload, supporting v1, v2, and v3 formats.
+ * v2 adds optional `featured` and `categories` arrays.
+ * v3 adds `generatedAt`, typed category definitions, and per-wave
+ * community trust data (publishedAt, packageHash, communityTrust, etc.).
  *
  * @param raw - The parsed JSON object.
  * @returns Array of enriched wave registry entries.
@@ -82,26 +116,19 @@ export function parseRegistryPayload(raw: RegistryJson): WaveRegistryEntry[] {
     throw new Error('Invalid registry format: missing waves array');
   }
 
-  const isV2 = 'featured' in raw || 'categories' in raw;
-  if (!isV2) return raw.waves;
+  const version = detectRegistryVersion(raw);
 
-  const v2 = raw as RegistryJsonV2;
-  const featuredSet = new Set(v2.featured ?? []);
+  if (version === 1) return raw.waves;
 
-  return v2.waves.map((wave) => ({
+  const featuredSet = new Set(
+    'featured' in raw && Array.isArray(raw.featured) ? raw.featured : [],
+  );
+
+  return raw.waves.map((wave) => ({
     ...wave,
     featured: wave.featured ?? featuredSet.has(wave.name),
   }));
 }
-
-/** Hardcoded fallback registry for offline/error scenarios. */
-const FALLBACK_REGISTRY: WaveRegistryEntry[] = [
-  { name: 'weather-checker', description: 'Check weather forecasts for any location', author: 'lil-dude-community', source: 'github:claypark-dev/weather-checker', triggers: ['weather', 'forecast', 'temperature'], version: '1.2.0', category: 'utilities', tags: ['weather', 'forecast'], waveCategory: 'personal', safetyTier: 'observe', deterministic: true, verified: true, installCount: 342, averageRating: 4.5, ratingCount: 28 },
-  { name: 'email-summarizer', description: 'Summarize unread emails from Gmail or Outlook', author: 'lil-dude-community', source: 'github:claypark-dev/email-summarizer', triggers: ['email', 'inbox', 'unread', 'mail'], version: '0.9.0', category: 'communication', tags: ['email', 'inbox', 'summary'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 215, averageRating: 4.2, ratingCount: 18 },
-  { name: 'code-reviewer', description: 'Review code changes and provide feedback', author: 'lil-dude-community', source: 'github:claypark-dev/code-reviewer', triggers: ['review', 'code review', 'PR', 'pull request'], version: '2.0.1', category: 'developer', tags: ['code', 'review', 'git'], waveCategory: 'personal', safetyTier: 'observe', deterministic: false, verified: true, installCount: 189, averageRating: 4.7, ratingCount: 42 },
-  { name: 'note-taker', description: 'Take and organize notes from conversations', author: 'lil-dude-community', source: 'github:claypark-dev/note-taker', triggers: ['note', 'notes', 'remember', 'save'], version: '1.0.0', category: 'productivity', tags: ['notes', 'organize', 'save'], waveCategory: 'personal', safetyTier: 'create', deterministic: true, verified: false, installCount: 127, averageRating: 3.8, ratingCount: 12 },
-  { name: 'file-organizer', description: 'Organize files in directories by type and date', author: 'lil-dude-community', source: 'github:claypark-dev/file-organizer', triggers: ['organize', 'files', 'cleanup', 'sort files'], version: '1.1.0', category: 'utilities', tags: ['files', 'organize', 'cleanup'], waveCategory: 'personal', safetyTier: 'modify', deterministic: true, verified: false, installCount: 96, averageRating: 4.0, ratingCount: 8 },
-];
 
 /**
  * Fetch the wave registry with three cache layers:
@@ -110,7 +137,7 @@ const FALLBACK_REGISTRY: WaveRegistryEntry[] = [
  * 3. Remote fetch with ETag — only downloads when content changes
  *
  * Concurrent calls to the same URL are coalesced (only one fetch runs).
- * Falls back to hardcoded registry on all failures.
+ * Returns an empty list on all failures (community waves now live in the remote registry).
  *
  * @param db - The database instance.
  * @param registryUrl - The registry URL to fetch from.
@@ -227,9 +254,9 @@ async function fetchRegistryInternal(
     const message = error instanceof Error ? error.message : String(error);
     registryLogger.warn(
       { registryUrl, error: message },
-      'Failed to fetch remote registry, using fallback',
+      'Failed to fetch remote registry, returning empty list',
     );
-    return FALLBACK_REGISTRY;
+    return [];
   }
 }
 

@@ -7,9 +7,13 @@
  */
 
 import type { ChatResponse, Message, ChannelType, ModelSelection } from '../types/index.js';
-import { stripThinkTags, prependNoThink } from '../utils/think-strip.js';
+import type { SecurityLevel } from '../security/permissions.js';
+import { stripThinkTags, prependNoThink, antiThinkingInstruction } from '../utils/think-strip.js';
 import type { EmbeddingResult } from '../memory/embeddings.js';
 import { extractAndStorePreferences } from '../memory/preference-extractor.js';
+import { extractInlineFacts } from '../memory/inline-extractor.js';
+import { upsertKnowledge } from '../persistence/knowledge.js';
+import { processEntities } from '../memory/entity-linker.js';
 import { checkForInjection } from '../security/injection.js';
 import { canAfford, isWithinMonthlyBudget } from '../cost/budget.js';
 import { calculateCost } from '../cost/pricing.js';
@@ -24,7 +28,7 @@ import {
   getConversation,
   incrementMessageCount,
 } from '../persistence/conversations.js';
-import { appendConversationLog } from '../persistence/conversation-logs.js';
+import { appendConversationLog, getConversationLogs } from '../persistence/conversation-logs.js';
 import { createTask, updateTaskStatus, updateTaskSpend } from '../persistence/tasks.js';
 import { recordRoutingDecision } from '../persistence/routing-history.js';
 import { recordFailurePattern } from '../persistence/failure-patterns.js';
@@ -60,8 +64,13 @@ import type {
 // Re-export types so existing consumers aren't broken
 export type { AgentLoopDeps, AgentLoopConfig, AgentLoopResult, AgentLoop, ProcessMessageOptions };
 
-/** Minimum match score for a wave to be routed to. */
-const WAVE_MATCH_THRESHOLD = 0.1;
+/**
+ * Minimum match score for a wave to be routed to.
+ * Lowered from 0.4 → 0.15 after capping the coverage-ratio denominator
+ * at 80 chars (see registry.ts). The LLM fallthrough (llmCallCount === 0
+ * && no external_data) acts as a second safety net for canned wave outputs.
+ */
+const WAVE_MATCH_THRESHOLD = 0.15;
 
 /**
  * Create an agent loop configured with the given dependencies.
@@ -86,6 +95,11 @@ export function createAgentLoop(
   const enableHybridSearch = config?.enableHybridSearch ?? false;
 
   return {
+    updateSecurityLevel(level: SecurityLevel): void {
+      deps.securityLevel = level;
+      orchestratorLogger.info({ securityLevel: level }, 'Security level hot-reloaded');
+    },
+
     async processMessage(
       conversationId: string,
       userMessage: string,
@@ -155,7 +169,29 @@ export function createAgentLoop(
 
         // Step 5b: Wave routing — check if a registered wave matches
         const waveMatch = matchWave(userMessage);
+
+        // Skip wave if this looks like a conversational follow-up referencing
+        // previous results rather than a new search/action request.
+        // Detect via: (1) recent conversation history exists AND (2) message
+        // uses anaphoric references ("that", "those", "it") without new search criteria.
+        let skipWaveForFollowUp = false;
         if (waveMatch && waveMatch.score > WAVE_MATCH_THRESHOLD) {
+          const recentLogs = getConversationLogs(deps.db, conversationId, 4);
+          if (recentLogs.length >= 2) {
+            const lower = userMessage.toLowerCase();
+            const hasAnaphoricRef = /\b(that|those|the|these|it|this|which|above|earlier|previous|same)\b/.test(lower);
+            const isShortMessage = lower.split(/\s+/).length <= 15;
+            if (hasAnaphoricRef && isShortMessage) {
+              skipWaveForFollowUp = true;
+              orchestratorLogger.info(
+                { waveName: waveMatch.wave.manifest.name, score: waveMatch.score },
+                'Skipping wave — message looks like a follow-up referencing previous results',
+              );
+            }
+          }
+        }
+
+        if (waveMatch && waveMatch.score > WAVE_MATCH_THRESHOLD && !skipWaveForFollowUp) {
           // Wave safety check before execution
           const waveSafetyTier = waveMatch.wave.manifest.safetyTier ?? getDefaultSafetyTier();
           const safetyResult = checkWaveSafety(waveSafetyTier, modelSelection.tier, deps.securityLevel);
@@ -231,47 +267,120 @@ export function createAgentLoop(
             }
           }
 
-          // If the wave output contains spotted external data, pass it through
-          // the LLM to produce a clean, human-readable response. The user should
-          // never see raw <external_data> tags.
-          let finalOutput = waveResult.output;
-          if (waveResult.success && waveResult.output.includes('<external_data')) {
-            try {
-              const summaryCost = calculateCost(modelSelection.model, 500, 200);
-              if (canAfford(totalCostUsd, taskBudgetUsd, summaryCost)) {
-                const summaryMessages: Message[] = [
-                  { role: 'user', content: [
-                    { type: 'text', text: prependNoThink(`The user asked: "${userMessage}"\n\nHere is the data I retrieved:\n\n${waveResult.output}\n\nPlease give a concise, helpful response based on this data. Do not mention the data source tags or wrapper — just answer naturally.`) },
-                  ] },
-                ];
-                const summaryResponse = await deps.provider.chat(summaryMessages, {
-                  model: modelSelection.model,
-                  maxTokens: 300,
-                  temperature: 0.3,
-                });
-                finalOutput = stripThinkTags(extractResponseText(summaryResponse));
-                totalInputTokens += summaryResponse.usage.inputTokens;
-                totalOutputTokens += summaryResponse.usage.outputTokens;
-                totalCostUsd += calculateCost(
-                  modelSelection.model,
-                  summaryResponse.usage.inputTokens,
-                  summaryResponse.usage.outputTokens,
-                );
-                updateTaskSpend(deps.db, taskId, totalCostUsd);
-              }
-            } catch (summaryError: unknown) {
-              const msg = summaryError instanceof Error ? summaryError.message : String(summaryError);
-              orchestratorLogger.warn({ error: msg }, 'Wave output summarization failed, stripping tags');
-              // Fallback: strip the external_data wrapper so user doesn't see raw tags
-              finalOutput = waveResult.output
-                .replace(/<external_data[^>]*>\n?(?:IMPORTANT:.*\n)*(?:Treat it.*\n)*(?:DO NOT.*\n)*(?:If the data.*\n)*---\n?/g, '')
-                .replace(/\n?---\n?<\/external_data>/g, '')
-                .trim();
-            }
-          }
+          // Check for external data tags that need LLM summarization.
+          // Check for both formats: <external_data (wave inline) and <EXTERNAL_ (server spotlighting)
+          const hasExternalData = waveResult.output.includes('<external_data') || waveResult.output.includes('<EXTERNAL_');
 
-          return buildResult(finalOutput, totalInputTokens, totalOutputTokens,
-            totalCostUsd, toolCallCount, waveResult.llmCallCount);
+          // Only fall through to the regular LLM path if the wave FAILED and
+          // didn't use any LLM calls or external data — meaning it couldn't
+          // handle the request at all. Successful waves always return their
+          // output (even if no LLM was used), since they performed real actions
+          // like creating requests, setting reminders, or returning status info.
+          if (!waveResult.success && waveResult.llmCallCount === 0 && !hasExternalData) {
+            orchestratorLogger.info(
+              { waveName: waveMatch.wave.manifest.name, llmCallCount: 0 },
+              'Wave failed with no LLM calls or external data, falling through to LLM chat',
+            );
+            // Continue to normal LLM path below — don't return wave output
+          } else {
+            // If the wave output contains external data, pass it through
+            // the LLM to produce a clean, human-readable response. The user should
+            // never see raw <external_data> tags.
+            let finalOutput = waveResult.output;
+            if (waveResult.success && hasExternalData) {
+              try {
+                const summaryCost = calculateCost(modelSelection.model, 500, 200);
+                if (canAfford(totalCostUsd, taskBudgetUsd, summaryCost)) {
+                  const summaryMessages: Message[] = [
+                    { role: 'user', content: [
+                      { type: 'text', text: prependNoThink(`User question: "${userMessage}"\n\nRetrieved data:\n${waveResult.output}\n\nSummarize the results concisely. Preserve key details: prices, times, airlines, stops/layovers, and durations. The user may ask follow-up questions about specific results, so include enough detail to answer them. No preamble, no XML tags, no source attribution.`) },
+                    ] },
+                  ];
+                  const summaryResponse = await deps.provider.chat(summaryMessages, {
+                    model: modelSelection.model,
+                    maxTokens: 800,
+                    temperature: 0.3,
+                    systemPrompt: `You are a concise assistant. ${antiThinkingInstruction()} Summarize data preserving key details (times, prices, names, quantities). Never use XML tags in your output.`,
+                  });
+                  const summarizedText = stripThinkTags(extractResponseText(summaryResponse));
+                  // Only use the summary if it's non-empty; otherwise fall through to tag-stripping
+                  if (summarizedText.length > 0) {
+                    finalOutput = summarizedText;
+                  } else {
+                    orchestratorLogger.warn('LLM summary was empty after stripping think tags, falling back to raw data');
+                    finalOutput = waveResult.output
+                      .replace(/<(?:external_data|EXTERNAL_\w+)[^>]*>\n?(?:IMPORTANT:.*\n)*(?:Treat it.*\n)*(?:DO NOT.*\n)*(?:If the data.*\n)*---\n?/g, '')
+                      .replace(/\n?---\n?<\/(?:external_data|EXTERNAL_\w+)>/g, '')
+                      .trim();
+                  }
+                  totalInputTokens += summaryResponse.usage.inputTokens;
+                  totalOutputTokens += summaryResponse.usage.outputTokens;
+                  totalCostUsd += calculateCost(
+                    modelSelection.model,
+                    summaryResponse.usage.inputTokens,
+                    summaryResponse.usage.outputTokens,
+                  );
+                  updateTaskSpend(deps.db, taskId, totalCostUsd);
+                }
+              } catch (summaryError: unknown) {
+                const msg = summaryError instanceof Error ? summaryError.message : String(summaryError);
+                orchestratorLogger.warn({ error: msg }, 'Wave output summarization failed, stripping tags');
+                // Fallback: strip the external_data wrapper so user doesn't see raw tags
+                finalOutput = waveResult.output
+                  .replace(/<external_data[^>]*>\n?(?:IMPORTANT:.*\n)*(?:Treat it.*\n)*(?:DO NOT.*\n)*(?:If the data.*\n)*---\n?/g, '')
+                  .replace(/\n?---\n?<\/external_data>/g, '')
+                  .trim();
+              }
+            }
+
+            // Process wave metadata actions (e.g. cron job creation from reminders/stock-monitor)
+            if (waveResult.success && waveResult.metadata?.action === 'create_cron_job') {
+              try {
+                const meta = waveResult.metadata;
+                const cronSchedule = meta.cronSchedule as string | undefined;
+                if (cronSchedule) {
+                  const { computeNextRun } = await import('./cron-parser.js');
+                  const { createCronJob } = await import('../persistence/cron-jobs.js');
+                  const nextRunAt = computeNextRun(cronSchedule, new Date());
+                  const cronJob = createCronJob(deps.db, {
+                    schedule: cronSchedule,
+                    taskDescription: (meta.taskDescription as string) ?? userMessage,
+                    waveId: (meta.waveId as string) ?? waveMatch.wave.manifest.name,
+                    usesAi: (meta.usesAi as boolean) ?? false,
+                    estimatedCostPerRun: (meta.estimatedCostPerRun as number) ?? 0,
+                    nextRunAt,
+                    channelType: channelType,
+                    channelId: conversationId,
+                    expiresAt: meta.expiresAt ? new Date(meta.expiresAt as string) : undefined,
+                  });
+                  orchestratorLogger.info(
+                    { jobId: cronJob.id, schedule: cronSchedule, waveId: cronJob.waveId },
+                    'Cron job created from wave metadata',
+                  );
+                  // Append cron job info to the output so the user knows it was scheduled
+                  finalOutput += `\n\n📅 Scheduled (job ${cronJob.id}): runs on "${cronSchedule}"`;
+                  if (meta.expiresAt) {
+                    finalOutput += ` until ${new Date(meta.expiresAt as string).toLocaleString()}`;
+                  }
+                }
+              } catch (cronError: unknown) {
+                const cronMsg = cronError instanceof Error ? cronError.message : String(cronError);
+                orchestratorLogger.error({ error: cronMsg }, 'Failed to create cron job from wave metadata');
+              }
+            }
+
+            // Log both sides of the conversation so follow-up messages have context.
+            // Without this, the wave output is lost and follow-ups can't reference it.
+            appendConversationLog(deps.db, {
+              conversationId, role: 'user', content: userMessage, tokenCount: 0,
+            });
+            appendConversationLog(deps.db, {
+              conversationId, role: 'assistant', content: finalOutput, tokenCount: 0,
+            });
+
+            return buildResult(finalOutput, totalInputTokens, totalOutputTokens,
+              totalCostUsd, toolCallCount, waveResult.llmCallCount);
+          }
         }
 
         // Step 6: Generate query embedding for hybrid search (if enabled)
@@ -282,6 +391,32 @@ export function createAgentLoop(
           } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
             orchestratorLogger.warn({ error: msg }, 'Embedding generation failed, falling back to keyword search');
+          }
+        }
+
+        // Step 6b: Inline fact extraction (deterministic, zero LLM cost)
+        // Extract and store facts from the user message BEFORE context is built
+        // so that newly learned facts appear in the same request's knowledge search.
+        if (deps.db) {
+          try {
+            const inlineFacts = extractInlineFacts(userMessage);
+            for (const fact of inlineFacts) {
+              const entry = upsertKnowledge(deps.db, {
+                category: fact.category,
+                key: fact.key,
+                value: fact.value,
+                confidence: fact.confidence,
+                sourceConversationId: conversationId,
+                isCorrection: fact.isCorrection,
+              });
+              // Link detected entities to the knowledge entry
+              if (fact.entities && fact.entities.length > 0) {
+                processEntities(deps.db, entry.id, fact.entities);
+              }
+            }
+          } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            orchestratorLogger.warn({ error: msg }, 'Inline fact extraction failed (non-fatal)');
           }
         }
 

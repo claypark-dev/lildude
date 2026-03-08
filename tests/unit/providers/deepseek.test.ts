@@ -118,9 +118,10 @@ describe('DeepSeek in router', () => {
     expect(selection.model).toBe('deepseek-chat');
   });
 
-  it('router throws for medium tier when only deepseek is enabled', () => {
-    expect(() => selectModel('medium', ['deepseek'])).toThrow(
-      /No model available for tier "medium"/,
-    );
+  it('router falls back to small tier when only deepseek is enabled for medium', () => {
+    const selection = selectModel('medium', ['deepseek']);
+    expect(selection.provider).toBe('deepseek');
+    expect(selection.tier).toBe('small');
+    expect(selection.reasoning).toMatch(/fell back/i);
   });
 });

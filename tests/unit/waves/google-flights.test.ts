@@ -151,7 +151,8 @@ describe('google-flights wave', () => {
 
       expect(result.extractedParams['from']).toBe('unknown');
       expect(result.extractedParams['to']).toBe('unknown');
-      expect(result.extractedParams['date']).toBe('unknown');
+      // When no date is given, falls back to today's date (YYYY-MM-DD format)
+      expect(result.extractedParams['date']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(result.steps).toHaveLength(1);
     });
 

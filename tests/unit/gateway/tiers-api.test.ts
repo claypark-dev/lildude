@@ -159,14 +159,14 @@ describe('tiers API', () => {
       expect(body.enabled).toBe(true);
     });
 
-    it('returns enabled=false for voice_synthesis on standard', async () => {
+    it('returns enabled=true for voice_synthesis on standard', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/tiers/features/voice_synthesis',
       });
 
       const body = JSON.parse(response.body) as { enabled: boolean };
-      expect(body.enabled).toBe(false);
+      expect(body.enabled).toBe(true);
     });
 
     it('returns enabled=true for voice_synthesis on full', async () => {

@@ -35,6 +35,7 @@ import { registerRoutingHistoryRoutes } from './api/routing-history.js';
 import { registerOnboardingRoutes } from './api/onboarding.js';
 import { registerOllamaRoutes } from './api/ollama.js';
 import { registerVoiceRoutes } from './api/voice.js';
+import { registerVoiceConfigRoutes } from './api/voice-config.js';
 import { registerShorebreakRoutes } from './api/shorebreak.js';
 import { registerOAuthRoutes } from './api/oauth.js';
 import { registerFeedbackRoutes } from './api/feedback.js';
@@ -43,7 +44,11 @@ import { registerContactRoutes } from './api/contacts.js';
 import { registerActivityRoutes } from './api/activity.js';
 import { registerPartyWaveRoutes } from './api/party-waves.js';
 import { registerHubWavesRoutes } from './api/hub-waves.js';
+import { registerCommunityRoutes } from './api/community.js';
 import { registerTierRoutes } from './api/tiers.js';
+import { registerSSERoutes } from './api/sse.js';
+import { registerDashboardRoutes } from './api/dashboard.js';
+import { registerWidgetRoutes } from './api/widgets.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const log = gatewayLogger;
@@ -149,6 +154,9 @@ export function createGatewayServer(
   registerConversationRoutes(app, db);
   registerKnowledgeRoutes(app, db);
   registerCronRoutes(app, db);
+  registerSSERoutes(app, db);
+  registerDashboardRoutes(app, db);
+  registerWidgetRoutes(app, db);
   registerSecurityRoutes(app, db);
   registerApprovalRoutes(app, db);
   registerUsageRoutes(app, db);
@@ -159,6 +167,7 @@ export function createGatewayServer(
   const getTier = () => config.installTier;
   registerTierRoutes(app, getTier);
   registerVoiceRoutes(app, config, getTier);
+  registerVoiceConfigRoutes(app, config, getTier);
   registerShorebreakRoutes(app, db);
   registerFeedbackRoutes(app, db);
   registerHubRoutes(app, db);
@@ -166,6 +175,7 @@ export function createGatewayServer(
   registerActivityRoutes(app, db);
   registerPartyWaveRoutes(app, db);
   registerHubWavesRoutes(app, db);
+  registerCommunityRoutes(app, db);
   const oauthBaseUrl = `http://${config.gateway.host}:${config.gateway.httpPort}`;
   registerOAuthRoutes(app, db, oauthBaseUrl);
 

@@ -145,11 +145,12 @@ describe('BriefingGenerator', () => {
       expect(sectionTitles).toContain('Integrations');
       expect(sectionTitles).toContain('Email');
       expect(sectionTitles).toContain('Calendar');
+      expect(sectionTitles).toContain('Recently Learned');
       expect(sectionTitles).toContain('Active Waves');
       expect(sectionTitles).toContain('Recent Tasks');
       expect(sectionTitles).toContain('Scheduled Jobs');
       expect(sectionTitles).toContain('Cost Overview');
-      expect(briefing.sections).toHaveLength(7);
+      expect(briefing.sections).toHaveLength(8);
     });
 
     it('shows placeholder email/calendar when no Google token', async () => {

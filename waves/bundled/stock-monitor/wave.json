@@ -10,7 +10,7 @@
     "requiresBrowser": false,
     "requiresOAuth": []
   },
-  "triggers": ["stock", "stocks", "share price", "ticker", "market"],
+  "triggers": ["stock", "stocks", "stock price", "share price", "ticker", "market", "price of"],
   "deterministic": true,
   "tools": [
     {

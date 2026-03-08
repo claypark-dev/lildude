@@ -173,6 +173,7 @@ export type WsIncomingMessage =
   | { type: 'message'; text: string; role: 'assistant' }
   | { type: 'stream_chunk'; text: string }
   | { type: 'stream_end' }
+  | { type: 'history'; messages: Array<{ id: string; text: string; role: string; timestamp: number }> }
   | { type: 'task_update'; task: Task }
   | { type: 'ollama_pull_progress'; model: string; status: string; completed: number; total: number };
 
@@ -200,6 +201,8 @@ export interface HardwareProfile {
 export interface OnboardingStatus {
   onboarded: boolean;
   hardware: HardwareProfile;
+  /** Fresh web-panel API key (returned when already onboarded but no auth header sent). */
+  apiKey?: string;
 }
 
 /** Provider key verification response */
@@ -237,4 +240,86 @@ export interface VoiceStatus {
   enabled: boolean;
   backend: string;
   hasApiKey: boolean;
+}
+
+// ── Dashboard Types ─────────────────────────────────────────────
+
+/** Cron job info returned by the dashboard API. */
+export interface DashboardCronJob {
+  id: string;
+  schedule: string;
+  taskDescription: string;
+  waveId: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  nextRunAt: string | null;
+  enabled: boolean;
+  expiresAt: string | null;
+}
+
+/** Consolidated dashboard data returned by GET /api/v1/dashboard. */
+export interface DashboardData {
+  health: {
+    status: string;
+    uptime: number;
+    memoryMb: number;
+    timestamp: string;
+  };
+  budget: {
+    monthlyCostUsd: number;
+    dailyCostUsd: number;
+  };
+  tasks: {
+    active: number;
+    recent24h: number;
+    items: Array<{
+      id: string;
+      description: string;
+      status: string;
+      createdAt: string;
+    }>;
+  };
+  cron: {
+    jobs: DashboardCronJob[];
+    count: number;
+  };
+}
+
+/** Weather widget response from GET /api/v1/widgets/weather. */
+export interface WeatherWidgetData {
+  location: {
+    name: string;
+    country: string;
+    region: string | null;
+    latitude: number;
+    longitude: number;
+  };
+  weather: {
+    temperature: number;
+    feelsLike: number;
+    humidity: number;
+    windSpeed: number;
+    windDirection: number;
+    weatherCode: number;
+    isDay: boolean;
+    precipitation: number;
+  };
+  fetchedAt: string;
+}
+
+/** Reminder item in the reminders widget response. */
+export interface ReminderItem {
+  id: string;
+  text: string;
+  schedule: string;
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  expiresAt: string | null;
+}
+
+/** Reminders widget response from GET /api/v1/widgets/reminders. */
+export interface RemindersWidgetData {
+  reminders: ReminderItem[];
+  count: number;
 }

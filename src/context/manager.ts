@@ -18,6 +18,7 @@ import { formatKnowledgeForContext } from './knowledge.js';
 import { hybridSearch, recordKnowledgeAccess } from '../memory/hybrid-search.js';
 import type { EmbeddingResult } from '../memory/embeddings.js';
 import { loadUserProfile } from '../memory/preference-extractor.js';
+import { searchEntities, getKnowledgeByEntity } from '../memory/entity-linker.js';
 import type { ProfileEntry } from '../orchestrator/system-prompt.js';
 import { orchestratorLogger } from '../utils/logger.js';
 
@@ -225,6 +226,54 @@ export async function buildContext(
           }
         }
       }
+    }
+
+    // Step 2b: Entity-linked knowledge retrieval
+    // If the user mentions a known entity (e.g. "Sarah"), fetch all
+    // knowledge linked to that entity. Results are merged into the
+    // existing knowledge context without exceeding the budget.
+    try {
+      const searchTerms = extractSearchTerms(userMessage);
+      const entitySeenIds = new Set(knowledgeIncluded.map(() => 0)); // track IDs already included
+      const entityEntries: KnowledgeRow[] = [];
+
+      for (const term of searchTerms) {
+        const matchedEntities = searchEntities(db, term);
+        for (const entity of matchedEntities) {
+          const linkedKnowledge = getKnowledgeByEntity(db, entity.canonicalName);
+          for (const lk of linkedKnowledge) {
+            if (!entitySeenIds.has(lk.knowledgeId)) {
+              entitySeenIds.add(lk.knowledgeId);
+              entityEntries.push({
+                id: lk.knowledgeId,
+                category: lk.category,
+                key: lk.key,
+                value: lk.value,
+                sourceConversationId: null,
+                sourceTaskId: null,
+                confidence: lk.confidence,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+            }
+          }
+        }
+      }
+
+      if (entityEntries.length > 0 && knowledgeContext.length < BUDGET_KNOWLEDGE * 4) {
+        // Append entity-linked facts to existing knowledge context
+        const entityContext = formatKnowledgeForContext(entityEntries, BUDGET_KNOWLEDGE);
+        if (entityContext.length > 0) {
+          knowledgeContext = knowledgeContext
+            ? `${knowledgeContext}\n${entityContext}`
+            : entityContext;
+          for (const entry of entityEntries) {
+            knowledgeIncluded.push(entry.key);
+          }
+        }
+      }
+    } catch {
+      // Entity tables may not exist on older DBs — fail silently
     }
 
     // Step 3: Load conversation (may not exist for new conversations)

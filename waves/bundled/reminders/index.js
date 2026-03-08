@@ -195,17 +195,37 @@ export function extractReminderText(input) {
   return cleaned || 'Reminder';
 }
 
+/**
+ * Parse "for the next N hours/minutes" into an ISO expiry timestamp.
+ * @param {string} input
+ * @returns {string | null}
+ */
+function parseExpiry(input) {
+  const forMatch = input.match(
+    /\bfor\s+the\s+next\s+(\d+)\s*(hours?|minutes?)\b/i
+  );
+  if (forMatch) {
+    const amount = parseInt(forMatch[1], 10);
+    const unit = forMatch[2].toLowerCase().startsWith('h') ? 'hours' : 'minutes';
+    const ms = unit === 'hours' ? amount * 3_600_000 : amount * 60_000;
+    return new Date(Date.now() + ms).toISOString();
+  }
+  return null;
+}
+
 /** Plan: deterministically parse user input to extract reminder text and schedule. */
 export async function plan(userInput, context) {
   const now = context && context.now ? new Date(context.now) : undefined;
   const scheduleResult = parseTimeExpression(userInput, now);
   const reminderText = extractReminderText(userInput);
+  const expiresAt = parseExpiry(userInput);
 
   /** @type {Record<string, unknown>} */
   const extractedParams = {
     text: reminderText,
     schedule: scheduleResult ? scheduleResult.schedule : null,
     isOneTime: scheduleResult ? scheduleResult.isOneTime : false,
+    expiresAt,
     parseError: scheduleResult ? null : 'Could not parse a time expression from the input',
   };
 
@@ -238,18 +258,37 @@ export async function execute(wavePlan) {
   const schedule = String(params.schedule ?? '');
   const text = String(params.text ?? 'Reminder');
   const isOneTime = Boolean(params.isOneTime);
+  const expiresAt = params.expiresAt ? String(params.expiresAt) : undefined;
 
-  // The cron job is created by the caller (wave executor or test harness)
-  // since this module has no direct DB access. We return the data needed.
+  // Build output message
+  let outputMsg = `Reminder set: "${text}" with schedule "${schedule}"${isOneTime ? ' (one-time)' : ' (recurring)'}`;
+  if (expiresAt) {
+    outputMsg += ` (expires ${new Date(expiresAt).toLocaleString()})`;
+  }
+
+  // Signal cron job creation via metadata.action so the agent loop
+  // automatically creates the cron job in the database.
+  /** @type {Record<string, unknown>} */
+  const metadata = {
+    action: 'create_cron_job',
+    text,
+    schedule,
+    cronSchedule: schedule,
+    taskDescription: text,
+    isOneTime,
+    waveId: 'reminders',
+    usesAi: false,
+    estimatedCostPerRun: 0,
+  };
+
+  if (expiresAt) {
+    metadata.expiresAt = expiresAt;
+  }
+
   return {
     success: true,
-    output: `Reminder set: "${text}" with schedule "${schedule}"${isOneTime ? ' (one-time)' : ' (recurring)'}`,
-    metadata: {
-      text,
-      schedule,
-      isOneTime,
-      waveId: 'reminders',
-    },
+    output: outputMsg,
+    metadata,
   };
 }
 

@@ -4,8 +4,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { WaveCard as WaveCardData, WaveReview, WaveExecutionStats } from './wave-hub-api.ts';
+import type { WaveCard as WaveCardData, WaveReview, WaveExecutionStats, WaveDetailTrust, WaveDetailAuthor } from './wave-hub-api.ts';
 import { fetchWaveDetail, submitReview } from './wave-hub-api.ts';
+import { TrustBadge } from './TrustBadge.tsx';
 
 /** Props for the WaveDetailModal component. */
 interface WaveDetailModalProps {
@@ -56,6 +57,8 @@ export function WaveDetailModal({
   const [wave, setWave] = useState<WaveCardData | null>(null);
   const [reviews, setReviews] = useState<WaveReview[]>([]);
   const [executionStats, setExecutionStats] = useState<WaveExecutionStats | null>(null);
+  const [trustDetail, setTrustDetail] = useState<WaveDetailTrust | null>(null);
+  const [authorDetail, setAuthorDetail] = useState<WaveDetailAuthor | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +77,8 @@ export function WaveDetailModal({
       setWave(data.wave);
       setReviews(data.reviews);
       setExecutionStats(data.executionStats);
+      setTrustDetail(data.trust ?? null);
+      setAuthorDetail(data.author ?? null);
     } catch (fetchError: unknown) {
       const message = fetchError instanceof Error ? fetchError.message : 'Failed to load wave detail';
       setError(message);
@@ -164,9 +169,17 @@ export function WaveDetailModal({
                   </span>
                 )}
               </div>
+              {wave.trustTier && (
+                <div className="mt-1">
+                  <TrustBadge tier={wave.trustTier} score={wave.trustScore ?? undefined} showScore />
+                </div>
+              )}
               <p className="text-[#a0a0a0] mt-1">{wave.description}</p>
-              <p className="text-xs text-[#666] mt-2">
-                by {wave.author} · v{wave.version}
+              <p className="text-xs text-[#666] mt-2 inline-flex items-center gap-1.5">
+                {wave.authorProfile?.avatarUrl && (
+                  <img src={wave.authorProfile.avatarUrl} alt="" className="w-4 h-4 rounded-full" />
+                )}
+                by {wave.authorProfile?.displayName ?? wave.author} · v{wave.version}
               </p>
             </div>
 
@@ -282,6 +295,85 @@ export function WaveDetailModal({
                     Last run: {new Date(executionStats.lastExecutedAt).toLocaleDateString()}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Trust details */}
+            {trustDetail && (
+              <div className="bg-[#111] rounded-lg p-4 border border-[#222]">
+                <h4 className="text-sm font-medium text-white mb-3">Community Trust</h4>
+                <div className="flex items-center gap-3 mb-3">
+                  <TrustBadge tier={trustDetail.tier} score={trustDetail.score} showScore />
+                  {wave.packageHash && (
+                    <span className="text-[10px] text-[#666] font-mono" title="Package hash verified">
+                      SHA {wave.packageHash.slice(0, 12)}…
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className={trustDetail.scanPassed ? 'text-green-400' : 'text-red-400'}>
+                      {trustDetail.scanPassed ? '✓' : '✗'}
+                    </span>
+                    <span className="text-[#a0a0a0]">Security scan</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={trustDetail.sandboxPassed ? 'text-green-400' : 'text-red-400'}>
+                      {trustDetail.sandboxPassed ? '✓' : '✗'}
+                    </span>
+                    <span className="text-[#a0a0a0]">Sandbox test</span>
+                  </div>
+                  {trustDetail.highFindings > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-amber-400">!</span>
+                      <span className="text-[#a0a0a0]">{trustDetail.highFindings} high findings</span>
+                    </div>
+                  )}
+                  {trustDetail.criticalFindings > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-red-400">!</span>
+                      <span className="text-[#a0a0a0]">{trustDetail.criticalFindings} critical findings</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Author profile */}
+            {authorDetail && (
+              <div className="bg-[#111] rounded-lg p-4 border border-[#222]">
+                <h4 className="text-sm font-medium text-white mb-3">Author</h4>
+                <div className="flex items-center gap-3">
+                  {authorDetail.avatarUrl && (
+                    <img
+                      src={authorDetail.avatarUrl}
+                      alt={authorDetail.displayName ?? authorDetail.githubUsername}
+                      className="w-10 h-10 rounded-full"
+                    />
+                  )}
+                  <div>
+                    <p className="text-white text-sm font-medium">
+                      {authorDetail.displayName ?? authorDetail.githubUsername}
+                    </p>
+                    <p className="text-xs text-[#888]">@{authorDetail.githubUsername}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mt-3 text-center">
+                  <div>
+                    <p className="text-sm font-bold text-white">{authorDetail.publishedCount}</p>
+                    <p className="text-[10px] text-[#888]">Published</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">{authorDetail.totalInstalls.toLocaleString()}</p>
+                    <p className="text-[10px] text-[#888]">Total installs</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">
+                      {authorDetail.averageRating > 0 ? authorDetail.averageRating.toFixed(1) : '—'}
+                    </p>
+                    <p className="text-[10px] text-[#888]">Avg rating</p>
+                  </div>
+                </div>
               </div>
             )}
 

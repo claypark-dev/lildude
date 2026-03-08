@@ -302,7 +302,15 @@ describe('wave executor', () => {
 
       await executeWave(wave, 'analyze my portfolio', deps);
 
-      expect(wave.execute).toHaveBeenCalledWith(customPlan);
+      // The executor injects _deps into extractedParams, so the plan passed
+      // to execute() has additional fields beyond what wave.plan() returned.
+      const actualPlan = (wave.execute as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(actualPlan.steps).toEqual(customPlan.steps);
+      expect(actualPlan.estimatedCostUsd).toBe(customPlan.estimatedCostUsd);
+      expect(actualPlan.isDeterministic).toBe(customPlan.isDeterministic);
+      expect(actualPlan.extractedParams.userId).toBe('123');
+      expect(actualPlan.extractedParams._deps).toBeDefined();
+      expect(actualPlan.extractedParams._deps.executeBrowserAction).toBeTypeOf('function');
     });
   });
 
@@ -662,7 +670,7 @@ describe('wave executor', () => {
       expect(result.wasDeterministic).toBe(false);
     });
 
-    it('non-deterministic wave fails with small Ollama at security level 3', async () => {
+    it('non-deterministic wave succeeds with small Ollama at security level 3 via tier fallback', async () => {
       setConfiguredOllamaModel('qwen3.5:4b', 4);
       const wave = createNonDeterministicWave();
       const deps = createMockDeps({
@@ -670,9 +678,9 @@ describe('wave executor', () => {
         enabledProviders: ['ollama'],
       });
 
+      // Router falls back from medium to small tier, so the wave executes
       const result = await executeWave(wave, 'search the web for AI news', deps);
-      expect(result.success).toBe(false);
-      expect(result.output).toContain('execution failed');
+      expect(result.success).toBe(true);
     });
 
     it('non-deterministic wave succeeds with 70B Ollama at security level 3', async () => {
@@ -687,16 +695,16 @@ describe('wave executor', () => {
       expect(result.success).toBe(true);
     });
 
-    it('defaults to security level 3 when not provided', async () => {
+    it('defaults to security level 3 when not provided (falls back to small tier)', async () => {
       setConfiguredOllamaModel('qwen3.5:4b', 4);
       const wave = createNonDeterministicWave();
       const deps = createMockDeps({
         enabledProviders: ['ollama'],
       });
 
-      // Default security level 3 → medium tier → small Ollama blocked
+      // Default security level 3 → medium tier → falls back to small Ollama
       const result = await executeWave(wave, 'search the web for AI news', deps);
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
   });
 });
