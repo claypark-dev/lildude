@@ -8,6 +8,7 @@ import type { Config } from './config/schema.js';
 import type { ChannelManager } from './channels/index.js';
 import {
   createWebChatAdapter,
+  createCliAdapter,
   createDiscordAdapter,
   createTelegramAdapter,
   createSlackAdapter,
@@ -60,6 +61,19 @@ export async function initializeChannels(
     await webChatAdapter.connect({ enabled: true });
     channelManager.registerAdapter(webChatAdapter);
     log.info('WebChat adapter enabled');
+  }
+
+  // CLI (only if enabled — for direct terminal interaction)
+  if (config.channels.cli.enabled) {
+    try {
+      const cliAdapter = createCliAdapter();
+      await cliAdapter.connect({ enabled: true });
+      channelManager.registerAdapter(cliAdapter);
+      log.info('CLI adapter enabled');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.warn({ error: message }, 'Failed to connect CLI adapter');
+    }
   }
 
   // Discord (only if enabled and token provided)

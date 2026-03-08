@@ -372,7 +372,8 @@
         <a href="#features">Waves</a>
         <a href="#security">Trust</a>
         <a href="#paddle-out">Paddle Out</a>
-        <a href="https://claypark-dev.github.io/wave-registry/" target="_blank">Wave Hub</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="https://claypark-dev.github.io/wave-registry/" target="_blank">Shorebreak</a>
         <a href="https://github.com/claypark-dev/lildude" target="_blank">GitHub</a>
       </div>
     </div>
@@ -496,7 +497,7 @@
         <div class="feature-card">
           <div class="icon">🏄</div>
           <h3>967 Curated Waves</h3>
-          <p>Community skill marketplace with quality gates, AST security scanning, and package hash verification. Browse the <a href="https://claypark-dev.github.io/wave-registry/" target="_blank">Wave Hub</a>. Every wave validated. Zero malware, ever.</p>
+          <p>Community skill marketplace with quality gates, AST security scanning, and package hash verification. Browse the <a href="https://claypark-dev.github.io/wave-registry/" target="_blank">Shorebreak</a>. Every wave validated. Zero malware, ever.</p>
         </div>
         <div class="feature-card">
           <div class="icon">🌊</div>
@@ -610,6 +611,44 @@
     </div>
   </section>
 
+  <!-- Quickstart Guide -->
+  <section id="quickstart" style="padding: 60px 0;">
+    <div class="container">
+      <h2>Quickstart Guide</h2>
+      <p class="section-sub">From zero to riding in 5 minutes. Here's the complete flow.</p>
+
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin-top: 32px;">
+        <h3 style="color: var(--ocean); margin-bottom: 16px;">1. Install & Onboard</h3>
+        <div style="background: var(--bg); border-radius: 8px; padding: 16px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: var(--ocean); margin-bottom: 24px; overflow-x: auto; white-space: pre;">git clone https://github.com/claypark-dev/lildude.git
+cd lildude && npm install
+npx lil-dude onboard    # walks you through API keys, channels, security
+npx lil-dude start       # launches with dashboard</div>
+
+        <h3 style="color: var(--sky); margin-bottom: 16px;">2. Browse & Install Waves</h3>
+        <p style="margin-bottom: 12px; color: var(--text-dim);">Waves are skills that extend what your assistant can do. Browse 967 community waves on <a href="https://claypark-dev.github.io/wave-registry/" target="_blank">Shorebreak</a>, or install directly:</p>
+        <div style="background: var(--bg); border-radius: 8px; padding: 16px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: var(--ocean); margin-bottom: 24px; overflow-x: auto; white-space: pre;">lildude wave install weather-checker    # observe tier (read-only)
+lildude wave install todo-manager       # create tier (adds data)
+lildude wave install email-template     # observe tier
+lildude wave list                       # see installed waves</div>
+
+        <h3 style="color: var(--sand); margin-bottom: 16px;">3. Connect Channels</h3>
+        <p style="margin-bottom: 12px; color: var(--text-dim);">Talk to your assistant from anywhere. Enable channels during onboarding or edit <code>lildude.config.json</code>:</p>
+        <div style="background: var(--bg); border-radius: 8px; padding: 16px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 24px; overflow-x: auto; white-space: pre;"># Supported: Discord, Telegram, Slack, iMessage, WhatsApp, Signal,
+# Matrix, Teams, LINE, Google Chat, WebChat, CLI
+# WebChat + CLI are enabled by default</div>
+
+        <h3 style="color: var(--coral); margin-bottom: 16px;">4. Customize Your Agent</h3>
+        <p style="margin-bottom: 12px; color: var(--text-dim);">Give your assistant a name, set a persona, and configure standing instructions for the heartbeat system:</p>
+        <div style="background: var(--bg); border-radius: 8px; padding: 16px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; color: var(--text-dim); overflow-x: auto; white-space: pre;"># In lildude.config.json:
+"agent": { "name": "Jarvis", "persona": "a witty British butler AI" }
+
+# Edit ~/.lil-dude/heartbeat.md for proactive checks:
+# "Check my calendar every 30 minutes"
+# "Alert me if my API spend exceeds $5 today"</div>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA -->
   <section class="cta-section">
     <div class="container">
@@ -617,7 +656,7 @@
       <p class="section-sub">Open source. Self-hosted. Yours to control. No strings, no subscriptions, no surprises.</p>
       <a href="https://github.com/claypark-dev/lildude" class="cta-btn" target="_blank">View on GitHub</a>
       <br><br>
-      <a href="https://claypark-dev.github.io/wave-registry/" class="cta-secondary" target="_blank">Browse the Wave Hub &rarr;</a>
+      <a href="https://claypark-dev.github.io/wave-registry/" class="cta-secondary" target="_blank">Browse the Shorebreak &rarr;</a>
     </div>
   </section>
 
@@ -626,7 +665,7 @@
       <p>
         🏄 Lil Dude &mdash; Open Source AI Executive Assistant
         &bull; <a href="https://github.com/claypark-dev/lildude">GitHub</a>
-        &bull; <a href="https://claypark-dev.github.io/wave-registry/">Wave Hub</a>
+        &bull; <a href="https://claypark-dev.github.io/wave-registry/">Shorebreak</a>
         &bull; <a href="https://github.com/claypark-dev/wave-registry">Registry Repo</a>
       </p>
       <p style="margin-top: 8px; font-size: 0.75rem; color: var(--text-dim);">

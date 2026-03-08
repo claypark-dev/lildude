@@ -55,7 +55,11 @@ program
       await startApp();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Failed to start Lil Dude: ${message}`);
+      console.error(`\nFailed to start Lil Dude: ${message}`);
+      if (message.includes('Config validation failed') || message.includes('invalid JSON')) {
+        console.error('\nYour configuration file appears to be corrupted.');
+        console.error('Run `lil-dude onboard` to re-create it, or manually fix ~/.lil-dude/config.json');
+      }
       process.exit(1);
     }
   });

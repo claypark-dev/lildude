@@ -28,7 +28,7 @@ import {
   getConfigValue,
 } from '../persistence/config-store.js';
 import { filterOutput } from '../security/output-filter.js';
-import { detectInjection } from '../security/injection.js';
+import { checkForInjection } from '../security/injection.js';
 
 const logger = createModuleLogger('heartbeat');
 
@@ -206,10 +206,11 @@ export async function tickHeartbeat(
 
     // 2. Load standing instructions (with injection detection)
     const rawInstructions = await loadHeartbeatInstructions();
-    const injectionCheck = detectInjection(rawInstructions);
-    if (injectionCheck.detected) {
+    const injectionCheck = checkForInjection(rawInstructions, 'external');
+    if (!injectionCheck.isClean) {
+      const threatDescriptions = injectionCheck.threats.map((t) => t.type);
       logger.warn(
-        { patterns: injectionCheck.patterns },
+        { threats: threatDescriptions },
         'Heartbeat instructions contain potential injection — skipping tick',
       );
       return {
@@ -217,7 +218,7 @@ export async function tickHeartbeat(
         output: null,
         costUsd: 0,
         skipped: true,
-        skipReason: `Injection detected in heartbeat.md: ${injectionCheck.patterns?.join(', ')}`,
+        skipReason: `Injection detected in heartbeat.md: ${threatDescriptions.join(', ')}`,
       };
     }
     const instructions = rawInstructions;
@@ -290,12 +291,12 @@ export async function tickHeartbeat(
 
     // 10. Sanitize output before broadcasting (prevent secret leakage)
     const outputCheck = filterOutput(responseText.trim());
-    const safeResponseText = outputCheck.clean
+    const safeResponseText = !outputCheck.hasLeaks
       ? responseText.trim()
       : outputCheck.filtered;
-    if (!outputCheck.clean) {
+    if (outputCheck.hasLeaks) {
       logger.warn(
-        { redactedCount: outputCheck.redactedCount },
+        { redactedCount: outputCheck.leaks.length },
         'Heartbeat output contained sensitive data — redacted before broadcast',
       );
     }

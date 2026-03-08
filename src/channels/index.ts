@@ -59,6 +59,7 @@ export function createChannelManager(): ChannelManager {
 
 export { createWebChatAdapter } from './webchat.js';
 export type { WebChatAdapter } from './webchat.js';
+export { createCliAdapter } from './cli.js';
 export { createTelegramAdapter } from './telegram.js';
 export { createDiscordAdapter } from './discord.js';
 export type { DiscordAdapter } from './discord.js';

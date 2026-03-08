@@ -210,9 +210,30 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
     : [primaryProvider.name];
   log.info({ enabledProviders }, 'Providers initialized');
 
+  // Guard: warn when no real providers are configured
+  if (configuredProviders.length === 0 && !options.provider) {
+    console.log('');
+    console.log('  WARNING: No AI providers are configured.');
+    console.log('  The assistant will not be able to process messages.');
+    console.log('  Run `lil-dude onboard` to set up your first provider.');
+    console.log('');
+    log.warn('No AI providers configured — agent loop will use a no-op provider');
+  }
+
   // Step 7: Initialize channel adapters
   const channelManager = createChannelManager();
   await initializeChannels(channelManager, config);
+
+  // Guard: warn when no channels are connected (besides webchat)
+  const connectedCount = channelManager.getConnectedAdapters().length;
+  if (connectedCount === 0) {
+    console.log('');
+    console.log('  WARNING: No messaging channels are connected.');
+    console.log('  You can still use the Web Panel, but no external channels will receive messages.');
+    console.log('  Run `lil-dude onboard` to configure messaging channels.');
+    console.log('');
+    log.warn('No channel adapters connected — only the gateway will be available');
+  }
 
   // Step 7.5: Load bundled + installed waves into in-memory registry
   const loadedWaveCount = await loadWaves(dbManager.db);

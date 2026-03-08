@@ -1,15 +1,36 @@
 {
   "name": "lil-dude",
-  "version": "1.0.0",
+  "version": "1.1.0-beta.1",
   "description": "Your personal AI executive assistant",
   "license": "MIT",
   "type": "module",
+  "main": "./dist/index.js",
   "engines": {
     "node": ">=20.0.0"
   },
   "bin": {
+    "lildude": "./dist/cli.js",
     "lil-dude": "./dist/cli.js"
   },
+  "keywords": [
+    "ai",
+    "assistant",
+    "executive-assistant",
+    "self-hosted",
+    "cli",
+    "mcp",
+    "llm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/claypark-dev/lildude.git"
+  },
+  "homepage": "https://claypark-dev.github.io/lildude/",
+  "files": [
+    "dist/",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup && cd web && npm install && npm run build",
     "postbuild": "rm -rf dist/migrations dist/waves && cp -r src/persistence/migrations dist/migrations && cp -r waves dist/waves",

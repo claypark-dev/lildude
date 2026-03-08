@@ -40,6 +40,7 @@ import { executeWave } from '../waves/executor.js';
 import { checkWaveSafety, getDefaultSafetyTier } from '../waves/safety.js';
 import { detectGap, generateWaveProposal } from '../waves/shorebreak.js';
 import { discoverWaves } from '../waves/discovery.js';
+import { listWaves } from '../waves/hub.js';
 import { createToolGuard } from './tool-guard.js';
 import { runPostTaskQualityCheck } from './quality-checker.js';
 import {
@@ -583,7 +584,7 @@ export function createAgentLoop(
                 responseText.toLowerCase().includes("unfortunately")) {
               try {
                 const installedWaveNames = new Set(
-                  (config?.activeWaves ?? []).map((w: string) => w.toLowerCase()),
+                  listWaves(deps.db).map((w) => w.name.toLowerCase()),
                 );
                 const discovery = discoverWaves(deps.db, userMessage, installedWaveNames);
                 if (discovery.found && discovery.suggestions.length > 0) {

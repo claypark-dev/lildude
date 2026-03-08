@@ -1,7 +1,7 @@
 /**
  * Onboarding wizard for Lil Dude.
- * Guides the user through initial setup: AI providers, channels,
- * security level, budget, and user preferences.
+ * Guides the user through initial setup: agent identity, AI providers,
+ * channels, heartbeat, MCP servers, security level, budget, and user preferences.
  * Saves config and initializes the database.
  * See HLD Section 6.4.
  */
@@ -17,9 +17,9 @@ import {
   type VerifyResult,
   verifyApiKey,
 } from './verify-provider.js';
-import { collectAnswers, type WizardAnswers, type OnboardingChannel } from './prompts.js';
+import { collectAnswers, type WizardAnswers, type OnboardingChannel, type OnboardingMcpServer } from './prompts.js';
 
-export type { WizardAnswers, OnboardingChannel };
+export type { WizardAnswers, OnboardingChannel, OnboardingMcpServer };
 
 const log = createModuleLogger('onboarding');
 
@@ -72,10 +72,71 @@ function printStartupInstructions(): void {
  * @returns A fully-resolved Config object
  */
 export function buildConfigFromAnswers(answers: WizardAnswers): Config {
+  const channelsConfig: Record<string, Record<string, unknown>> = {
+    webchat: { enabled: true },
+    discord: {
+      enabled: answers.channels.includes('discord'),
+      ...(answers.channelTokens.discord ? { token: answers.channelTokens.discord } : {}),
+    },
+    telegram: {
+      enabled: answers.channels.includes('telegram'),
+      ...(answers.channelTokens.telegram ? { token: answers.channelTokens.telegram } : {}),
+    },
+    slack: {
+      enabled: answers.channels.includes('slack'),
+      ...(answers.channelTokens.slack ? { token: answers.channelTokens.slack } : {}),
+      ...(answers.channelTokens.slackAppToken ? { appToken: answers.channelTokens.slackAppToken } : {}),
+    },
+    imessage: {
+      enabled: answers.channels.includes('imessage'),
+    },
+    whatsapp: {
+      enabled: answers.channels.includes('whatsapp'),
+    },
+    signal: {
+      enabled: answers.channels.includes('signal'),
+      ...(answers.channelTokens.signal ? { phoneNumber: answers.channelTokens.signal } : {}),
+    },
+    matrix: {
+      enabled: answers.channels.includes('matrix'),
+      ...(answers.channelTokens.matrixHomeserverUrl ? { homeserverUrl: answers.channelTokens.matrixHomeserverUrl } : {}),
+      ...(answers.channelTokens.matrix ? { accessToken: answers.channelTokens.matrix } : {}),
+    },
+    teams: {
+      enabled: answers.channels.includes('teams'),
+      ...(answers.channelTokens.teamsAppId ? { appId: answers.channelTokens.teamsAppId } : {}),
+      ...(answers.channelTokens.teams ? { appPassword: answers.channelTokens.teams } : {}),
+    },
+    line: {
+      enabled: answers.channels.includes('line'),
+      ...(answers.channelTokens.line ? { channelAccessToken: answers.channelTokens.line } : {}),
+      ...(answers.channelTokens.lineChannelSecret ? { channelSecret: answers.channelTokens.lineChannelSecret } : {}),
+    },
+    googlechat: {
+      enabled: answers.channels.includes('googlechat'),
+      ...(answers.channelTokens.googlechat ? { serviceAccountKey: answers.channelTokens.googlechat } : {}),
+    },
+  };
+
+  const mcpConfig: Record<string, unknown> = {
+    enabled: answers.mcpEnabled,
+    servers: answers.mcpServers.map((server) => ({
+      name: server.name,
+      transport: server.transport,
+      ...(server.command ? { command: server.command } : {}),
+      ...(server.args && server.args.length > 0 ? { args: server.args } : {}),
+      ...(server.url ? { url: server.url } : {}),
+    })),
+  };
+
   const rawConfig: Record<string, unknown> = {
     version: 1,
     user: {
       name: answers.userName,
+    },
+    agent: {
+      name: answers.agentName,
+      persona: answers.agentPersona,
     },
     providers: {
       anthropic: {
@@ -90,24 +151,24 @@ export function buildConfigFromAnswers(answers: WizardAnswers): Config {
         enabled: 'deepseek' in answers.apiKeys,
         ...(answers.apiKeys.deepseek ? { apiKey: answers.apiKeys.deepseek } : {}),
       },
-    },
-    channels: {
-      webchat: { enabled: true },
-      discord: {
-        enabled: answers.channels.includes('discord'),
-        ...(answers.channelTokens.discord ? { token: answers.channelTokens.discord } : {}),
-      },
-      telegram: {
-        enabled: answers.channels.includes('telegram'),
-        ...(answers.channelTokens.telegram ? { token: answers.channelTokens.telegram } : {}),
+      gemini: {
+        enabled: 'gemini' in answers.apiKeys,
+        ...(answers.apiKeys.gemini ? { apiKey: answers.apiKeys.gemini } : {}),
       },
     },
+    channels: channelsConfig,
     security: {
       level: answers.securityLevel,
     },
     budget: {
       monthlyLimitUsd: answers.monthlyBudget,
     },
+    heartbeat: {
+      enabled: answers.heartbeatEnabled,
+      intervalMinutes: answers.heartbeatIntervalMinutes,
+      maxDailyBudgetUsd: answers.heartbeatMaxDailyBudgetUsd,
+    },
+    mcp: mcpConfig,
   };
 
   return ConfigSchema.parse(rawConfig);
@@ -122,6 +183,14 @@ export function buildConfigFromAnswers(answers: WizardAnswers): Config {
  */
 export function validateAnswers(answers: WizardAnswers): string[] {
   const errors: string[] = [];
+
+  if (answers.agentName.trim().length === 0) {
+    errors.push('Agent name cannot be empty.');
+  }
+
+  if (answers.agentPersona.trim().length === 0) {
+    errors.push('Agent persona cannot be empty.');
+  }
 
   if (answers.providers.length === 0) {
     errors.push('At least one AI provider must be selected.');
@@ -153,9 +222,36 @@ export function validateAnswers(answers: WizardAnswers): string[] {
     errors.push('User name cannot be empty.');
   }
 
+  if (answers.heartbeatEnabled) {
+    if (answers.heartbeatIntervalMinutes < 5 || answers.heartbeatIntervalMinutes > 1440) {
+      errors.push('Heartbeat interval must be between 5 and 1440 minutes.');
+    }
+    if (answers.heartbeatMaxDailyBudgetUsd < 0) {
+      errors.push('Heartbeat daily budget cannot be negative.');
+    }
+  }
+
+  // Validate channel-specific tokens
+  const tokenRequirements: Record<string, string[]> = {
+    discord: ['discord'],
+    telegram: ['telegram'],
+    slack: ['slack'],
+    signal: ['signal'],
+    matrix: ['matrix', 'matrixHomeserverUrl'],
+    teams: ['teams', 'teamsAppId'],
+    line: ['line', 'lineChannelSecret'],
+    googlechat: ['googlechat'],
+  };
+
   for (const channel of answers.channels) {
-    if (!answers.channelTokens[channel] || answers.channelTokens[channel].trim().length === 0) {
-      errors.push(`Bot token for ${channel} is missing or empty.`);
+    const required = tokenRequirements[channel];
+    if (!required) {
+      continue;
+    }
+    for (const tokenKey of required) {
+      if (!answers.channelTokens[tokenKey] || answers.channelTokens[tokenKey].trim().length === 0) {
+        errors.push(`Required credential "${tokenKey}" for ${channel} is missing or empty.`);
+      }
     }
   }
 

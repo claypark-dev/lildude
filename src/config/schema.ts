@@ -44,6 +44,9 @@ export const ConfigSchema = z.object({
     }).default({}),
   }).default({}),
   channels: z.object({
+    cli: z.object({
+      enabled: z.boolean().default(false),
+    }).default({}),
     discord: z.object({
       enabled: z.boolean().default(false),
       token: z.string().optional(),
