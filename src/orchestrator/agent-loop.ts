@@ -39,6 +39,7 @@ import { matchWave } from '../waves/registry.js';
 import { executeWave } from '../waves/executor.js';
 import { checkWaveSafety, getDefaultSafetyTier } from '../waves/safety.js';
 import { detectGap, generateWaveProposal } from '../waves/shorebreak.js';
+import { discoverWaves } from '../waves/discovery.js';
 import { createToolGuard } from './tool-guard.js';
 import { runPostTaskQualityCheck } from './quality-checker.js';
 import {
@@ -570,6 +571,30 @@ export function createAgentLoop(
               } catch (shorebreakError: unknown) {
                 const sbMsg = shorebreakError instanceof Error ? shorebreakError.message : String(shorebreakError);
                 orchestratorLogger.warn({ error: sbMsg }, 'Shorebreak gap detection failed (non-critical)');
+              }
+            }
+
+            // Wave discovery: suggest community waves if the response indicates inability
+            if (responseText.toLowerCase().includes("i can't") ||
+                responseText.toLowerCase().includes("i cannot") ||
+                responseText.toLowerCase().includes("i don't have") ||
+                responseText.toLowerCase().includes("i'm not able") ||
+                responseText.toLowerCase().includes("i am not able") ||
+                responseText.toLowerCase().includes("unfortunately")) {
+              try {
+                const installedWaveNames = new Set(
+                  (config?.activeWaves ?? []).map((w: string) => w.toLowerCase()),
+                );
+                const discovery = discoverWaves(deps.db, userMessage, installedWaveNames);
+                if (discovery.found && discovery.suggestions.length > 0) {
+                  const discoveryNote = `\n\n---\n🏄 ${discovery.message}`;
+                  triggerSummarizationIfNeeded(deps.db, conversationId, deps.provider, totalCostUsd, taskBudgetUsd);
+                  extractKeyFactsOnTaskCompletion(deps.db, conversationId);
+                  extractAndStorePreferences(deps.db, [userMessage]);
+                  return buildResult(responseText + discoveryNote, totalInputTokens, totalOutputTokens, totalCostUsd, toolCallCount, roundTrips);
+                }
+              } catch (discoveryError: unknown) {
+                orchestratorLogger.debug({ error: discoveryError }, 'Wave discovery failed (non-critical)');
               }
             }
 

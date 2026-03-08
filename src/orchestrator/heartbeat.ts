@@ -27,6 +27,8 @@ import {
   setConfigValue,
   getConfigValue,
 } from '../persistence/config-store.js';
+import { filterOutput } from '../security/output-filter.js';
+import { detectInjection } from '../security/injection.js';
 
 const logger = createModuleLogger('heartbeat');
 
@@ -202,8 +204,23 @@ export async function tickHeartbeat(
       };
     }
 
-    // 2. Load standing instructions
-    const instructions = await loadHeartbeatInstructions();
+    // 2. Load standing instructions (with injection detection)
+    const rawInstructions = await loadHeartbeatInstructions();
+    const injectionCheck = detectInjection(rawInstructions);
+    if (injectionCheck.detected) {
+      logger.warn(
+        { patterns: injectionCheck.patterns },
+        'Heartbeat instructions contain potential injection — skipping tick',
+      );
+      return {
+        actionTaken: false,
+        output: null,
+        costUsd: 0,
+        skipped: true,
+        skipReason: `Injection detected in heartbeat.md: ${injectionCheck.patterns?.join(', ')}`,
+      };
+    }
+    const instructions = rawInstructions;
 
     // 3. Select cheapest model
     const modelSelection = selectModel('small', deps.enabledProviders);
@@ -271,8 +288,19 @@ export async function tickHeartbeat(
       };
     }
 
-    // 10. Broadcast the proactive notification
-    const heartbeatOutput = `\uD83D\uDC93 ${responseText.trim()}`;
+    // 10. Sanitize output before broadcasting (prevent secret leakage)
+    const outputCheck = filterOutput(responseText.trim());
+    const safeResponseText = outputCheck.clean
+      ? responseText.trim()
+      : outputCheck.filtered;
+    if (!outputCheck.clean) {
+      logger.warn(
+        { redactedCount: outputCheck.redactedCount },
+        'Heartbeat output contained sensitive data — redacted before broadcast',
+      );
+    }
+
+    const heartbeatOutput = `\uD83D\uDC93 ${safeResponseText}`;
 
     broadcastHeartbeatOutput(deps, heartbeatOutput);
 

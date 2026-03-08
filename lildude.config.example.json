@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "installTier": "standard",
+
+  "user": {
+    "name": "Friend",
+    "timezone": "America/New_York"
+  },
+
+  "agent": {
+    "name": "Lil Dude",
+    "persona": "a chill, capable AI executive assistant"
+  },
+
+  "providers": {
+    "anthropic": {
+      "apiKey": "",
+      "enabled": false
+    },
+    "openai": {
+      "apiKey": "",
+      "enabled": false
+    },
+    "gemini": {
+      "apiKey": "",
+      "enabled": false
+    },
+    "deepseek": {
+      "apiKey": "",
+      "enabled": false
+    },
+    "ollama": {
+      "enabled": false,
+      "baseUrl": "http://localhost:11434",
+      "model": "llama3.2"
+    }
+  },
+
+  "channels": {
+    "webchat": { "enabled": true },
+    "cli": { "enabled": true },
+    "discord": { "enabled": false, "token": "" },
+    "telegram": { "enabled": false, "token": "" },
+    "slack": { "enabled": false, "token": "", "appToken": "" },
+    "imessage": { "enabled": false },
+    "matrix": { "enabled": false, "homeserverUrl": "", "accessToken": "" },
+    "teams": { "enabled": false, "appId": "", "appPassword": "" },
+    "line": { "enabled": false, "channelAccessToken": "", "channelSecret": "" },
+    "googlechat": { "enabled": false, "serviceAccountKey": "" },
+    "whatsapp": { "enabled": false },
+    "signal": { "enabled": false, "phoneNumber": "" }
+  },
+
+  "security": {
+    "level": 3
+  },
+
+  "budget": {
+    "monthlyLimitUsd": 20,
+    "perTaskDefaultLimitUsd": 0.50,
+    "warningThresholdPct": 0.8,
+    "hardStopEnabled": true
+  },
+
+  "heartbeat": {
+    "enabled": true,
+    "intervalMinutes": 30,
+    "maxDailyBudgetUsd": 0.50
+  },
+
+  "mcp": {
+    "enabled": false,
+    "autoConnectOnStartup": true,
+    "servers": []
+  },
+
+  "voice": {
+    "enabled": false,
+    "transcription": {
+      "backend": "groq"
+    },
+    "synthesis": {
+      "enabled": false,
+      "backend": "say"
+    }
+  },
+
+  "gateway": {
+    "httpPort": 18421,
+    "wsPort": 18420,
+    "host": "127.0.0.1"
+  },
+
+  "preferences": {
+    "enableModelRouting": true,
+    "briefingTime": "08:00"
+  }
+}

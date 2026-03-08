@@ -14,6 +14,7 @@ import { getConversation } from '../persistence/conversations.js';
 import { getConversationLogs } from '../persistence/conversation-logs.js';
 import type { ConversationLogRow } from '../persistence/conversation-logs.js';
 import { buildSystemPrompt } from '../orchestrator/system-prompt.js';
+import type { AgentIdentity } from '../orchestrator/system-prompt.js';
 import { formatKnowledgeForContext } from './knowledge.js';
 import { hybridSearch, recordKnowledgeAccess } from '../memory/hybrid-search.js';
 import type { EmbeddingResult } from '../memory/embeddings.js';
@@ -48,6 +49,8 @@ export interface BuildContextOptions {
   queryEmbedding?: EmbeddingResult;
   /** Whether to use hybrid search (vector + BM25). Defaults to false. */
   useHybridSearch?: boolean;
+  /** Custom agent name and persona. */
+  agentIdentity?: AgentIdentity;
 }
 
 /**
@@ -161,7 +164,7 @@ export async function buildContext(
       // user_profile table may not exist yet on older DBs
     }
 
-    const systemPrompt = buildSystemPrompt(userName, securityLevel, activeWaves, userProfile);
+    const systemPrompt = buildSystemPrompt(userName, securityLevel, activeWaves, userProfile, options?.agentIdentity);
     const systemPromptTokens = countTokens(systemPrompt);
 
     // Step 2: Query knowledge base for relevant entries

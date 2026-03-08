@@ -26,11 +26,17 @@ const SECURITY_RULES: Record<number, string> = {
 
 /**
  * Build the core identity section of the system prompt.
- * @param userName - The name of the user Lil Dude is assisting.
+ * @param userName - The name of the user the agent is assisting.
+ * @param agentName - Optional custom name for the agent (default: 'Lil Dude').
+ * @param agentPersona - Optional persona description.
  * @returns The identity section string.
  */
-function buildIdentitySection(userName: string): string {
-  return `You are Lil Dude, a personal AI executive assistant for ${userName}.`;
+function buildIdentitySection(
+  userName: string,
+  agentName = 'Lil Dude',
+  agentPersona = 'a chill, capable AI executive assistant',
+): string {
+  return `You are ${agentName}, ${agentPersona} for ${userName}.`;
 }
 
 /**
@@ -103,15 +109,24 @@ function buildInstructionsSection(): string {
   ].join('\n');
 }
 
+/** Optional agent identity configuration. */
+export interface AgentIdentity {
+  /** Custom display name (default: 'Lil Dude'). */
+  name?: string;
+  /** Short persona description (default: 'a chill, capable AI executive assistant'). */
+  persona?: string;
+}
+
 /**
- * Build the full system prompt for Lil Dude.
+ * Build the full system prompt for the assistant.
  * Assembles identity, security rules, active waves, user profile,
  * and general instructions into a single prompt string.
  *
- * @param userName - The name of the user Lil Dude is assisting.
+ * @param userName - The name of the user the agent is assisting.
  * @param securityLevel - The security level (1-5) controlling approval requirements.
  * @param activeWaves - Array of wave names currently available to the assistant.
  * @param userProfile - Optional array of learned user preference entries.
+ * @param agentIdentity - Optional custom agent name and persona.
  * @returns The fully assembled system prompt string.
  */
 export function buildSystemPrompt(
@@ -119,9 +134,10 @@ export function buildSystemPrompt(
   securityLevel: number,
   activeWaves: string[],
   userProfile?: ProfileEntry[],
+  agentIdentity?: AgentIdentity,
 ): string {
   const sections = [
-    buildIdentitySection(userName),
+    buildIdentitySection(userName, agentIdentity?.name, agentIdentity?.persona),
     '',
     buildSecuritySection(securityLevel),
     '',
