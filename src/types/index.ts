@@ -24,7 +24,7 @@ export interface ContentBlock {
 
 // === Channels ===
 
-export type ChannelType = 'discord' | 'telegram' | 'imessage' | 'webchat' | 'cli' | 'slack' | 'whatsapp' | 'signal';
+export type ChannelType = 'discord' | 'telegram' | 'imessage' | 'webchat' | 'cli' | 'slack' | 'whatsapp' | 'signal' | 'matrix' | 'teams' | 'line' | 'googlechat';
 
 export interface ChannelMessage {
   id: string;

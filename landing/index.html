@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lil Dude — Your Personal AI Executive Assistant</title>
+  <meta name="description" content="The secure, cost-controlled AI executive assistant. 12 channels, 967 curated waves, built-in dashboard. No more $623 surprise bills.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏄</text></svg>">
+  <style>
+    /* Reset & Base */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-dim: #8b949e;
+      --blue: #58a6ff;
+      --green: #7ee787;
+      --orange: #f0883e;
+      --red: #f85149;
+      --purple: #bc8cff;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { background: var(--surface); padding: 2px 8px; border-radius: 4px; font-size: 0.9em; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* Navigation */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(13, 17, 23, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    nav .logo { font-weight: 700; font-size: 1.1rem; color: white; display: flex; align-items: center; gap: 8px; }
+    nav .nav-links { display: flex; gap: 24px; font-size: 0.9rem; }
+    nav .nav-links a { color: var(--text-dim); }
+    nav .nav-links a:hover { color: white; text-decoration: none; }
+
+    /* Hero */
+    .hero {
+      padding: 140px 0 80px;
+      text-align: center;
+      background: radial-gradient(ellipse at top, rgba(88, 166, 255, 0.08) 0%, transparent 60%);
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      color: white;
+      margin-bottom: 16px;
+      line-height: 1.1;
+    }
+    .hero h1 span { color: var(--blue); }
+    .hero .subtitle { font-size: 1.2rem; color: var(--text-dim); max-width: 640px; margin: 0 auto 32px; }
+    .hero .install-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 0.95rem;
+      color: var(--green);
+    }
+    .hero .install-box .prompt { color: var(--text-dim); user-select: none; }
+    .hero .badges { margin-top: 24px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+    .hero .badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .hero .badge strong { color: white; }
+
+    /* Section */
+    section { padding: 80px 0; }
+    section h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: white;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    section .section-sub {
+      text-align: center;
+      color: var(--text-dim);
+      max-width: 600px;
+      margin: 0 auto 48px;
+    }
+
+    /* Feature Grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+    .feature-card .icon { font-size: 2rem; margin-bottom: 12px; }
+    .feature-card h3 { color: white; font-size: 1.1rem; margin-bottom: 8px; }
+    .feature-card p { color: var(--text-dim); font-size: 0.9rem; }
+
+    /* Comparison Table */
+    .comparison-section { background: var(--surface); }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .comparison-table th, .comparison-table td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .comparison-table th {
+      background: var(--bg);
+      color: var(--blue);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.5px;
+    }
+    .comparison-table td:first-child { font-weight: 500; color: white; }
+    .pass { color: var(--green); }
+    .fail { color: var(--red); }
+    .warn { color: var(--orange); }
+
+    /* Stats Strip */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+      padding: 40px 0;
+    }
+    .stat { text-align: center; }
+    .stat .value { font-size: 2.5rem; font-weight: 800; color: var(--blue); }
+    .stat .label { font-size: 0.85rem; color: var(--text-dim); }
+
+    /* Getting Started */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      counter-reset: step;
+    }
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      counter-increment: step;
+    }
+    .step::before {
+      content: counter(step);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: var(--blue);
+      color: white;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+    .step h3 { color: white; margin-bottom: 8px; }
+    .step p { color: var(--text-dim); font-size: 0.9rem; }
+    .step code { display: block; margin-top: 8px; padding: 8px 12px; }
+
+    /* CTA */
+    .cta-section { text-align: center; padding: 80px 0; }
+    .cta-btn {
+      display: inline-block;
+      background: var(--blue);
+      color: white;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .cta-btn:hover { background: #4093e6; transform: scale(1.02); text-decoration: none; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 0;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--text-dim); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      nav .nav-links { gap: 16px; font-size: 0.8rem; }
+      .stats { gap: 32px; }
+      .feature-grid, .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav>
+    <div class="container">
+      <div class="logo">🏄 Lil Dude</div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#security">Security</a>
+        <a href="#start">Get Started</a>
+        <a href="https://github.com/org-lil/lildude" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1>Your Personal AI <span>Executive Assistant</span></h1>
+      <p class="subtitle">
+        Secure, cost-controlled, and self-improving. Connect 12 channels, install 967 community waves, and monitor everything from a built-in dashboard. No more surprise bills.
+      </p>
+      <div class="install-box">
+        <span class="prompt">$</span> npx lil-dude start
+      </div>
+      <div class="badges">
+        <span class="badge"><strong>12</strong> Channels</span>
+        <span class="badge"><strong>967</strong> Waves</span>
+        <span class="badge"><strong>5-Level</strong> Security</span>
+        <span class="badge"><strong>$20/mo</strong> Budget Cap</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="container">
+    <div class="stats">
+      <div class="stat"><div class="value">12</div><div class="label">Channels</div></div>
+      <div class="stat"><div class="value">967</div><div class="label">Curated Waves</div></div>
+      <div class="stat"><div class="value">4000+</div><div class="label">Tests Passing</div></div>
+      <div class="stat"><div class="value">0</div><div class="label">Malware Incidents</div></div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="container">
+      <h2>Built Different</h2>
+      <p class="section-sub">Everything you need in a single product &mdash; no separate dashboard, marketplace, or config tool required.</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">🔒</div>
+          <h3>5-Level Security Model</h3>
+          <p>From "Tin Foil Hat" to "YOLO" &mdash; you control exactly how much autonomy your agent has. Full audit log, AST-based code scanning, and sandboxed execution.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">💰</div>
+          <h3>Cost Control</h3>
+          <p>Per-task budgets, monthly caps, approaching-limit warnings, and quality-aware model routing. Every API call priced with exact token counts. No $623 surprises.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🧠</div>
+          <h3>Smart Model Routing</h3>
+          <p>Deterministic complexity classification automatically routes to the cheapest model that can handle each task. Quality tracking learns which models work best.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🏗️</div>
+          <h3>Built-in Dashboard</h3>
+          <p>11-page web panel with chat, tasks, budget, cron jobs, weather, heartbeat monitoring, and customizable widget templates. All in one <code>npm start</code>.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🏄</div>
+          <h3>967 Curated Waves</h3>
+          <p>Community skill marketplace with quality gates, security scanning, and package hash verification. Every wave validated before publishing. Zero malware, ever.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⚡</div>
+          <h3>Shorebreak Self-Improvement</h3>
+          <p>Your agent detects capability gaps and generates new waves automatically. But YOU always approve before any generated code runs. Safe autonomy.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">💓</div>
+          <h3>Proactive Heartbeat</h3>
+          <p>Configurable proactive monitoring checks your standing instructions on a schedule. Calendar reminders, email summaries, spend alerts &mdash; your agent works while you don't.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🎨</div>
+          <h3>Rich Artifacts</h3>
+          <p>Inline rendering of HTML, SVG, Mermaid diagrams, syntax-highlighted code, and markdown tables directly in chat. No external viewer needed.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📡</div>
+          <h3>12 Channels</h3>
+          <p>Discord, Telegram, Slack, iMessage, WhatsApp, Signal, Matrix, Teams, LINE, Google Chat, CLI, and Web. Reach your agent anywhere.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security Comparison -->
+  <section id="security" class="comparison-section">
+    <div class="container">
+      <h2>Why Lil Dude?</h2>
+      <p class="section-sub">The agent you can actually trust.</p>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Lil Dude</th>
+            <th>Open-Source Competitors</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Security Model</td>
+            <td class="pass">5-level configurable security</td>
+            <td class="fail">512 known vulnerabilities</td>
+          </tr>
+          <tr>
+            <td>Cost Control</td>
+            <td class="pass">Per-task + monthly budget caps</td>
+            <td class="fail">No controls, $200+/day reported</td>
+          </tr>
+          <tr>
+            <td>Skill Marketplace Safety</td>
+            <td class="pass">AST scanning, 0 malware</td>
+            <td class="fail">20% malicious packages found</td>
+          </tr>
+          <tr>
+            <td>Dashboard</td>
+            <td class="pass">11-page built-in web panel</td>
+            <td class="fail">Separate product, different license</td>
+          </tr>
+          <tr>
+            <td>Model Routing</td>
+            <td class="pass">Quality-aware, learns over time</td>
+            <td class="warn">Basic model selection</td>
+          </tr>
+          <tr>
+            <td>Audit Logging</td>
+            <td class="pass">Full action audit trail</td>
+            <td class="fail">No audit logging</td>
+          </tr>
+          <tr>
+            <td>Channels</td>
+            <td class="pass">12 built-in</td>
+            <td class="warn">Varies by project</td>
+          </tr>
+          <tr>
+            <td>Self-Improvement</td>
+            <td class="pass">Shorebreak (user-approved)</td>
+            <td class="fail">Uncontrolled code generation</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Getting Started -->
+  <section id="start">
+    <div class="container">
+      <h2>Get Started in 3 Minutes</h2>
+      <p class="section-sub">No Docker, no cloud account, no complex setup required.</p>
+      <div class="steps">
+        <div class="step">
+          <h3>Install</h3>
+          <p>Clone and install dependencies.</p>
+          <code>git clone https://github.com/org-lil/lildude.git && cd lildude && npm install</code>
+        </div>
+        <div class="step">
+          <h3>Configure</h3>
+          <p>Run the onboarding wizard to set up your API keys and channels.</p>
+          <code>npx lil-dude onboard</code>
+        </div>
+        <div class="step">
+          <h3>Launch</h3>
+          <p>Start your assistant. The dashboard opens automatically.</p>
+          <code>npx lil-dude start</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>Ready to Meet Your New Assistant?</h2>
+      <p class="section-sub">Open source, self-hosted, and yours to control.</p>
+      <a href="https://github.com/org-lil/lildude" class="cta-btn" target="_blank">View on GitHub</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>
+        🏄 Lil Dude &mdash; Open Source AI Executive Assistant
+        &bull; <a href="https://github.com/org-lil/lildude">GitHub</a>
+        &bull; <a href="https://github.com/org-lil/wave-registry">Wave Registry</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

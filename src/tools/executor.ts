@@ -9,6 +9,7 @@
 import type BetterSqlite3 from 'better-sqlite3';
 import type { ContentBlock, ToolResult } from '../types/index.js';
 import type { SecurityLevel } from '../security/permissions.js';
+import type { McpManager } from '../integrations/mcp-manager.js';
 import { executeShellCommand } from './shell.js';
 import { readFile, writeFile, listDirectory } from './filesystem.js';
 import { httpRequest } from './api.js';
@@ -158,17 +159,26 @@ function getAllowedBrowserDomains(securityLevel: SecurityLevel): string[] {
   return base;
 }
 
+/** Options for creating a tool executor. */
+export interface ToolExecutorOptions {
+  /** Optional MCP manager for dispatching MCP tool calls. */
+  mcpManager?: McpManager;
+}
+
 /**
  * Create a tool executor configured with the given database, security level, and task ID.
  *
  * The executor maps tool names to their handler functions and applies
  * a configurable timeout to each execution. Unknown tools and execution
- * errors are handled gracefully without crashing.
+ * errors are handled gracefully without crashing. If an McpManager is
+ * provided, unrecognized tool names are checked against connected MCP
+ * servers before returning an error.
  *
  * @param db - The better-sqlite3 Database instance.
  * @param securityLevel - The current security level (1-5) for permission checks.
  * @param taskId - Optional task ID for audit trail correlation.
  * @param timeoutMs - Optional timeout in milliseconds (default: 30000).
+ * @param options - Optional configuration including McpManager.
  * @returns A configured ToolExecutor instance.
  */
 export function createToolExecutor(
@@ -176,6 +186,7 @@ export function createToolExecutor(
   securityLevel: SecurityLevel,
   taskId?: string,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  options?: ToolExecutorOptions,
 ): ToolExecutor {
   const handlers: Record<string, ToolHandler> = {
     shell_execute: async (input) => {
@@ -270,6 +281,25 @@ export function createToolExecutor(
       const toolName = toolUseBlock.name ?? '';
       const toolUseId = toolUseBlock.id ?? '';
       const toolInput = (toolUseBlock.input ?? {}) as Record<string, unknown>;
+
+      // Check if this is an MCP tool call
+      if (options?.mcpManager?.isMcpTool(toolName)) {
+        try {
+          const toolResult = await withTimeout(
+            options.mcpManager.executeTool(toolName, toolInput),
+            timeoutMs,
+          );
+          return buildToolResultBlock(toolUseId, toolResult);
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          const errorResult: ToolResult = {
+            success: false,
+            output: '',
+            error: `MCP tool execution failed: ${message}`,
+          };
+          return buildToolResultBlock(toolUseId, errorResult);
+        }
+      }
 
       // Validate tool input against schema before execution
       const validationError = validateToolInput(toolName, toolInput);

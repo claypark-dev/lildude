@@ -20,4 +20,4 @@ export { executeBrowserAction, BrowserToolOptionsSchema } from './browser.js';
 export type { BrowserToolOptions, BrowserResult, PlaywrightProvider } from './browser.js';
 export { CORE_TOOLS } from './definitions.js';
 export { createToolExecutor } from './executor.js';
-export type { ToolExecutor } from './executor.js';
+export type { ToolExecutor, ToolExecutorOptions } from './executor.js';

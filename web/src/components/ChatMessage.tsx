@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import type { ChatMessage as ChatMessageType } from '../lib/types.ts';
 import { synthesizeSpeech } from '../lib/api.ts';
 import { FeedbackButtons } from './FeedbackButtons.tsx';
+import { ArtifactRenderer } from './ArtifactRenderer.tsx';
+import { parseMessageContent } from '../lib/artifact-parser.ts';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -22,6 +24,9 @@ export function ChatMessage({ message, voiceEnabled = false, autoSpeaking = fals
   const [speechError, setSpeechError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+
+  // Parse message content for artifacts (memoized to avoid re-parsing on every render)
+  const parsed = useMemo(() => parseMessageContent(message.text), [message.text]);
 
   // Revoke blob URL on unmount to prevent memory leaks
   useEffect(() => {
@@ -79,12 +84,27 @@ export function ChatMessage({ message, voiceEnabled = false, autoSpeaking = fals
             : 'bg-[#1a1a1a] text-white rounded-bl-md'
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">
+        {/* Render message content — either plain text or interleaved text + artifacts */}
+        <div>
           {autoSpeaking && (
             <span className="inline-block w-2 h-2 bg-blue-400 rounded-full animate-pulse mr-2 align-middle" />
           )}
-          {message.text}
-        </p>
+          {parsed.hasArtifacts ? (
+            // Rich rendering with artifact blocks
+            parsed.blocks.map((block, i) =>
+              block.type === 'text' ? (
+                <p key={i} className="whitespace-pre-wrap break-words">
+                  {block.content}
+                </p>
+              ) : (
+                <ArtifactRenderer key={i} block={block} />
+              ),
+            )
+          ) : (
+            // Plain text fallback (original behavior)
+            <p className="whitespace-pre-wrap break-words">{message.text}</p>
+          )}
+        </div>
         <div className="flex items-center justify-between mt-1">
           <p
             className={`text-xs ${

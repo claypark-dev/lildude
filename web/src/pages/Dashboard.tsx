@@ -328,6 +328,60 @@ function RemindersWidget() {
   );
 }
 
+// ── Heartbeat Widget ──────────────────────────────────────────────
+
+function HeartbeatWidget({ data }: { data: DashboardData | null }) {
+  if (!data) return <WidgetSkeleton />;
+
+  const hb = (data as DashboardData & { heartbeat?: HeartbeatStatus }).heartbeat;
+  if (!hb) {
+    return (
+      <p className="text-sm text-[#666] text-center py-4">
+        Heartbeat data unavailable
+      </p>
+    );
+  }
+
+  const lastRun = hb.lastRunAt ? new Date(hb.lastRunAt) : null;
+  const lastRunStr = lastRun
+    ? lastRun.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : 'Never';
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <div
+          className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
+            hb.active ? 'bg-green-500/10' : 'bg-[#222]'
+          }`}
+        >
+          {hb.active ? '\uD83D\uDC93' : '\uD83D\uDC94'}
+        </div>
+        <div className="flex-1">
+          <p className={`text-sm font-semibold ${hb.active ? 'text-green-400' : 'text-[#666]'}`}>
+            {hb.active ? 'Active' : 'Inactive'}
+          </p>
+          <p className="text-xs text-[#666]">
+            Last beat: {lastRunStr}
+          </p>
+        </div>
+      </div>
+      <div className="flex justify-between text-xs text-[#a0a0a0] pt-2 border-t border-[#222]">
+        <span>{hb.actionsToday} action{hb.actionsToday !== 1 ? 's' : ''} today</span>
+        <span>${hb.costTodayUsd.toFixed(4)} spent</span>
+      </div>
+    </div>
+  );
+}
+
+/** Heartbeat status shape from the dashboard API */
+interface HeartbeatStatus {
+  active: boolean;
+  lastRunAt: string | null;
+  actionsToday: number;
+  costTodayUsd: number;
+}
+
 // ── Clock Widget ─────────────────────────────────────────────────
 
 function ClockWidget() {
@@ -461,6 +515,8 @@ function WidgetRenderer({
       return <RemindersWidget />;
     case 'cron':
       return <CronJobsWidget data={data} />;
+    case 'heartbeat':
+      return <HeartbeatWidget data={data} />;
     default:
       return <p className="text-xs text-[#666]">Unknown widget: {type}</p>;
   }

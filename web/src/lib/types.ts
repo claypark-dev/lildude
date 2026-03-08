@@ -71,6 +71,32 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+// ── Artifact Types ─────────────────────────────────────────────────
+
+/** Supported artifact rendering types */
+export type ArtifactType = 'html' | 'svg' | 'mermaid' | 'code' | 'table';
+
+/** A rich content block extracted from a message */
+export interface ArtifactBlock {
+  type: 'artifact';
+  artifactType: ArtifactType;
+  content: string;
+  title?: string;
+  language?: string;
+}
+
+/** A plain text block within a parsed message */
+export interface TextBlock {
+  type: 'text';
+  content: string;
+}
+
+/** A parsed message split into text and artifact blocks */
+export interface ParsedMessage {
+  blocks: Array<ArtifactBlock | TextBlock>;
+  hasArtifacts: boolean;
+}
+
 /** A single item within a briefing section. */
 export interface BriefingItem {
   label: string;

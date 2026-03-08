@@ -69,6 +69,29 @@ export const ConfigSchema = z.object({
       phoneNumber: z.string().optional(),
       allowFrom: z.array(z.string()).default([]),
     }).default({}),
+    matrix: z.object({
+      enabled: z.boolean().default(false),
+      homeserverUrl: z.string().optional(),
+      accessToken: z.string().optional(),
+      allowFrom: z.array(z.string()).default([]),
+    }).default({}),
+    teams: z.object({
+      enabled: z.boolean().default(false),
+      appId: z.string().optional(),
+      appPassword: z.string().optional(),
+      allowFrom: z.array(z.string()).default([]),
+    }).default({}),
+    line: z.object({
+      enabled: z.boolean().default(false),
+      channelAccessToken: z.string().optional(),
+      channelSecret: z.string().optional(),
+      allowFrom: z.array(z.string()).default([]),
+    }).default({}),
+    googlechat: z.object({
+      enabled: z.boolean().default(false),
+      serviceAccountKey: z.string().optional(),
+      allowFrom: z.array(z.string()).default([]),
+    }).default({}),
   }).default({}),
   security: z.object({
     level: z.number().min(1).max(5).default(3),
@@ -108,6 +131,24 @@ export const ConfigSchema = z.object({
       clientId: z.string().optional(),
       clientSecret: z.string().optional(),
     }).default({}),
+  }).default({}),
+  heartbeat: z.object({
+    enabled: z.boolean().default(true),
+    intervalMinutes: z.number().min(5).max(1440).default(30),
+    maxDailyBudgetUsd: z.number().min(0).default(0.50),
+    model: z.string().optional(),
+  }).default({}),
+  mcp: z.object({
+    enabled: z.boolean().default(false),
+    autoConnectOnStartup: z.boolean().default(true),
+    servers: z.array(z.object({
+      name: z.string(),
+      transport: z.enum(['stdio', 'sse']).default('stdio'),
+      command: z.string().optional(),
+      args: z.array(z.string()).optional(),
+      url: z.string().optional(),
+      env: z.record(z.string()).optional(),
+    })).default([]),
   }).default({}),
   voice: z.object({
     enabled: z.boolean().default(false),

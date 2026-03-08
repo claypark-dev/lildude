@@ -45,6 +45,7 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
       { type: 'weather', title: 'Weather', icon: '\u2600\uFE0F' },
       { type: 'reminders', title: 'Reminders', icon: '\uD83D\uDD14' },
       { type: 'cron', title: 'Scheduled Jobs', icon: '\u23F0' },
+      { type: 'heartbeat', title: 'Heartbeat', icon: '\uD83D\uDC93' },
     ],
   },
   {
@@ -72,6 +73,7 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
       { type: 'cost', title: 'Cost', icon: '\uD83D\uDCC8' },
       { type: 'tasks', title: 'Active Tasks', icon: '\u2611' },
       { type: 'cron', title: 'Scheduled Jobs', icon: '\u23F0' },
+      { type: 'heartbeat', title: 'Heartbeat', icon: '\uD83D\uDC93' },
     ],
   },
   {

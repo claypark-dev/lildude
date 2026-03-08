@@ -8,6 +8,7 @@ import type { FastifyInstance } from 'fastify';
 import type BetterSqlite3 from 'better-sqlite3';
 import { getEnabledCronJobs } from '../../persistence/cron-jobs.js';
 import { getMonthlyTotalCost, getDailyTotalCost } from '../../persistence/token-usage.js';
+import { getHeartbeatStatus } from '../../orchestrator/heartbeat.js';
 import { createModuleLogger } from '../../utils/logger.js';
 
 const dashboardLogger = createModuleLogger('dashboard-api');
@@ -81,6 +82,7 @@ export function registerDashboardRoutes(
           })),
           count: cronJobs.length,
         },
+        heartbeat: getHeartbeatStatus(db),
       };
 
       return reply.status(200).send(response);

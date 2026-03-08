@@ -444,7 +444,14 @@ export function createAgentLoop(
         }
 
         // Step 9: Create tool executor and tool guard
-        const toolExecutor = createToolExecutor(deps.db, deps.securityLevel, taskId);
+        // If MCP manager is available, merge MCP tools with core tools and
+        // pass the manager to the executor for dispatching MCP tool calls.
+        const mcpToolDefs = deps.mcpManager?.getToolDefinitions() ?? [];
+        const allTools = mcpToolDefs.length > 0 ? [...CORE_TOOLS, ...mcpToolDefs] : CORE_TOOLS;
+        const toolExecutor = createToolExecutor(
+          deps.db, deps.securityLevel, taskId, undefined,
+          { mcpManager: deps.mcpManager },
+        );
         const toolGuard = createToolGuard();
 
         // Step 10: LLM call with tool-use loop
@@ -484,7 +491,7 @@ export function createAgentLoop(
           let response: ChatResponse;
           try {
             response = await deps.provider.chat(messages, {
-              model: modelSelection.model, maxTokens: 4096, tools: CORE_TOOLS,
+              model: modelSelection.model, maxTokens: 4096, tools: allTools,
               systemPrompt: contextPayload.systemPrompt,
             });
             consecutiveErrors = 0;

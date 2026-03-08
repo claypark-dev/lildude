@@ -33,6 +33,7 @@ import {
 } from './orchestrator/startup.js';
 import { startCronRunner, stopCronRunner } from './orchestrator/cron-runner.js';
 import { createCronJobHandler } from './orchestrator/cron-job-handler.js';
+import { startHeartbeatRunner, stopHeartbeatRunner } from './orchestrator/heartbeat.js';
 import { loadWaves } from './waves/loader.js';
 import { getConversationsByChannel } from './persistence/conversations.js';
 import { getConversationLogs } from './persistence/conversation-logs.js';
@@ -217,6 +218,17 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
   const loadedWaveCount = await loadWaves(dbManager.db);
   log.info({ loadedWaveCount }, 'Waves loaded into registry');
 
+  // Step 7.6: Initialize MCP manager for external tool integration
+  let mcpManager: import('./integrations/mcp-manager.js').McpManager | undefined;
+  if (config.mcp.enabled) {
+    const { createMcpManager } = await import('./integrations/mcp-manager.js');
+    mcpManager = createMcpManager(dbManager.db, config.mcp.servers);
+    if (config.mcp.autoConnectOnStartup) {
+      await mcpManager.connectAll();
+    }
+    log.info({ serverCount: config.mcp.servers.length }, 'MCP manager initialized');
+  }
+
   // Step 8: Create the agent loop
   const agentLoop = createAgentLoop(
     {
@@ -225,6 +237,7 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
       securityLevel,
       userName: config.user.name,
       monthlyBudgetUsd: config.budget.monthlyLimitUsd,
+      mcpManager,
     },
     {
       taskBudgetUsd: config.budget.perTaskDefaultLimitUsd,
@@ -270,6 +283,10 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
 
   // Register security level hot-reload route (needs both gateway + agentLoop)
   registerSecurityLevelRoute(gateway.app, dbManager.db, agentLoop, config);
+
+  // Register MCP management routes (safe to call even when mcpManager is undefined)
+  const { registerMcpRoutes } = await import('./gateway/api/mcp.js');
+  registerMcpRoutes(gateway.app, dbManager.db, mcpManager);
 
   if (!options.skipGatewayListen) {
     await gateway.start(config.gateway.httpPort, config.gateway.host);
@@ -378,6 +395,23 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
   startCronRunner(dbManager.db, cronJobHandler);
   log.info('Cron runner started');
 
+  // Step 10.8: Start the proactive heartbeat runner
+  startHeartbeatRunner(
+    {
+      db: dbManager.db,
+      provider: primaryProvider,
+      wsManager: gateway.ws,
+      enabledProviders,
+    },
+    {
+      enabled: config.heartbeat.enabled,
+      intervalMinutes: config.heartbeat.intervalMinutes,
+      maxDailyBudgetUsd: config.heartbeat.maxDailyBudgetUsd,
+      model: config.heartbeat.model,
+    },
+  );
+  log.info('Heartbeat runner started');
+
   // Step 11: Register shutdown handlers
   const shutdownHandler = createShutdownHandler();
 
@@ -393,6 +427,14 @@ export async function startApp(options: StartOptions = {}): Promise<AppContext> 
     shutdownHandler.register('heartbeat', () => {
       clearInterval(heartbeatInterval);
     });
+    shutdownHandler.register('heartbeat-runner', () => {
+      stopHeartbeatRunner();
+    });
+    if (mcpManager) {
+      shutdownHandler.register('mcp-manager', async () => {
+        await mcpManager!.disconnectAll();
+      });
+    }
     shutdownHandler.register('gateway', async () => {
       await gateway.stop();
     });

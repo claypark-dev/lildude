@@ -39,6 +39,8 @@ export interface AgentLoopDeps {
   };
   /** OAuth access token getter — returns a valid token for a given provider, or null. */
   getAccessToken?: (provider: string) => Promise<string | null>;
+  /** Optional MCP manager for external tool integration. */
+  mcpManager?: import('../integrations/mcp-manager.js').McpManager;
 }
 
 /** Configurable kill condition overrides. */
